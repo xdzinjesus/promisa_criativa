@@ -152,7 +152,7 @@ async function sync(force = false) {
       if (blob.size > 200 * 1024 * 1024) throw new Error('Este conjunto de arquivos ultrapassa 200 MB no envio online. Seus arquivos locais foram preservados.');
       const path = `promisa/v1/objects/${crypto.randomUUID()}.json`;
       const result = await upload(path, blob, {
-        access: 'private', contentType: 'application/json', addRandomSuffix: false,
+        access: 'private', contentType: 'application/json',
         handleUploadUrl: '/api/cloud?action=upload', multipart: blob.size > 4 * 1024 * 1024,
         onUploadProgress: progress => message(`Enviando ${i + 1} de ${plan.operations.length}: ${Math.round(progress.percentage)}%…`, 'pending')
       });
