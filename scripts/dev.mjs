@@ -1,0 +1,39 @@
+import http from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { resolve, extname, sep } from 'node:path';
+import handler from '../api/access.js';
+
+const root = resolve('public');
+const config = JSON.parse(await readFile('vercel.json', 'utf8'));
+const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.webp': 'image/webp', '.png': 'image/png', '.woff2': 'font/woff2', '.xml': 'application/xml', '.txt': 'text/plain' };
+const server = http.createServer(async (req, res) => {
+  try {
+    const url = new URL(req.url, 'http://localhost');
+    const route = config.rewrites.find(item => item.source === url.pathname);
+    if (url.pathname === '/api/access' || route) {
+      const destination = new URL(route?.destination || req.url, 'http://localhost');
+      req.query = Object.fromEntries([...url.searchParams, ...destination.searchParams]);
+      if (req.method === 'POST') {
+        let body = '';
+        for await (const chunk of req) {
+          body += chunk;
+          if (Buffer.byteLength(body) > 4096) { res.writeHead(413).end(); return; }
+        }
+        req.body = body;
+      }
+      return await handler(req, res);
+    }
+    if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405).end(); return; }
+    for (const group of config.headers) {
+      if (group.source === '/(.*)' || group.source === url.pathname) for (const header of group.headers) res.setHeader(header.key, header.value);
+    }
+    const path = resolve(root, '.' + decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname));
+    if (!path.startsWith(root + sep)) { res.writeHead(404).end(); return; }
+    try {
+      const content = await readFile(path);
+      res.writeHead(200, { 'Content-Type': mime[extname(path)] || 'application/octet-stream' });
+      res.end(req.method === 'HEAD' ? undefined : content);
+    } catch { res.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' }); res.end(await readFile(resolve(root, '404.html'))); }
+  } catch { res.writeHead(500).end('Erro no servidor de desenvolvimento.'); }
+});
+server.listen(Number(process.env.PORT || 4173), '127.0.0.1', () => console.log(`Local: http://127.0.0.1:${server.address().port}`));

@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="theme-color" content="#09080e">
+<title>Acesso privado · Promisa</title>
+<link rel="icon" href="/assets/asset-1.webp"><link rel="stylesheet" href="/assets/access.css">
+<script src="/assets/access.js" defer></script>
+</head>
+<body class="access-page">
+<main class="access-wrap">
+<a class="access-brand" href="/"><img src="/assets/asset-1.webp" alt="" width="46" height="46"><span>PROMISA<small>Criação Digital</small></span></a>
+<section class="access-panel" id="login-panel" aria-labelledby="login-title">
+<span class="eyebrow">Seu espaço de trabalho</span>
+<h1 id="login-title">Área administrativa</h1>
+<p>Entre com sua senha para acessar a gestão da Promisa e o catálogo dos seus projetos.</p>
+<form id="access-form">
+<label for="admin-password">Senha de acesso</label>
+<div class="password-field"><input type="password" id="admin-password" name="password" autocomplete="current-password" required maxlength="256"><button type="button" id="toggle-password" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div>
+<p id="access-error" class="access-error" role="alert"></p>
+<button type="submit" class="primary" id="access-submit">Entrar <span aria-hidden="true">→</span></button>
+</form>
+<a class="back-link" href="/">← Voltar ao site</a>
+<noscript><p>Ative o JavaScript para entrar na área administrativa.</p></noscript>
+</section>
+<section class="access-panel" id="choice-panel" aria-labelledby="choice-title" hidden>
+<span class="eyebrow">Acesso autorizado</span><h1 id="choice-title" tabindex="-1">O que você quer acessar?</h1>
+<p>Escolha por onde começar. Você pode trocar de área a qualquer momento.</p>
+<div class="access-choices">
+<a href="/admin" class="choice-card"><span class="choice-icon" aria-hidden="true">▦</span><strong>Área administrativa</strong><span>Vendas, clientes, finanças e organização do seu negócio.</span><b aria-hidden="true">Acessar gestão →</b></a>
+<a href="/catalogo" class="choice-card"><span class="choice-icon" aria-hidden="true">⌘</span><strong>Catálogo dos meus projetos</strong><span>Encontre seus projetos e visualize os sites da sua biblioteca.</span><b aria-hidden="true">Abrir catálogo →</b></a>
+</div><button type="button" class="back-link" data-logout>Sair da conta</button>
+</section>
+<p class="access-footnote">PROMISA · Espaço privado</p>
+</main>
+</body></html>

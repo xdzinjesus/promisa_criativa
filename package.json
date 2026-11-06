@@ -1,0 +1,11 @@
+{
+  "name": "promisa",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node --env-file=.env.local scripts/dev.mjs",
+    "test": "node --test tests/access.test.mjs"
+  },
+  "engines": { "node": "22.x" }
+}

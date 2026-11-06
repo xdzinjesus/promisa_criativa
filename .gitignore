@@ -1,0 +1,12 @@
+public/
+*.bak
+.env*
+!.env.example
+node_modules/
+.vercel/
+promisa-repository/
+*.zip
+*.log
+.DS_Store
+Thumbs.db
+coverage/
