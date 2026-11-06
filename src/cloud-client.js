@@ -1,9 +1,11 @@
+import { validateEntry, validateState } from './data-validation.js';
 import { uploadRecord } from './cloud-transfer.js';
 import { planSync, encodeValue, decodeValue, digest } from './cloud-core.js';
 
 const adapter = window.promisaAdapter;
 const collections = ['sales', 'exp', 'projects'];
 const defaults = { prospectNotes: '', siteHostingBaseUrl: '', plan: { meta: '', ticket: '', conv: '20', pacotes: '', publico: '', dif: '', obs: '' } };
+let paused = false;
 let busy = false, applying = false, generation = 0, timer, dirty = false, storageReady = false;
 let workspace = '', baseline = {}, currentConflicts = [];
 let completedOnce = false;
@@ -16,6 +18,7 @@ function message(text, state = '') {
   if (status) { status.textContent = text; status.dataset.state = state; }
 }
 async function request(action, body) {
+  if (paused) throw new Error('Sincronização pausada durante a saída.');
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 60_000);
   let response, data;
@@ -65,16 +68,21 @@ async function readRecord(key, expectedHash) {
   if (await digest(text) !== hash) throw new Error('A verificação do arquivo falhou. O arquivo local foi preservado.');
   const data = JSON.parse(text);
   if (data.version !== 1 || !Object.hasOwn(data, 'value')) throw new Error('Formato de arquivo online incompatível.');
-  return decodeValue(data.value);
+  return validateEntry(key, decodeValue(data.value));
 }
 async function applyRecords(changes) {
   if (!changes.size) return;
-  const state = structuredClone(adapter.getState());
+  for (const [key, value] of changes) changes.set(key, validateEntry(key, value));
+  const previous = structuredClone(adapter.getState());
+  const state = structuredClone(previous);
   const db = await adapter.database();
+  let tx, complete, persisted = false;
+  const container = document.getElementById('app') || document.getElementById('catalog-grid');
+  if (container) container.inert = true;
   applying = true;
   try {
-    const tx = db.transaction(['sites', 'project-files'], 'readwrite');
-    const complete = new Promise((resolve, reject) => {
+    tx = db.transaction(['sites', 'project-files'], 'readwrite');
+    complete = new Promise((resolve, reject) => {
       tx.addEventListener('complete', resolve);
       tx.addEventListener('error', () => reject(tx.error));
       tx.addEventListener('abort', () => reject(tx.error || new Error('Não foi possível atualizar a cópia deste aparelho.')));
@@ -92,10 +100,16 @@ async function applyRecords(changes) {
       }
     }
     // Atualiza S antes de aguardar o IndexedDB para não substituir uma edição posterior.
-    adapter.setState(state);
+    validateState(state);
+    adapter.setState(state); persisted = true;
     await complete;
     adapter.refresh();
-  } finally { applying = false; }
+  } catch (error) {
+    try { tx?.abort(); } catch {}
+    await complete?.catch(() => {});
+    if (persisted) adapter.setState(previous);
+    throw error;
+  } finally { applying = false; if (container) container.inert = false; }
 }
 function schedule() {
   clearTimeout(timer);
@@ -108,7 +122,7 @@ function changed() {
   schedule();
 }
 async function sync(force = false) {
-  if (!adapter || busy) return;
+  if (!adapter || busy || paused) return;
   if (!navigator.onLine) { message('Sem internet. Alterações ficam neste aparelho até a conexão voltar.', 'pending'); return; }
   if (!force && document.activeElement?.matches('input,textarea,select,[contenteditable="true"]')) {
     if (dirty) message('Aguardando você concluir a edição para sincronizar…', 'pending');
@@ -160,6 +174,7 @@ async function sync(force = false) {
       operation.path = result.pathname;
       uploaded.set(operation.hash, operation.path);
     }
+    if (paused) return;
     if (plan.operations.length) {
       message('Confirmando salvamento online…', 'pending');
       for (let offset = 0; offset < plan.operations.length; offset += 20) {
@@ -231,19 +246,20 @@ function showConflicts() {
 async function restoreLocalCopy(file) {
   if (!file || busy) return;
   try {
+    if (file.size > 256 * 1024 * 1024) throw new Error('A cópia ultrapassa 256 MB.');
     const backup = JSON.parse(await file.text());
     if (backup.format !== 'promisa-cloud-local-copy' || backup.version !== 1 || !backup.entries || Object.keys(backup.entries).length > 5000) throw new Error('Cópia local inválida.');
     const changes = new Map();
     for (const [key, entry] of Object.entries(backup.entries)) {
       if (!/^(sales|exp|projects|settings|sites|attachments):[A-Za-z0-9%_.~-]{1,180}$/.test(key) || entry?.version !== 1) throw new Error('Cópia local inválida.');
-      changes.set(key, decodeValue(entry.value));
+      changes.set(key, validateEntry(key, decodeValue(entry.value)));
     }
     if (!confirm('Restaurar os registros desta cópia no aparelho? Registros com o mesmo identificador serão substituídos.')) return;
     await downloadLocalCopy();
     await applyRecords(changes); changed();
   } catch (error) { message(error.message, 'error'); }
 }
-window.promisaCloud = { changed, sync, downloadLocalCopy, restoreLocalCopy };
+window.promisaCloud = { changed, sync, downloadLocalCopy, restoreLocalCopy, hasPending: () => dirty || busy, pause() { paused = true; clearTimeout(timer); generation++; }, resume() { paused = false; schedule(); } };
 syncButton?.addEventListener('click', () => sync(true));
 conflictButton?.addEventListener('click', showConflicts);
 document.getElementById('cloud-copy')?.addEventListener('click', () => downloadLocalCopy().catch(error => message(error.message, 'error')));

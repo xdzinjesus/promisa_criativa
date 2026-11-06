@@ -11,3 +11,6 @@ promisa-criativa-repository/
 .DS_Store
 Thumbs.db
 coverage/
+
+test-results/
+playwright-report/

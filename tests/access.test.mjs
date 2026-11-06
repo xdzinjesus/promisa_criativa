@@ -65,7 +65,7 @@ test('sessions issued before the correction are rejected even with a valid signa
 test('login lasts at most 15 minutes and does not create a persistent cookie', async () => {
   const cookie = await login();
   const payload = JSON.parse(Buffer.from(cookie.slice(16).split('.')[0], 'base64url').toString());
-  assert.equal(payload.v, 2);
+  assert.equal(payload.v, 3);
   assert.equal(payload.exp - payload.iat, 900);
   const result = await call({ method: 'POST', query: { action: 'login' }, body: { password: process.env.ADMIN_PASSWORD } });
   assert.doesNotMatch(result.headers['set-cookie'], /Max-Age=|Expires=/);
@@ -87,10 +87,12 @@ test('repeated incorrect passwords are rate limited per instance', async () => {
 });
 test('production cookie is Secure and missing configuration fails closed', async () => {
   const previousVercel = process.env.VERCEL;
-  process.env.VERCEL = '1';
+  delete process.env.VERCEL;
   try {
-    const response = await call({ method: 'POST', query: { action: 'login' }, headers: { origin: 'https://localhost:4173' }, body: { password: process.env.ADMIN_PASSWORD } });
+    const response = await call({ method: 'POST', query: { action: 'login' }, headers: { origin: 'https://localhost:4173', 'x-forwarded-proto': 'https' }, body: { password: process.env.ADMIN_PASSWORD } });
     assert.match(response.headers['set-cookie'], /; Secure/);
+    process.env.VERCEL = '1';
+    assert.equal((await call({query:{view:'admin'}})).statusCode, 503);
   } finally {
     if (previousVercel === undefined) delete process.env.VERCEL; else process.env.VERCEL = previousVercel;
   }

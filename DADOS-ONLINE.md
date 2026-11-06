@@ -36,4 +36,4 @@ Os downloads privados usam links temporários válidos por até 15 minutos. A pr
 
 Uploads grandes vão do navegador diretamente ao Blob, sem passar pelo corpo da função Vercel. O conteúdo de cada registro serializado tem limite de 200 MB, incluindo base64 e ZIP original. O índice aceita 5.000 registros. Conteúdo acima do limite permanece local, e o indicador mostra a falha.
 
-Versões anteriores e uploads sem confirmação podem permanecer no storage para preservar arquivos em caso de interrupção. Excluir no painel remove a referência sincronizada; uma limpeza física de versões históricas deve ser planejada separadamente. Monitore o uso e os limites do plano na Vercel.
+Versões anteriores e uploads sem confirmação podem permanecer no storage para preservar arquivos em caso de interrupção. Excluir no painel remove a referência sincronizada. A limpeza física após a janela de recuperação de sete dias exige CRON_SECRET e o agendador ativo; veja SEGURANCA-E-PRIVACIDADE.md. Cópias em aparelhos offline e backups exportados exigem acompanhamento separado. Monitore o uso e os limites do plano na Vercel.

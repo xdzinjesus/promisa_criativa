@@ -13,7 +13,7 @@ O botão **Sincronizar agora** força uma verificação. A verificação automá
 
 ## Configuração
 
-Veja `DADOS-ONLINE.md`. São necessários `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` e `BLOB_READ_WRITE_TOKEN` de um armazenamento **privado**. Nenhum desses valores deve estar no GitHub. Sem o armazenamento configurado, o painel informa explicitamente que os dados estão apenas no aparelho.
+Veja `DADOS-ONLINE.md`. São necessários `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` e `BLOB_READ_WRITE_TOKEN` de um armazenamento **privado**. Nenhum desses valores deve estar no GitHub. Localmente sem o armazenamento, o painel informa que os dados estão apenas no aparelho. Em produção, o Blob privado também é obrigatório para o login revogável.
 
 ## Desenvolvimento
 
@@ -31,6 +31,8 @@ Abra http://127.0.0.1:4173. Após alterações nas páginas ou scripts, execute 
 npm test
 ```
 
+Veja também `SEGURANCA-E-PRIVACIDADE.md` para retenção, configuração de sessões revogáveis, limitações e testes no navegador.
+
 Os testes cobrem autenticação, proteção das rotas, preservação binária dos anexos, arquivos maiores que 4,5 MB, sincronização entre aparelhos, exclusões e conflitos. O fluxo do GitHub Actions executa o build e os testes sem usar credenciais de produção.
 
 ## Dados existentes e segurança
@@ -41,4 +43,4 @@ Duas edições diferentes no mesmo registro geram um aviso, sem substituir silen
 
 O índice online usa ETag para evitar que um envio sobreponha alterações concorrentes. Arquivos recebem caminhos imutáveis e só são vinculados depois do envio completo. O token do armazenamento permanece no servidor; o navegador recebe autorizações temporárias e restritas.
 
-Cada registro serializado aceita até 200 MB e o índice aceita 5.000 registros. JSON/base64 e a cópia do ZIP original podem aumentar o tamanho em relação ao arquivo selecionado. Versões anteriores permanecem no armazenamento; a exclusão no painel propaga a remoção lógica e não limpa versões históricas automaticamente. A utilização segue os limites e cobrança do seu plano Vercel.
+Cada registro serializado aceita até 200 MB e o índice aceita 5.000 registros. JSON/base64 e a cópia do ZIP original podem aumentar o tamanho em relação ao arquivo selecionado. A exclusão no painel propaga a remoção lógica. A rotina de manutenção remove versões sem referências após a janela técnica de sete dias, quando CRON_SECRET e o agendador estiverem configurados. Antes da primeira execução, confira a simulação e os backups. A utilização segue os limites e cobrança do seu plano Vercel.

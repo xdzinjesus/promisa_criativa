@@ -89,6 +89,9 @@
     },
     "api/cloud.js": {
       "maxDuration": 60
+    },
+    "api/maintenance.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -99,6 +102,12 @@
     {
       "source": "/catalogo",
       "destination": "/api/access?view=catalogo"
+    }
+  ],
+  "crons": [
+    {
+      "path": "/api/maintenance",
+      "schedule": "0 6 * * *"
     }
   ]
 }

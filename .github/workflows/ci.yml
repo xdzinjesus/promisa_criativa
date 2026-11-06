@@ -23,3 +23,5 @@ jobs:
         env:
           SITE_URL: https://example.com
       - run: npm test
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:browser

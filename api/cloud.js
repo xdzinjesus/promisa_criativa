@@ -1,5 +1,5 @@
 import { handleUpload } from '@vercel/blob/client';
-import { settings, session, sameOrigin } from './access.js';
+import { settings, authorized, sameOrigin } from './access.js';
 import { configured, loadManifest, commitOperations, signedRead, validKey, validPath, MAX_OBJECT_BYTES } from '../lib/cloud-store.js';
 
 function json(res, status, body) {
@@ -13,13 +13,13 @@ export default async function handler(req, res) {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   const config = settings();
-  if (!config || !session(req, config)) return json(res, 401, { error: 'Sua sessão terminou. Entre novamente.' });
+  try {
+  if (!config || !await authorized(req, config)) return json(res, 401, { error: 'Sua sessão terminou. Entre novamente.' });
   if (!['GET', 'POST'].includes(req.method)) return json(res, 405, { error: 'Método não permitido.' });
   if (req.method === 'POST' && !sameOrigin(req)) return json(res, 403, { error: 'Origem não permitida.' });
   if (!configured()) return json(res, 503, { error: 'Conecte um Vercel Blob privado ao projeto e configure BLOB_READ_WRITE_TOKEN para ativar o armazenamento online.', code: 'STORAGE_NOT_CONFIGURED' });
   const url = new URL(req.url, 'http://localhost');
   const action = req.query?.action || url.searchParams.get('action');
-  try {
     if (req.method === 'GET' && action === 'manifest') return json(res, 200, (await loadManifest()).manifest);
     if (req.method === 'POST') {
       if (!String(req.headers['content-type'] || '').startsWith('application/json')) return json(res, 415, { error: 'Formato inválido.' });
