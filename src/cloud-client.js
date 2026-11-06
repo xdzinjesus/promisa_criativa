@@ -1,4 +1,4 @@
-import { upload } from '@vercel/blob/client';
+import { uploadRecord } from './cloud-transfer.js';
 import { planSync, encodeValue, decodeValue, digest } from './cloud-core.js';
 
 const adapter = window.promisaAdapter;
@@ -16,12 +16,17 @@ function message(text, state = '') {
   if (status) { status.textContent = text; status.dataset.state = state; }
 }
 async function request(action, body) {
-  const response = await fetch('/api/cloud?action=' + action, {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 60_000);
+  let response, data;
+  try {
+  response = await fetch('/api/cloud?action=' + action, {
     method: body === undefined ? 'GET' : 'POST',
     headers: body === undefined ? {} : { 'Content-Type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body), cache: 'no-store'
+    body: body === undefined ? undefined : JSON.stringify(body), cache: 'no-store', signal: controller.signal
   });
-  const data = await response.json();
+  data = await response.json();
+  } finally { clearTimeout(timer); }
   if (!response.ok) {
     const error = new Error(data.error || 'Não foi possível sincronizar.');
     error.status = response.status; error.code = data.code;
@@ -151,11 +156,7 @@ async function sync(force = false) {
       const blob = new Blob([local[operation.key].text], { type: 'application/json' });
       if (blob.size > 200 * 1024 * 1024) throw new Error('Este conjunto de arquivos ultrapassa 200 MB no envio online. Seus arquivos locais foram preservados.');
       const path = `promisa/v1/objects/${crypto.randomUUID()}.json`;
-      const result = await upload(path, blob, {
-        access: 'private', contentType: 'application/json',
-        handleUploadUrl: '/api/cloud?action=upload', multipart: blob.size > 4 * 1024 * 1024,
-        onUploadProgress: progress => message(`Enviando ${i + 1} de ${plan.operations.length}: ${Math.round(progress.percentage)}%…`, 'pending')
-      });
+      const result = await uploadRecord(path, blob, progress => message(`Enviando ${i + 1} de ${plan.operations.length}: ${Math.round(progress.percentage)}%…`, 'pending'));
       operation.path = result.pathname;
       uploaded.set(operation.hash, operation.path);
     }
