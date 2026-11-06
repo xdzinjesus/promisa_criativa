@@ -1,0 +1,54 @@
+import { handleUpload } from '@vercel/blob/client';
+import { settings, session, sameOrigin } from './access.js';
+import { configured, loadManifest, commitOperations, signedRead, validKey, validPath, MAX_OBJECT_BYTES } from '../lib/cloud-store.js';
+
+function json(res, status, body) {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.end(JSON.stringify(body));
+}
+export default async function handler(req, res) {
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+  const config = settings();
+  if (!config || !session(req, config)) return json(res, 401, { error: 'Sua sessão terminou. Entre novamente.' });
+  if (!['GET', 'POST'].includes(req.method)) return json(res, 405, { error: 'Método não permitido.' });
+  if (req.method === 'POST' && !sameOrigin(req)) return json(res, 403, { error: 'Origem não permitida.' });
+  if (!configured()) return json(res, 503, { error: 'Conecte um Vercel Blob privado ao projeto e configure BLOB_READ_WRITE_TOKEN para ativar o armazenamento online.', code: 'STORAGE_NOT_CONFIGURED' });
+  const url = new URL(req.url, 'http://localhost');
+  const action = req.query?.action || url.searchParams.get('action');
+  try {
+    if (req.method === 'GET' && action === 'manifest') return json(res, 200, (await loadManifest()).manifest);
+    if (req.method === 'POST') {
+      if (!String(req.headers['content-type'] || '').startsWith('application/json')) return json(res, 415, { error: 'Formato inválido.' });
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      if (action === 'upload') {
+        // A chave principal nunca é enviada ao navegador; o SDK gera uma autorização restrita.
+        const result = await handleUpload({
+          token: process.env.BLOB_READ_WRITE_TOKEN,
+          request: req,
+          body,
+          onBeforeGenerateToken: async pathname => {
+            if (!validPath(pathname)) throw new Error('Caminho de upload inválido.');
+            return { allowedContentTypes: ['application/json'], maximumSizeInBytes: MAX_OBJECT_BYTES, validUntil: Date.now() + 60 * 60 * 1000, addRandomSuffix: false, allowOverwrite: false };
+          }
+        });
+        return json(res, 200, result);
+      }
+      if (action === 'commit') return json(res, 200, await commitOperations(body?.operations));
+      if (action === 'read') {
+        if (!validKey(body?.key)) return json(res, 400, { error: 'Registro inválido.' });
+        const { manifest } = await loadManifest();
+        const record = manifest.records[body.key];
+        if (!record?.hash) return json(res, 404, { error: 'Arquivo não encontrado.' });
+        return json(res, 200, { ...await signedRead(record.path), hash: record.hash });
+      }
+    }
+    return json(res, 404, { error: 'Operação não encontrada.' });
+  } catch (error) {
+    if (error instanceof SyntaxError) return json(res, 400, { error: 'Dados inválidos.' });
+    return json(res, error.status || 502, { error: error.status ? error.message : 'Não foi possível acessar o armazenamento online. Verifique a conexão e a configuração do Vercel Blob privado.', ...error.details });
+  }
+}

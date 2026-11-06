@@ -5,9 +5,9 @@ import { join } from 'node:path';
 const lifetime = 8 * 60 * 60;
 const attempts = new Map(); // Limite por instância; não substitui um limite distribuído.
 const publicCsp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
-const privateCsp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' data: blob:; frame-src blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
+const privateCsp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' data: blob: https://*.vercel-storage.com; frame-src blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
 
-function settings() {
+export function settings() {
   const password = process.env.ADMIN_PASSWORD;
   const secret = process.env.ADMIN_SESSION_SECRET;
   return password && secret?.length >= 32 ? { password, secret } : null;
@@ -19,7 +19,7 @@ function equal(a, b) {
   const x = Buffer.from(a), y = Buffer.from(b);
   return x.length === y.length && timingSafeEqual(x, y);
 }
-function session(req, config) {
+export function session(req, config) {
   const token = String(req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith('promisa_session='))?.slice(16);
   if (!token || token.length > 512) return false;
   const [payload, signed, extra] = token.split('.');
@@ -39,7 +39,7 @@ function json(res, code, value) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(value));
 }
-function sameOrigin(req) {
+export function sameOrigin(req) {
   try {
     const origin = new URL(req.headers.origin);
     const protocol = process.env.VERCEL ? 'https:' : (req.headers['x-forwarded-proto'] === 'https' ? 'https:' : 'http:');

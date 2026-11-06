@@ -1,28 +1,44 @@
 # Promisa Criação Digital
 
-Site institucional com entrada privada no rodapé, painel baseado no HTML fornecido e catálogo de projetos.
+Site institucional com área administrativa protegida e catálogo de projetos, com sincronização de dados e arquivos entre computador e celular usando Vercel Blob privado.
 
-## Desenvolvimento local
+## Uso
 
-Requer Node.js 22 ou superior, sem dependências externas.
+1. Abra Área administrativa no rodapé e entre com sua senha.
+2. Cadastre clientes, projetos, vendas e anotações. Sites aceitam HTML, ZIP ou pastas; projetos aceitam HTML e ZIP.
+3. Aguarde o indicador **Salvo online** antes de sair ou trocar de aparelho.
+4. Em outro aparelho, abra o mesmo domínio, entre com a mesma senha e aguarde a sincronização. Os anexos ficam disponíveis para baixar; HTMLs também têm prévia isolada.
 
-1. Configure `.env.local` usando `.env.example`. Defina sua senha em ADMIN_PASSWORD e um segredo aleatório de pelo menos 32 caracteres em ADMIN_SESSION_SECRET. Não envie esse arquivo ao GitHub.
-2. Execute `node --env-file=.env.local build.mjs`.
-3. Execute `npm run dev` e abra http://127.0.0.1:4173.
-4. Após alterações nas páginas ou assets, execute o build novamente.
+O botão **Sincronizar agora** força uma verificação. A verificação automática ocorre a cada 20 segundos enquanto a página está visível. Arquivos são privados; prévias e download não publicam os sites na internet.
 
-O rodapé abre `/acesso.html`. Após a senha, escolha `/admin` ou `/catalogo`.
+## Configuração
 
-## Validação
+Veja `DADOS-ONLINE.md`. São necessários `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` e `BLOB_READ_WRITE_TOKEN` de um armazenamento **privado**. Nenhum desses valores deve estar no GitHub. Sem o armazenamento configurado, o painel informa explicitamente que os dados estão apenas no aparelho.
 
-Execute o build antes de `npm test`. Os testes verificam autenticação, proteção das páginas, senha incorreta, cookies, saída, limite de tentativas e exclusão dos arquivos privados do diretório público.
+## Desenvolvimento
 
-## Dados e publicação
+Use Node.js 22 e configure `.env.local` a partir de `.env.example`.
 
-O painel mantém o armazenamento original em localStorage e IndexedDB. O catálogo lê a mesma biblioteca no mesmo domínio e navegador. Dados não são sincronizados entre aparelhos; use Backup para transferi-los. Sair preserva os dados locais. Quem tem acesso ao perfil do navegador pode acessar esse armazenamento.
+```text
+npm ci
+node --env-file=.env.local build.mjs
+npm run dev
+```
 
-Importar HTML, pasta ou ZIP permite organizar e visualizar arquivos; não realiza deploy. Sistemas com backend não são executados pela prévia de HTML. Hospedagem automática, integração GitHub/Vercel e banco de dados compartilhado são etapas posteriores.
+Abra http://127.0.0.1:4173. Após alterações nas páginas ou scripts, execute o build novamente.
 
-Consulte `ENVIAR-AO-GITHUB.md` para enviar o código e `PUBLICACAO.md` para configurar a Vercel. O HTML original anexado em Downloads permanece intacto.
+```text
+npm test
+```
 
-O repositório inclui uma verificação no GitHub Actions: instala a configuração do projeto com Node.js 22, executa o build e os testes em pushes para `main` e pull requests. O fluxo usa credenciais fictícias apenas nos testes e não precisa da senha real.
+Os testes cobrem autenticação, proteção das rotas, preservação binária dos anexos, arquivos maiores que 4,5 MB, sincronização entre aparelhos, exclusões e conflitos. O fluxo do GitHub Actions executa o build e os testes sem usar credenciais de produção.
+
+## Dados existentes e segurança
+
+Os dados antigos de localStorage/IndexedDB continuam no aparelho e são enviados ao storage após a primeira conexão. A cópia local funciona como cache e conserva alterações em caso de falha de rede. A primeira sincronização deve acontecer no aparelho e domínio que já contêm os seus dados.
+
+Duas edições diferentes no mesmo registro geram um aviso, sem substituir silenciosamente uma versão. Antes de aplicar a escolha, o painel baixa uma cópia completa do aparelho, com os ZIPs originais; essa cópia pode ser restaurada pelo menu Cópia de segurança.
+
+O índice online usa ETag para evitar que um envio sobreponha alterações concorrentes. Arquivos recebem caminhos imutáveis e só são vinculados depois do envio completo. O token do armazenamento permanece no servidor; o navegador recebe autorizações temporárias e restritas.
+
+Cada registro serializado aceita até 200 MB e o índice aceita 5.000 registros. JSON/base64 e a cópia do ZIP original podem aumentar o tamanho em relação ao arquivo selecionado. Versões anteriores permanecem no armazenamento; a exclusão no painel propaga a remoção lógica e não limpa versões históricas automaticamente. A utilização segue os limites e cobrança do seu plano Vercel.

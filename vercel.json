@@ -86,6 +86,9 @@
   "functions": {
     "api/access.js": {
       "includeFiles": "private/**"
+    },
+    "api/cloud.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [

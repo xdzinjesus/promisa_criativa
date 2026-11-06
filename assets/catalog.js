@@ -1,4 +1,5 @@
 let catalogEntries = [];
+let catalogAttachments = [];
 const search = document.getElementById('catalog-search');
 const filter = document.getElementById('catalog-filter');
 const grid = document.getElementById('catalog-grid');
@@ -26,6 +27,16 @@ function drawCatalog() {
     if (item.siteId && clientSiteRows.some(site => site.id === item.siteId)) {
       const preview = document.createElement('button'); preview.type = 'button'; preview.textContent = 'Visualizar site';
       preview.addEventListener('click', () => openClientSite(item.siteId)); card.append(preview);
+      const download = document.createElement('button'); download.type = 'button'; download.textContent = 'Baixar ZIP do site';
+      download.addEventListener('click', () => downloadClientSiteZip(item.siteId)); card.append(download);
+    }
+    if (item.projectId) for (const file of catalogAttachments.filter(file => String(file.projectId) === String(item.projectId))) {
+      const download = document.createElement('button'); download.type = 'button'; download.textContent = 'Baixar ' + file.name;
+      download.addEventListener('click', () => downloadProjectZip(file.id)); card.append(download);
+      if (/\.html?$/i.test(file.name)) {
+        const preview = document.createElement('button'); preview.type = 'button'; preview.textContent = 'Visualizar ' + file.name;
+        preview.addEventListener('click', () => previewProjectFile(file.id)); card.append(preview);
+      }
     }
     const manage = document.createElement('a');
     manage.href = `/admin?tab=${item.type === 'projeto' ? 'projects' : item.type === 'pessoal' ? 'mySites' : 'sites'}`;
@@ -36,11 +47,12 @@ function drawCatalog() {
 async function loadCatalog() {
   try {
     clientSiteRows = await clientSiteAll();
+    catalogAttachments = await projectFileAll();
     // A aba de gestão pode ter alterado os projetos desde a abertura deste catálogo.
     try { const latest = JSON.parse(localStorage.getItem(K) || '{}'); if (Array.isArray(latest.projects)) S.projects = latest.projects; } catch {}
     catalogEntries = [
       ...clientSiteRows.map(site => ({ name: site.name || 'Site sem nome', description: site.description || '', client: site.clientName || '', status: site.status || 'Em edição', type: site.siteType === 'pessoal' ? 'pessoal' : 'cliente', siteId: site.id, updated: site.updatedAt || '' })),
-      ...(S.projects || []).map(project => ({ name: project.title || 'Projeto sem nome', description: project.notes || '', client: '', status: project.status || 'Em andamento', type: 'projeto', siteId: project.siteId || '', updated: project.updatedAt || '' }))
+      ...(S.projects || []).map(project => ({ name: project.title || 'Projeto sem nome', description: project.notes || '', client: '', status: project.status || 'Em andamento', type: 'projeto', projectId: project.id, siteId: project.siteId || '', updated: project.updatedAt || '' }))
     ].sort((a, b) => b.updated.localeCompare(a.updated));
     drawCatalog();
   } catch {

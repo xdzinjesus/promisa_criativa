@@ -2,6 +2,7 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import handler from '../api/access.js';
+import cloudHandler from '../api/cloud.js';
 
 const root = resolve('public');
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
@@ -10,18 +11,18 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
     const route = config.rewrites.find(item => item.source === url.pathname);
-    if (url.pathname === '/api/access' || route) {
+    if (url.pathname === '/api/access' || url.pathname === '/api/cloud' || route) {
       const destination = new URL(route?.destination || req.url, 'http://localhost');
       req.query = Object.fromEntries([...url.searchParams, ...destination.searchParams]);
       if (req.method === 'POST') {
         let body = '';
         for await (const chunk of req) {
           body += chunk;
-          if (Buffer.byteLength(body) > 4096) { res.writeHead(413).end(); return; }
+          if (Buffer.byteLength(body) > 4 * 1024 * 1024) { res.writeHead(413).end(); return; }
         }
         req.body = body;
       }
-      return await handler(req, res);
+      return await (url.pathname === '/api/cloud' ? cloudHandler : handler)(req, res);
     }
     if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405).end(); return; }
     for (const group of config.headers) {

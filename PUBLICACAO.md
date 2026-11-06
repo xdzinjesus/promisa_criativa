@@ -2,7 +2,7 @@
 
 ## Arquivos
 
-Envie os arquivos do projeto ao repositório conectado à Vercel, incluindo `api/`, `private/`, `assets/`, `package.json`, `build.mjs`, `vercel.json`, `acesso.html` e as páginas públicas existentes. A função inclui `private/` no seu pacote sem copiá-la para `public/`.
+Envie os arquivos do projeto ao repositório conectado à Vercel, incluindo `api/`, `lib/`, `src/`, `private/`, `assets/`, `package.json`, `build.mjs`, `vercel.json`, `acesso.html` e as páginas públicas existentes. A função inclui `private/` no seu pacote sem copiá-la para `public/`.
 
 Não envie `.env.local`, outros arquivos `.env`, o backup `.bak`, a pasta `promisa-repository/` nem a pasta gerada `public/`. O ZIP de entrega exclui esses itens. Não copie o HTML administrativo para a pasta pública, pois isso permitiria acesso sem senha.
 
@@ -37,9 +37,7 @@ A validação ocorre em `api/access.js`. A sessão dura oito horas, usa cookie H
 
 ## Armazenamento e hospedagem
 
-O painel fornecido armazena dados e anexos no navegador de cada aparelho. O catálogo usa essa biblioteca e inclui projetos, sites pessoais e sites de clientes. Use Backup para transferir informações entre aparelhos. Importar arquivos ou salvar um domínio no painel **não publica os projetos**. Esta entrega integra o acesso e o catálogo; não conecta contas nem faz deploy dos projetos anexados.
-
-As prévias abrem em um iframe com sandbox, separado do acesso ao armazenamento da gestão. Recursos que dependem de um servidor, módulos ou caminhos complexos podem exigir publicação real.
+O painel sincroniza dados e arquivos entre aparelhos usando Vercel Blob privado. Leia `DADOS-ONLINE.md` para conectar o recurso e enviar os dados antigos. Até o indicador mostrar Salvo online, a cópia pode existir apenas no aparelho. Importar arquivos não publica automaticamente os sites dos clientes.
 
 ## Verificação
 
@@ -47,4 +45,4 @@ O build, os testes locais de autenticação, a sintaxe dos scripts e as referên
 
 Os assets ausentes foram recuperados de `index.original.html.bak`. A imagem social usa uma prévia recuperada, pois o PNG social anterior não estava nesta pasta.
 
-Não foi feito push nem deploy. A verificação visual no navegador não foi concluída: a ferramenta de prévia falhou ao inicializar neste ambiente.
+O código pode ser enviado ao GitHub sem segredos. A ativação online depende do armazenamento privado e de um novo deploy. A verificação visual no navegador não foi concluída: a ferramenta de prévia falhou ao inicializar neste ambiente.

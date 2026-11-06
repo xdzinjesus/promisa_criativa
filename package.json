@@ -5,7 +5,15 @@
   "scripts": {
     "build": "node build.mjs",
     "dev": "node --env-file=.env.local scripts/dev.mjs",
-    "test": "node --test tests/access.test.mjs"
+    "test": "node --test tests/*.test.mjs"
   },
-  "engines": { "node": "22.x" }
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.2"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
 }

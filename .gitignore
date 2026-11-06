@@ -5,6 +5,7 @@ public/
 node_modules/
 .vercel/
 promisa-repository/
+promisa-criativa-repository/
 *.zip
 *.log
 .DS_Store
