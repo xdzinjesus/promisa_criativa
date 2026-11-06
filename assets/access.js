@@ -1,5 +1,22 @@
 const form = document.getElementById('access-form');
 const error = document.getElementById('access-error');
+let gateReady;
+function lockGate() {
+  document.getElementById('choice-panel').hidden = true;
+  document.getElementById('login-panel').hidden = false;
+  document.getElementById('admin-password').value = '';
+  const button = document.getElementById('access-submit');
+  button.disabled = true;
+  gateReady = fetch('/api/access?action=logout', { method: 'POST', credentials: 'same-origin', cache: 'no-store' })
+    .then(response => {
+      if (!response.ok) throw new Error();
+      error.textContent = '';
+      return true;
+    }).catch(() => {
+      error.textContent = 'Não foi possível preparar o acesso seguro. Recarregue a página para tentar novamente.';
+      return false;
+    }).finally(() => { button.disabled = false; });
+}
 function showChoice() {
   document.getElementById('login-panel').hidden = true;
   document.getElementById('choice-panel').hidden = false;
@@ -15,6 +32,7 @@ document.getElementById('toggle-password').addEventListener('click', event => {
 });
 form.addEventListener('submit', async event => {
   event.preventDefault();
+  if (!await gateReady) return;
   const button = document.getElementById('access-submit');
   const input = document.getElementById('admin-password');
   error.textContent = '';
@@ -38,4 +56,6 @@ document.querySelector('[data-logout]').addEventListener('click', async () => {
     location.replace('/');
   } catch { alert('Não foi possível sair. Verifique a conexão e tente novamente.'); }
 });
-fetch('/api/access?action=session', { cache: 'no-store' }).then(response => { if (response.ok) showChoice(); }).catch(() => {});
+// Abrir a entrada administrativa sempre exige digitar a senha novamente.
+lockGate();
+window.addEventListener('pageshow', event => { if (event.persisted) lockGate(); });

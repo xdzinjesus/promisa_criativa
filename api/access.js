@@ -2,7 +2,8 @@ import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-const lifetime = 8 * 60 * 60;
+const lifetime = 15 * 60;
+const sessionVersion = 2; // Invalida todos os cookies emitidos antes desta correção.
 const attempts = new Map(); // Limite por instância; não substitui um limite distribuído.
 const publicCsp = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
 const privateCsp = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' data: blob: https://*.vercel-storage.com; frame-src blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
@@ -27,12 +28,14 @@ export function session(req, config) {
   try {
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
     const now = Math.floor(Date.now() / 1000);
-    return Number.isInteger(data.exp) && data.exp > now && data.exp <= now + lifetime;
+    return data.v === sessionVersion && Number.isInteger(data.iat) && data.iat <= now &&
+      Number.isInteger(data.exp) && data.exp === data.iat + lifetime && data.exp > now;
   } catch { return false; }
 }
 function cookie(req, value, age) {
   const secure = process.env.VERCEL || req.headers['x-forwarded-proto'] === 'https';
-  return `promisa_session=${value}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${age}${secure ? '; Secure' : ''}`;
+  // Cookie de sessão: não mantém o login por vários dias no navegador.
+  return `promisa_session=${value}; HttpOnly; SameSite=Strict; Path=/${age <= 0 ? '; Max-Age=0' : ''}${secure ? '; Secure' : ''}`;
 }
 function json(res, code, value) {
   res.statusCode = code;
@@ -91,7 +94,8 @@ export default async function handler(req, res) {
     await new Promise(resolve => setTimeout(resolve, 600));
     if (!valid) return json(res, 401, { error: 'Senha incorreta. Tente novamente.' });
     attempts.delete(ip);
-    const payload = Buffer.from(JSON.stringify({ exp: Math.floor(now / 1000) + lifetime, nonce: randomBytes(16).toString('hex') })).toString('base64url');
+    const issued = Math.floor(Date.now() / 1000);
+    const payload = Buffer.from(JSON.stringify({ v: sessionVersion, iat: issued, exp: issued + lifetime, nonce: randomBytes(16).toString('hex') })).toString('base64url');
     res.setHeader('Set-Cookie', cookie(req, `${payload}.${signature(payload, config.secret + config.password)}`, lifetime));
     return json(res, 200, { ok: true });
   }

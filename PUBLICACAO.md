@@ -33,7 +33,7 @@ Copie o resultado diretamente para a variável na Vercel. Não coloque o segredo
 3. Escolha **Área administrativa** ou **Catálogo dos meus projetos**.
 4. Use **Sair** para encerrar o acesso naquele navegador.
 
-A validação ocorre em `api/access.js`. A sessão dura oito horas, usa cookie HttpOnly e SameSite=Strict, e recebe Secure na Vercel. As páginas privadas têm no-store e noindex. Alterar a senha ou o segredo invalida as sessões existentes. O limite de cinco tentativas a cada quinze minutos funciona por instância; para um limite global, será necessário armazenamento compartilhado ou regras no firewall da hospedagem.
+A validação ocorre em `api/access.js`. Abrir a entrada administrativa exige a senha novamente, sem pular automaticamente para a escolha de áreas. A sessão dura no máximo quinze minutos, usa cookie HttpOnly e SameSite=Strict, e recebe Secure na Vercel. As páginas privadas têm no-store e noindex. Alterar a senha ou o segredo invalida as sessões existentes. O limite de cinco tentativas a cada quinze minutos funciona por instância; para um limite global, será necessário armazenamento compartilhado ou regras no firewall da hospedagem.
 
 ## Armazenamento e hospedagem
 

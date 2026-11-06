@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
-import handler from '../api/access.js';
+import handler, { session, settings } from '../api/access.js';
 
 process.env.ADMIN_PASSWORD = 'test-only-password';
 process.env.ADMIN_SESSION_SECRET = 'test-only-session-secret-of-at-least-32-characters';
@@ -54,6 +55,25 @@ test('logout expires the browser cookie', async () => {
   const response = await call({ method: 'POST', query: { action: 'logout' } });
   assert.equal(response.statusCode, 200);
   assert.match(response.headers['set-cookie'], /Max-Age=0/);
+});
+test('sessions issued before the correction are rejected even with a valid signature', () => {
+  const config = settings();
+  const payload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 8 * 3600, nonce: 'old-session' })).toString('base64url');
+  const signed = createHmac('sha256', config.secret + config.password).update(payload).digest('base64url');
+  assert.equal(session({ headers: { cookie: `promisa_session=${payload}.${signed}` } }, config), false);
+});
+test('login lasts at most 15 minutes and does not create a persistent cookie', async () => {
+  const cookie = await login();
+  const payload = JSON.parse(Buffer.from(cookie.slice(16).split('.')[0], 'base64url').toString());
+  assert.equal(payload.v, 2);
+  assert.equal(payload.exp - payload.iat, 900);
+  const result = await call({ method: 'POST', query: { action: 'login' }, body: { password: process.env.ADMIN_PASSWORD } });
+  assert.doesNotMatch(result.headers['set-cookie'], /Max-Age=|Expires=/);
+  const expired = { ...payload, iat: Math.floor(Date.now() / 1000) - 901, exp: Math.floor(Date.now() / 1000) - 1 };
+  const encoded = Buffer.from(JSON.stringify(expired)).toString('base64url');
+  const config = settings();
+  const signed = createHmac('sha256', config.secret + config.password).update(encoded).digest('base64url');
+  assert.equal(session({ headers: { cookie: `promisa_session=${encoded}.${signed}` } }, config), false);
 });
 test('repeated incorrect passwords are rate limited per instance', async () => {
   const headers = { 'x-forwarded-for': 'test-limited-ip' };
