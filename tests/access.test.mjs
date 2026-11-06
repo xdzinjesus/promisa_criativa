@@ -56,6 +56,30 @@ test('logout expires the browser cookie', async () => {
   assert.equal(response.statusCode, 200);
   assert.match(response.headers['set-cookie'], /Max-Age=0/);
 });
+test('login preparation can clear cookies while configuration is incomplete without allowing access', async () => {
+  const password = process.env.ADMIN_PASSWORD;
+  const vercel = process.env.VERCEL;
+  try {
+    process.env.ADMIN_PASSWORD = 'short';
+    process.env.VERCEL = '1';
+    const logout = await call({ method: 'POST', query: { action: 'logout' }, headers: { origin: 'https://localhost:4173' } });
+    assert.equal(logout.statusCode, 200);
+    assert.match(logout.headers['set-cookie'], /Max-Age=0/);
+    const login = await call({ method: 'POST', query: { action: 'login' }, headers: { origin: 'https://localhost:4173' }, body: { password: 'short' } });
+    assert.equal(login.statusCode, 503);
+    assert.equal(JSON.parse(login.content).code, 'AUTH_CONFIGURATION_REQUIRED');
+    assert.match(JSON.parse(login.content).error, /12 caracteres/);
+    assert.equal((await call({ query: { view: 'admin' } })).statusCode, 503);
+    process.env.ADMIN_PASSWORD = password;
+    const storage = await call({ method: 'POST', query: { action: 'login' }, headers: { origin: 'https://localhost:4173' }, body: { password } });
+    assert.equal(storage.statusCode, 503);
+    assert.equal(JSON.parse(storage.content).code, 'AUTH_STORAGE_REQUIRED');
+    assert.match(JSON.parse(storage.content).error, /BLOB_READ_WRITE_TOKEN/);
+  } finally {
+    process.env.ADMIN_PASSWORD = password;
+    if (vercel === undefined) delete process.env.VERCEL; else process.env.VERCEL = vercel;
+  }
+});
 test('sessions issued before the correction are rejected even with a valid signature', () => {
   const config = settings();
   const payload = Buffer.from(JSON.stringify({ exp: Math.floor(Date.now() / 1000) + 8 * 3600, nonce: 'old-session' })).toString('base64url');

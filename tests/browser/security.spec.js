@@ -8,6 +8,28 @@ async function login(page) {
   await page.goto('/admin');
   await expect(page.locator('#app h1')).toBeVisible();
 }
+test('login retries preparation after a temporary error without erasing the entered password', async ({ page }) => {
+  let attempts = 0;
+  await page.route('**/api/access?action=logout', async route => {
+    if (++attempts === 1) await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Armazenamento temporariamente indisponível.' }) });
+    else await route.continue();
+  });
+  await page.goto('/acesso.html');
+  await expect(page.locator('#access-error')).toContainText('Armazenamento temporariamente indisponível.');
+  await page.locator('#admin-password').fill('browser-test-only-password');
+  await page.locator('#access-submit').click();
+  await expect(page.locator('#choice-panel')).toBeVisible();
+  expect(attempts).toBe(2);
+});
+test('login displays the server configuration error instead of reporting an incorrect password', async ({ page }) => {
+  await page.route('**/api/access?action=login', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ code: 'AUTH_STORAGE_REQUIRED', error: 'Configure BLOB_READ_WRITE_TOKEN de um Vercel Blob privado em Production e faça um novo deploy para habilitar o acesso.' }) }));
+  await page.goto('/acesso.html');
+  await expect(page.locator('#access-submit')).toBeEnabled();
+  await page.locator('#admin-password').fill('browser-test-only-password');
+  await page.locator('#access-submit').click();
+  await expect(page.locator('#access-error')).toContainText('BLOB_READ_WRITE_TOKEN');
+  await expect(page.locator('#choice-panel')).toBeHidden();
+});
 test('strict CSP preserves navigation, editing, catalog and revokes copied cookies on logout', async ({ page, request }) => {
   const errors = []; page.on('pageerror', error => errors.push(error.message));
   await login(page);

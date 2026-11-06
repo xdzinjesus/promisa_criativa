@@ -1,21 +1,25 @@
 const form = document.getElementById('access-form');
 const error = document.getElementById('access-error');
 let gateReady;
-function lockGate() {
+function lockGate(clearPassword = true) {
   document.getElementById('choice-panel').hidden = true;
   document.getElementById('login-panel').hidden = false;
-  document.getElementById('admin-password').value = '';
+  if (clearPassword) document.getElementById('admin-password').value = '';
   const button = document.getElementById('access-submit');
   button.disabled = true;
   gateReady = fetch('/api/access?action=logout', { method: 'POST', credentials: 'same-origin', cache: 'no-store' })
-    .then(response => {
-      if (!response.ok) throw new Error();
+    .then(async response => {
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}));
+        throw new Error(result.error || 'Não foi possível preparar o acesso seguro. Tente novamente.');
+      }
       error.textContent = '';
       return true;
-    }).catch(() => {
-      error.textContent = 'Não foi possível preparar o acesso seguro. Recarregue a página para tentar novamente.';
+    }).catch(cause => {
+      error.textContent = cause.message === 'Failed to fetch' ? 'Sem conexão. Verifique sua internet e clique em Entrar para tentar novamente.' : cause.message;
       return false;
     }).finally(() => { button.disabled = false; });
+  return gateReady;
 }
 function showChoice() {
   document.getElementById('login-panel').hidden = true;
@@ -32,7 +36,7 @@ document.getElementById('toggle-password').addEventListener('click', event => {
 });
 form.addEventListener('submit', async event => {
   event.preventDefault();
-  if (!await gateReady) return;
+  if (!await gateReady && !await lockGate(false)) return;
   const button = document.getElementById('access-submit');
   const input = document.getElementById('admin-password');
   error.textContent = '';

@@ -73,16 +73,24 @@ export default async function handler(req, res) {
     return json(res, 405, { error: 'Método não permitido.' });
   }
   const config = settings();
-  if (!config) return json(res, 503, { error: 'Configure ADMIN_PASSWORD e ADMIN_SESSION_SECRET na Vercel para habilitar o acesso.' });
-  if (!authStorageReady()) return json(res, 503, { error: 'Configure o Vercel Blob privado para habilitar sessões revogáveis e proteção compartilhada do login.' });
   try {
-  if (req.method === 'POST') {
-    if (!sameOrigin(req)) return json(res, 403, { error: 'Origem não permitida.' });
-    if (action === 'logout') {
-      if (session(req, config)) await revokeSession(sessionPayload(req).nonce);
+    // Clearing an unusable cookie must not depend on configuring a new login.
+    // A valid session still has to be revoked durably before reporting logout success.
+    if (req.method === 'POST' && !sameOrigin(req)) return json(res, 403, { error: 'Origem não permitida.' });
+    if (req.method === 'POST' && action === 'logout') {
+      if (config && authStorageReady() && session(req, config)) await revokeSession(sessionPayload(req).nonce);
       res.setHeader('Set-Cookie', cookie(req, '', 0));
       return json(res, 200, { ok: true });
     }
+    if (!config) return json(res, 503, {
+      code: 'AUTH_CONFIGURATION_REQUIRED',
+      error: 'Confira na Vercel: ADMIN_PASSWORD deve ter pelo menos 12 caracteres e ADMIN_SESSION_SECRET, pelo menos 32. Salve as variáveis em Production e faça um novo deploy.'
+    });
+    if (!authStorageReady()) return json(res, 503, {
+      code: 'AUTH_STORAGE_REQUIRED',
+      error: 'Configure BLOB_READ_WRITE_TOKEN de um Vercel Blob privado em Production e faça um novo deploy para habilitar o acesso.'
+    });
+    if (req.method === 'POST') {
     if (action !== 'login') return json(res, 404, { error: 'Operação não encontrada.' });
     if (!String(req.headers['content-type'] || '').startsWith('application/json')) return json(res, 415, { error: 'Formato inválido.' });
     const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
@@ -120,5 +128,5 @@ export default async function handler(req, res) {
   } catch {
     return json(res, 500, { error: 'Não foi possível carregar a página. Tente novamente.' });
   }
-  } catch { return json(res, 503, { error: 'Não foi possível verificar o acesso seguro. Tente novamente mais tarde.' }); }
+  } catch { return json(res, 503, { code: 'AUTH_STORAGE_UNAVAILABLE', error: 'Não foi possível acessar o armazenamento de sessões. Confira se o Vercel Blob é privado, se BLOB_READ_WRITE_TOKEN está válido e conectado a este projeto e tente novamente.' }); }
 }
