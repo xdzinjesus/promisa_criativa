@@ -107,12 +107,20 @@
       "destination": "/api/access?view=catalogo"
     },
     {
-      "source": "/demo/:token/:path*",
-      "destination": "/api/demo?token=:token&path=:path*"
-    },
-    {
       "source": "/demo/:token",
       "destination": "/api/demo?token=:token"
+    },
+    {
+      "source": "/demo/:token/",
+      "destination": "/api/demo?token=:token"
+    },
+    {
+      "source": "/demo/:token/:path+",
+      "destination": "/api/demo?token=:token&path=:path+"
+    },
+    {
+      "source": "/demo/:token/:path+/",
+      "destination": "/api/demo?token=:token&path=:path+/"
     }
   ],
   "crons": [
