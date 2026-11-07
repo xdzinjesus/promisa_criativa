@@ -12,7 +12,7 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
     const demo = /^\/demo\/([^/]+)(?:\/(.*))?$/.exec(url.pathname);
-    if (demo) { req.query = { token: demo[1], path: demo[2] || '' }; return await demoHandler(req, res); }
+    if (demo) { let path = demo[2] || ''; try { path = decodeURIComponent(path); } catch { path = ''; } req.query = { token: demo[1], path }; return await demoHandler(req, res); }
     const route = config.rewrites.find(item => item.source === url.pathname);
     if (url.pathname === '/api/access' || url.pathname === '/api/cloud' || route) {
       const destination = new URL(route?.destination || req.url, 'http://localhost');

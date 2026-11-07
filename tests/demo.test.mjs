@@ -85,7 +85,7 @@ test('o link serve só o site dele, com isolamento e sem indexação', async () 
   assert.equal((await call(handler, token, 'sobre/')).statusCode, 200);
   assert.equal((await call(handler, token, 'sobre')).statusCode, 200);
   // Nada fora do site: caminhos de fuga, arquivos inexistentes e o site de outro cliente.
-  for (const path of ['../index.html', '..%2F..%2Fapi%2Fcloud.js', '%2e%2e/x', '/etc/passwd', '.env', 'b2/index.html', 'nao-existe.html']) {
+  for (const path of ['../index.html', '../../api/cloud.js', '..%2F..%2Fapi%2Fcloud.js', '%2e%2e/x', '/etc/passwd', '.env', 'b2/index.html', 'nao-existe.html']) {
     const res = await call(handler, token, path);
     assert.equal(res.statusCode, 404, path);
     assert.doesNotMatch(String(res.body), /Segredo do cliente B/);
@@ -113,6 +113,22 @@ test('código inválido, desativado ou expirado não mostra o site', async () =>
 test('resolução de arquivos e decodificação', () => {
   assert.equal(resolveFile(siteA, 'CSS/Style.css')?.path, 'css/style.css');
   assert.equal(resolveFile(siteA, '%zz'), null);
+  assert.equal(resolveFile({ htmlPath: 'a.html', files: [{ path: '100%.png', data: '' }] }, '100%.png')?.path, '100%.png');
   assert.equal(decodeFile('data:text/plain,ol%C3%A1').toString(), 'olá');
   assert.equal(decodeFile('texto').toString(), 'texto');
+});
+
+test('página principal em subpasta redireciona; abuso de cache e limites', async () => {
+  const site = { htmlPath: 'pages/index.html', files: [{ path: 'pages/index.html', type: 'text/html', data: '<html><head></head></html>' }] };
+  const share = { token: 'S'.repeat(22), siteKey: 'sites:x', expiresAt: Date.now() + 864e5 };
+  const handler = createDemoHandler({ findShare: async () => share, readSite: async () => site });
+  const root = await call(handler, share.token, '');
+  assert.equal(root.statusCode, 302);
+  assert.equal(root.headers.location, `/demo/${share.token}/pages/index.html`);
+  const page = await call(handler, share.token, 'pages/index.html');
+  assert.equal(page.statusCode, 200);
+  assert.equal(page.headers['vercel-cdn-cache-control'], 'max-age=60');
+  assert.doesNotMatch(DEMO_CSP, /allow-popups-to-escape-sandbox/);
+  const arrays = await call(createDemoHandler({ findShare: async () => share, readSite: async () => site }), [share.token, 'x'], ['pages/index.html']);
+  assert.equal(arrays.statusCode, 200);
 });
