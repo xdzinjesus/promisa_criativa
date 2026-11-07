@@ -129,6 +129,65 @@ details{background:#121317;border:1px solid #292a30;border-radius:14px}pre{backg
 @media(max-width:759px){body{padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}main{width:100%;padding:18px 15px 28px}h1{font-size:28px}.sub{font-size:14px;margin-bottom:20px}.card{padding:15px;border-radius:18px}.grid{gap:9px}.grid.g3,.grid.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi{padding:14px}.kpi b{font-size:21px}#nav{position:fixed;inset:auto 0 0;height:calc(76px + env(safe-area-inset-bottom,0px));display:block;padding:7px 5px max(8px,env(safe-area-inset-bottom,0px));border-top:1px solid #292a30;border-right:0;border-radius:18px 18px 0 0;background:rgba(17,18,21,.94)}#nav .brand,#nav .nav-group{display:none}#nav .nav-mobile{display:flex;align-items:stretch;justify-content:space-around;width:100%;height:100%;gap:2px}#nav .nav-mobile button{flex:1 1 0;min-width:0;min-height:58px;justify-content:center;flex-direction:column;gap:3px;padding:5px 2px;text-align:center;font-size:10px;line-height:1.15;border-radius:12px}#nav .nav-mobile button .em{width:auto;height:21px;font-size:17px}#navMore{position:fixed;left:10px;right:10px;bottom:calc(84px + env(safe-area-inset-bottom,0px));width:min(420px,calc(100vw - 20px));max-height:min(62vh,460px);overflow:auto;z-index:21;padding:10px;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;border:1px solid #34353c;border-radius:18px;background:rgba(21,22,26,.97);box-shadow:0 18px 60px #0009;backdrop-filter:blur(24px)}#navMore.open{display:grid}#navMore button{min-width:0;min-height:48px;font-size:12px;padding:8px 9px;gap:7px}#navMore button .em{width:18px;font-size:15px}.lead-table{min-width:850px}.lead-create{padding:15px}.notes-card{padding:15px}.project-form-grid,.project-toolbar{grid-template-columns:1fr}.project-fields{grid-template-columns:1fr 1fr}.client-site-fields{grid-template-columns:1fr}.site-toolbar button,.site-actions button{min-height:44px}}
 @media(max-width:420px){main{padding-left:12px;padding-right:12px}.grid.g3,.grid.g4{grid-template-columns:repeat(2,minmax(0,1fr))}.card{padding:13px}.kpi small{font-size:11px}.kpi b{font-size:19px}.project-fields{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;transition-duration:.01ms!important}}
+/* Marca Promisa: roxo, Sora + Manrope. Sem backdrop-filter nem animações de fundo (desempenho no celular). */
+:root,:root:not([data-theme="light"]),:root[data-theme="dark"],:root[data-theme="light"]{--bg:#09080e;--card:#121019;--tx:#f3f1f8;--mut:#b3adc1;--bd:#ffffff17;--ac:#c4a5ff;--acs:#241a3a;--red:#ff8590;--grn:#5fdca9;--amb:#f6c46b;--pri:#9c6aff;--ease:cubic-bezier(.2,.75,.25,1);color-scheme:dark}
+body{font-family:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif;background:radial-gradient(ellipse 60% 40% at 80% -8%,#7c3aed2e,transparent 70%),radial-gradient(ellipse 50% 40% at 0% 105%,#5b21b620,transparent 70%),var(--bg);background-attachment:fixed;color:var(--tx);letter-spacing:0;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.kpi b,.brand b,.mhead b{font-family:Sora,system-ui,sans-serif}
+h1{font-weight:600;letter-spacing:-.045em}h2{font-weight:600;letter-spacing:-.03em}
+.sub{color:#b3adc1}
+#app{animation:fade-up .4s var(--ease) both}
+.card,.kpi{background:linear-gradient(145deg,#ffffff0b,#ffffff04),#121019;border:1px solid #ffffff17;border-radius:20px;box-shadow:0 14px 36px #0003}
+.kpi small{color:#b9b0c9}
+button{background:linear-gradient(120deg,#8a4de8,#6d2fd0);color:#fff;border:1px solid #c9a8ff40;border-radius:12px;box-shadow:0 5px 20px #7434d638;font-weight:700;transition:transform .2s var(--ease),box-shadow .2s,border-color .2s,background-color .2s,filter .2s}
+button:hover{filter:none;transform:translateY(-1px);box-shadow:0 8px 26px #8340e960;border-color:#d9c0ff}
+button:active{transform:none}
+button.sec{background:#ffffff0a;border:1px solid #ffffff24;color:#eadfff;box-shadow:none}
+button.sec:hover{background:#9c6aff22;border-color:#b790ff66;box-shadow:none}
+button.del{background:transparent;color:var(--red);border-color:transparent;box-shadow:none}
+button.del:hover{background:#ff85901a;box-shadow:none}
+button.warnb{background:#f6c46b1f;color:var(--amb);box-shadow:none}
+.pay-button{background:#1f3a2c;color:#b5f3c8;border-color:#5fdca94d;box-shadow:none}
+button:disabled{opacity:.6;transform:none}
+input,select,textarea{background:#0b0910;border:1px solid #ffffff2a;border-radius:12px;color:var(--tx);transition:border-color .2s,box-shadow .2s}
+input::placeholder,textarea::placeholder{color:#8f86a0}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--pri);box-shadow:0 0 0 3px #9c6aff2e}
+:focus-visible{outline:2px solid #d7c1ff;outline-offset:3px}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:none}
+.item,.client-site-card{border-color:#ffffff14}
+.tag{background:#9c6aff22;color:#dcc9ff}
+.prog{background:#ffffff14}.prog i{background:linear-gradient(90deg,#8a4de8,#cdb2ff)}
+details,pre,.project-file-row,.site-hosting-config{background:#0f0c16;border-color:#ffffff17}
+.site-hosting-config{background:linear-gradient(135deg,#9c6aff14,#9c6aff05)}
+.project-card,.client-site-card{border-color:#ffffff17}
+.client-site-status-pill{background:#9c6aff1c;border-color:#b790ff44;color:#eadfff}
+.client-site-route code{color:#d7c1ff}
+.project-zip-picker{border-color:#b790ff66;transition:background .2s,border-color .2s}.project-zip-picker:hover{background:#9c6aff1a;border-color:#c9a8ff}
+.contact-link,.lead-contact{color:#8fe6bf}
+#nav{background:#0d0b13;border-color:#ffffff14;backdrop-filter:none;-webkit-backdrop-filter:none}
+#nav .brand{border-bottom-color:#ffffff14}
+#nav .brand img{background:transparent;padding:0;border-radius:0;object-fit:contain;filter:hue-rotate(52deg) saturate(1.15)}
+#nav .brand b{color:#fff!important;font-weight:700}
+#nav .brand small{color:#a99dbb!important}
+#nav .nav-label{color:#a99dbb}
+#nav button{color:#cfc6dd;border-radius:12px;box-shadow:none;transition:background .2s,color .2s,border-color .2s}
+#nav button:hover{background:#ffffff0a;color:#fff;transform:none;border-color:transparent}
+#nav button .em{color:#b3a6c9}
+#nav button.on{background:#9c6aff22;border-color:#b790ff44;color:#fff}
+#nav button.on .em{color:#d7c1ff}
+.mhead{background:#121019;border:1px solid #ffffff17;border-radius:18px;backdrop-filter:none;-webkit-backdrop-filter:none}
+.mhead img{background:transparent;padding:0;border-radius:0;filter:hue-rotate(52deg) saturate(1.15)}
+.mhead small{color:#a99dbb}
+.cloud-actions details{border:0;padding:0;margin:0;background:none;border-radius:0}
+.lead-table th{background:#16121f;color:#c1b8d1}
+.lead-table td{background:#0f0c16;border-color:#ffffff14}
+.lead-table tbody tr:hover td{background:#17122080}
+.lead-table-card{border-radius:20px}
+.lead-actions .del{border:1px solid #ff85903d}
+.lead-status-guide b{color:#eadfff}
+.site-count,.site-notice,.lead-muted{color:#b3adc1}
+#navMore{background:#14101c;border-color:#ffffff22;backdrop-filter:none;-webkit-backdrop-filter:none}
+@media(min-width:760px){.lead-table-scroll::-webkit-scrollbar,#nav::-webkit-scrollbar{height:8px;width:8px}.lead-table-scroll::-webkit-scrollbar-thumb{background:#ffffff26;border-radius:8px}}
+@media(max-width:759px){#nav{background:#0d0b13f7}#navMore{background:#14101cfa}.lead-table-scroll{-webkit-overflow-scrolling:touch}}
 </style></head><body>
 <div style="max-width:1120px;margin:auto;padding:20px 16px 0"><div class="private-toolbar"><a href="/acesso.html">← Escolher área</a><a href="/admin">Área administrativa</a><a href="/catalogo">Catálogo dos meus projetos</a><button type="button" class="session-logout" data-logout>Sair</button><button type="button" class="session-logout" data-logout data-clear-local>Sair e apagar dados deste aparelho</button></div><p class="private-notice">Os dados e anexos são compartilhados entre aparelhos quando o indicador mostra Salvo online. Importar arquivos não publica sites na internet. “Sair” mantém a cópia local; em aparelho compartilhado, use “Sair e apagar dados deste aparelho”.</p></div><div class="cloud-shell"><section class="cloud-bar" aria-label="Armazenamento online"><div><strong>Dados e arquivos online</strong><p id="cloud-status" role="status" aria-live="polite">Conectando ao armazenamento…</p></div><div class="cloud-actions"><button type="button" id="cloud-sync">Sincronizar agora</button><button type="button" id="cloud-conflicts" hidden>Resolver diferenças</button><details><summary>Cópia de segurança</summary><button type="button" id="cloud-copy">Baixar cópia deste aparelho</button><label>Restaurar cópia<input type="file" id="cloud-restore" accept=".json,application/json"></label></details></div></section></div><main id="app"></main>
 <nav id="nav"></nav>
