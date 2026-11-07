@@ -7,6 +7,19 @@ function json(res, status, body) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(body));
 }
+const STORAGE_ERRORS = {
+  BlobAccessError: 'O token do Vercel Blob não tem acesso a este armazenamento. Em Vercel > Storage, reconecte o Blob privado ao projeto e faça um novo deploy.',
+  BlobStoreNotFoundError: 'O armazenamento Vercel Blob configurado não existe mais. Conecte um Blob privado ao projeto e faça um novo deploy.',
+  BlobStoreSuspendedError: 'O armazenamento Vercel Blob está suspenso. Verifique o plano e a cobrança na Vercel.',
+  BlobServiceRateLimited: 'O Vercel Blob recebeu muitas solicitações. Aguarde um minuto e sincronize de novo.',
+  BlobServiceNotAvailable: 'O Vercel Blob está temporariamente indisponível. Tente sincronizar em alguns minutos.',
+  BlobRequestAbortedError: 'A conexão com o armazenamento foi interrompida. Tente sincronizar de novo.'
+};
+function storageErrorMessage(error) {
+  if (STORAGE_ERRORS[error?.name]) return STORAGE_ERRORS[error.name];
+  if (/^Índice de armazenamento/.test(error?.message || '')) return error.message;
+  return 'Não foi possível acessar o armazenamento online. Verifique a conexão e a configuração do Vercel Blob privado.';
+}
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
@@ -49,6 +62,9 @@ export default async function handler(req, res) {
     return json(res, 404, { error: 'Operação não encontrada.' });
   } catch (error) {
     if (error instanceof SyntaxError) return json(res, 400, { error: 'Dados inválidos.' });
-    return json(res, error.status || 502, { error: error.status ? error.message : 'Não foi possível acessar o armazenamento online. Verifique a conexão e a configuração do Vercel Blob privado.', ...error.details });
+    if (error.status) return json(res, error.status, { error: error.message, ...error.details });
+    // Registra a causa nos logs da Vercel (nunca o token) e devolve um motivo específico ao painel.
+    console.error('[cloud]', req.query?.action || req.method, error?.name, error?.message);
+    return json(res, 502, { error: storageErrorMessage(error), cause: String(error?.name || 'Error').slice(0, 60) });
   }
 }
