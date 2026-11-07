@@ -1,4 +1,10 @@
 {
+  "env": {
+    "VERCEL_PLUGIN_TELEMETRY": "off"
+  },
+  "enabledMcpjsonServers": [
+    "rea"
+  ],
   "hooks": {
     "SessionStart": [
       {
@@ -106,7 +112,8 @@
     "super-token-saver@ww-w-ai": true,
     "arena-mode@irrlab.ai": true,
     "ui-ux-pro-max@ui-ux-pro-max-skill": true,
-    "rea@rea": true
+    "rea@rea": true,
+    "vercel-plugin@vercel": true
   },
   "extraKnownMarketplaces": {
     "irrlab.ai": {
@@ -132,9 +139,12 @@
         "source": "github",
         "repo": "ww-w-ai/marketplace"
       }
+    },
+    "vercel": {
+      "source": {
+        "source": "github",
+        "repo": "vercel/vercel-plugin"
+      }
     }
-  },
-  "enabledMcpjsonServers": [
-    "rea"
-  ]
+  }
 }
