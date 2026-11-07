@@ -92,6 +92,9 @@
     },
     "api/maintenance.js": {
       "maxDuration": 60
+    },
+    "api/demo.js": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
@@ -102,6 +105,14 @@
     {
       "source": "/catalogo",
       "destination": "/api/access?view=catalogo"
+    },
+    {
+      "source": "/demo/:token/:path*",
+      "destination": "/api/demo?token=:token&path=:path*"
+    },
+    {
+      "source": "/demo/:token",
+      "destination": "/api/demo?token=:token"
     }
   ],
   "crons": [
