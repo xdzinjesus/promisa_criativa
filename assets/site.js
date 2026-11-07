@@ -37,6 +37,7 @@
  addEventListener('scroll', () => { if (!scrollFrame) scrollFrame = requestAnimationFrame(updateNav); }, { passive: true });
  updateNav();
  // Progressive enhancement: content stays readable without JavaScript or IO.
+ $$('.process-step, .why-list li, .included li').forEach((el, i) => { if (!el.style.getPropertyValue('--delay')) el.style.setProperty('--delay', (i % 4) * 70 + 'ms'); });
  const reveals = $$('.reveal');
  let observer;
  if ('IntersectionObserver' in window && !reduced.matches) {
