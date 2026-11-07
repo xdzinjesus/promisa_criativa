@@ -56,6 +56,11 @@ test('two production instances share attempt limits and session revocation with 
       const object = objects.get(path); await Promise.resolve();
       return object ? { stream: new Blob([object.text]).stream(), blob: { etag: object.etag, size: object.text.length } } : null;
     },
+    async head(path) {
+      const object = objects.get(path); await Promise.resolve();
+      if (!object) throw Object.assign(new Error('Not found'), { name: 'BlobNotFoundError' });
+      return { etag: object.etag };
+    },
     async put(path, text, options) {
       const current = objects.get(path);
       if (options.ifMatch ? current?.etag !== options.ifMatch : current && !options.allowOverwrite) throw conflict();

@@ -1,5 +1,6 @@
 import { handleUpload } from '@vercel/blob/client';
 import { settings, authorized, sameOrigin } from './access.js';
+import { isBlobError } from '../lib/blob-utils.js';
 import { configured, loadManifest, commitOperations, signedRead, validKey, validPath, MAX_OBJECT_BYTES } from '../lib/cloud-store.js';
 
 function json(res, status, body) {
@@ -16,7 +17,8 @@ const STORAGE_ERRORS = {
   BlobRequestAbortedError: 'A conexão com o armazenamento foi interrompida. Tente sincronizar de novo.'
 };
 function storageErrorMessage(error) {
-  if (STORAGE_ERRORS[error?.name]) return STORAGE_ERRORS[error.name];
+  const kind = Object.keys(STORAGE_ERRORS).find(name => isBlobError(error, name));
+  if (kind) return STORAGE_ERRORS[kind];
   if (/^Índice de armazenamento/.test(error?.message || '')) return error.message;
   return 'Não foi possível acessar o armazenamento online. Verifique a conexão e a configuração do Vercel Blob privado.';
 }
@@ -64,7 +66,7 @@ export default async function handler(req, res) {
     if (error instanceof SyntaxError) return json(res, 400, { error: 'Dados inválidos.' });
     if (error.status) return json(res, error.status, { error: error.message, ...error.details });
     // Registra a causa nos logs da Vercel (nunca o token) e devolve um motivo específico ao painel.
-    console.error('[cloud]', req.query?.action || req.method, error?.name, error?.message);
-    return json(res, 502, { error: storageErrorMessage(error), cause: String(error?.name || 'Error').slice(0, 60) });
+    console.error('[cloud]', req.query?.action || req.method, error?.constructor?.name || error?.name, error?.message);
+    return json(res, 502, { error: storageErrorMessage(error), cause: String(error?.constructor?.name || error?.name || 'Error').slice(0, 60) });
   }
 }
