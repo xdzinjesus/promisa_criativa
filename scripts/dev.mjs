@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { resolve, extname, sep } from 'node:path';
 import handler from '../api/access.js';
 import cloudHandler from '../api/cloud.js';
+import demoHandler from '../api/demo.js';
 
 const root = resolve('public');
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
@@ -10,6 +11,8 @@ const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=u
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, 'http://localhost');
+    const demo = /^\/demo\/([^/]+)(?:\/(.*))?$/.exec(url.pathname);
+    if (demo) { let path = demo[2] || ''; try { path = decodeURIComponent(path); } catch { path = ''; } req.query = { token: demo[1], path }; return await demoHandler(req, res); }
     const route = config.rewrites.find(item => item.source === url.pathname);
     if (url.pathname === '/api/access' || url.pathname === '/api/cloud' || route) {
       const destination = new URL(route?.destination || req.url, 'http://localhost');

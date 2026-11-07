@@ -188,6 +188,25 @@ details,pre,.project-file-row,.site-hosting-config{background:#0f0c16;border-col
 #navMore{background:#14101c;border-color:#ffffff22;backdrop-filter:none;-webkit-backdrop-filter:none}
 @media(min-width:760px){.lead-table-scroll::-webkit-scrollbar,#nav::-webkit-scrollbar{height:8px;width:8px}.lead-table-scroll::-webkit-scrollbar-thumb{background:#ffffff26;border-radius:8px}}
 @media(max-width:759px){#nav{background:#0d0b13f7}#navMore{background:#14101cfa}.lead-table-scroll{-webkit-overflow-scrolling:touch}}
+/* Links de demonstração */
+.project-preview-dialog.demo-links-dialog{width:min(560px,94vw);height:auto;max-height:90dvh;overflow:auto;padding:24px}
+.demo-links-dialog h2{margin:0;font-size:1.3rem}.demo-links-dialog h3{margin:22px 0 10px;font-size:1rem}
+.demo-links-site{margin:4px 0 0;color:#c9b6ff;font-weight:600}
+.demo-links-info{margin:14px 0 18px;color:#b9b2c7;font-size:.92rem;line-height:1.6}
+.demo-links-form{display:grid;gap:12px}
+.demo-links-form label{display:grid;gap:6px;font-size:.88rem;color:#d8d2e4}
+.demo-links-form select,.demo-links-form input,.demo-link-row input{width:100%;padding:11px 12px;border-radius:10px;border:1px solid #ffffff2a;background:#0c0a12;color:#fff;font:inherit}
+.demo-links-dialog button{margin:0;padding:11px 16px;border-radius:10px;border:1px solid #9c6aff;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff;font-weight:600;cursor:pointer}
+.demo-links-dialog button.sec{background:#251d38;border-color:#ffffff2a;font-weight:500}
+.demo-links-dialog button.danger{color:#fca5a5}
+.demo-links-dialog button:disabled{opacity:.6;cursor:wait}
+.demo-links-list{display:grid;gap:12px}
+.demo-link-row{display:grid;gap:8px;padding:14px;border:1px solid #ffffff1f;border-radius:14px;background:#17131f}
+.demo-link-row.is-expired{opacity:.65}
+.demo-link-meta{margin:0;font-size:.84rem;color:#b9b2c7}
+.demo-link-actions{display:flex;flex-wrap:wrap;gap:8px}
+.demo-links-empty{margin:0;color:#a59eb3;font-size:.9rem}
+.demo-links-dialog .demo-links-close{display:block;margin:20px 0 0 auto}
 </style></head><body>
 <div style="max-width:1120px;margin:auto;padding:20px 16px 0"><div class="private-toolbar"><a href="/acesso.html">← Escolher área</a><a href="/admin">Área administrativa</a><a href="/catalogo">Catálogo dos meus projetos</a><button type="button" class="session-logout" data-logout>Sair</button><button type="button" class="session-logout" data-logout data-clear-local>Sair e apagar dados deste aparelho</button></div><p class="private-notice">Os dados e anexos são compartilhados entre aparelhos quando o indicador mostra Salvo online. Importar arquivos não publica sites na internet. “Sair” mantém a cópia local; em aparelho compartilhado, use “Sair e apagar dados deste aparelho”.</p></div><div class="cloud-shell"><section class="cloud-bar" aria-label="Armazenamento online"><div><strong>Dados e arquivos online</strong><p id="cloud-status" role="status" aria-live="polite">Conectando ao armazenamento…</p></div><div class="cloud-actions"><button type="button" id="cloud-sync">Sincronizar agora</button><button type="button" id="cloud-conflicts" hidden>Resolver diferenças</button><details><summary>Cópia de segurança</summary><button type="button" id="cloud-copy">Baixar cópia deste aparelho</button><label>Restaurar cópia<input type="file" id="cloud-restore" accept=".json,application/json"></label></details></div></section></div><main id="app"></main>
 <nav id="nav"></nav>

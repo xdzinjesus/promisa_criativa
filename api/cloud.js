@@ -1,6 +1,8 @@
 import { handleUpload } from '@vercel/blob/client';
 import { settings, authorized, sameOrigin } from './access.js';
 import { isBlobError } from '../lib/blob-utils.js';
+import { createShareStore, siteKeyFor } from '../lib/share-store.js';
+import { validId } from '../src/data-validation.js';
 import { configured, loadManifest, commitOperations, signedRead, validKey, validPath, MAX_OBJECT_BYTES } from '../lib/cloud-store.js';
 
 function json(res, status, body) {
@@ -22,6 +24,7 @@ function storageErrorMessage(error) {
   if (/^Índice de armazenamento/.test(error?.message || '')) return error.message;
   return 'Não foi possível acessar o armazenamento online. Verifique a conexão e a configuração do Vercel Blob privado.';
 }
+const shares = createShareStore();
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
@@ -53,6 +56,16 @@ export default async function handler(req, res) {
         return json(res, 200, result);
       }
       if (action === 'commit') return json(res, 200, await commitOperations(body?.operations));
+      // Links de demonstração: criar, listar e desativar (somente com a sessão administrativa).
+      if (action === 'share-list' || action === 'share-create') {
+        if (!validId(body?.siteId)) return json(res, 400, { error: 'Site inválido.' });
+        if (action === 'share-list') return json(res, 200, { shares: await shares.list(body.siteId) });
+        const { manifest } = await loadManifest();
+        if (!manifest.records[siteKeyFor(body.siteId)]?.hash) return json(res, 409, { error: 'Este site ainda não está salvo online. Aguarde o indicador "Salvo online" e tente de novo.' });
+        const share = await shares.create(body.siteId, body.expiresAt);
+        return json(res, 200, { token: share.token, createdAt: share.createdAt, expiresAt: share.expiresAt, state: 'active' });
+      }
+      if (action === 'share-revoke') return json(res, 200, await shares.revoke(body?.token));
       if (action === 'read') {
         if (!validKey(body?.key)) return json(res, 400, { error: 'Registro inválido.' });
         const { manifest } = await loadManifest();
