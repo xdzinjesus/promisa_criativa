@@ -4,6 +4,7 @@ import { reserveAttempt, clearAttempts } from '../lib/auth-store.js';
 import { createVaultStore, validateKeyring } from '../lib/vault-store.js';
 import { isBlobError } from '../lib/blob-utils.js';
 import { createShareStore, siteKeyFor } from '../lib/share-store.js';
+import { createBriefingStore } from '../lib/briefing-store.js';
 import { validId } from '../src/data-validation.js';
 import { configured, loadManifest, commitOperations, signedRead, validKey, validPath, MAX_OBJECT_BYTES } from '../lib/cloud-store.js';
 
@@ -27,6 +28,7 @@ function storageErrorMessage(error) {
   return 'Não foi possível acessar o armazenamento online. Verifique a conexão e a configuração do Vercel Blob privado.';
 }
 const shares = createShareStore();
+const briefings = createBriefingStore();
 const vault = createVaultStore();
 const clientIp = req => String(req.headers['x-real-ip'] || req.headers['x-vercel-forwarded-for'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
 // Confirma a senha do painel antes de mexer na chave do cofre (com limite de tentativas).
@@ -108,6 +110,16 @@ export default async function handler(req, res) {
         return json(res, 200, { shares: created.map((share, i) => ({ siteId: ok[i].siteId, token: share.token, expiresAt: share.expiresAt })), skipped });
       }
       if (action === 'share-revoke') return json(res, 200, await shares.revoke(body?.token));
+      // Formulário de briefing do cliente: criar link, listar, ver respostas e desativar.
+      if (action === 'briefing-create') {
+        if (!validId(body?.leadId)) return json(res, 400, { error: 'Cliente inválido.' });
+        const expiresAt = body.expiresAt === undefined ? Date.now() + 30 * 24 * 60 * 60 * 1000 : body.expiresAt;
+        const item = await briefings.create(body.leadId, expiresAt);
+        return json(res, 200, { token: item.token, expiresAt: item.expiresAt });
+      }
+      if (action === 'briefing-list') return json(res, 200, { items: await briefings.list() });
+      if (action === 'briefing-get') return json(res, 200, await briefings.getAnswers(body?.token));
+      if (action === 'briefing-revoke') return json(res, 200, await briefings.revoke(body?.token));
       if (action === 'read') {
         if (!validKey(body?.key)) return json(res, 400, { error: 'Registro inválido.' });
         const { manifest } = await loadManifest();

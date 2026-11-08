@@ -4,6 +4,7 @@ import { resolve, extname, sep } from 'node:path';
 import handler from '../api/access.js';
 import cloudHandler from '../api/cloud.js';
 import demoHandler from '../api/demo.js';
+import briefingHandler from '../api/briefing.js';
 
 const root = resolve('public');
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
@@ -13,6 +14,8 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const demo = /^\/demo\/([^/]+)(?:\/(.*))?$/.exec(url.pathname);
     if (demo) { let path = demo[2] || ''; try { path = decodeURIComponent(path); } catch { path = ''; } req.query = { token: demo[1], path }; return await demoHandler(req, res); }
+    if (url.pathname === '/api/briefing') { req.query = Object.fromEntries(url.searchParams); return await briefingHandler(req, res); }
+    if (/^\/briefing\/[^/]+\/?$/.test(url.pathname)) url.pathname = '/briefing.html';
     const route = config.rewrites.find(item => item.source === url.pathname);
     if (url.pathname === '/api/access' || url.pathname === '/api/cloud' || route) {
       const destination = new URL(route?.destination || req.url, 'http://localhost');
