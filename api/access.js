@@ -93,7 +93,8 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
     if (action !== 'login') return json(res, 404, { error: 'Operação não encontrada.' });
     if (!String(req.headers['content-type'] || '').startsWith('application/json')) return json(res, 415, { error: 'Formato inválido.' });
-    const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
+    // Na Vercel, x-real-ip/x-vercel-forwarded-for são definidos pela plataforma (não pelo visitante).
+    const ip = String(req.headers['x-real-ip'] || req.headers['x-vercel-forwarded-for'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
     let body;
     try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch {}
     if (typeof body?.password !== 'string' || body.password.length > 256) return json(res, 400, { error: 'Informe uma senha válida.' });

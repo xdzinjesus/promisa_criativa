@@ -80,6 +80,6 @@ export default async function handler(req, res) {
     if (error.status) return json(res, error.status, { error: error.message, ...error.details });
     // Registra a causa nos logs da Vercel (nunca o token) e devolve um motivo específico ao painel.
     console.error('[cloud]', req.query?.action || req.method, error?.constructor?.name || error?.name, error?.message);
-    return json(res, 502, { error: storageErrorMessage(error), cause: String(error?.constructor?.name || error?.name || 'Error').slice(0, 60) });
+    return json(res, 502, { error: storageErrorMessage(error) });
   }
 }

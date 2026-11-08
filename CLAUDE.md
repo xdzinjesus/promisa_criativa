@@ -1,5 +1,9 @@
 # Regras de operação (Claude Code)
 
+## Comunicação com o usuário
+- Sempre em português, explicando tudo de forma muito simples, passo a passo, sem termos técnicos (ou explicando cada um).
+- Sempre enviar o link exato de onde o usuário precisa clicar (GitHub, Vercel, Google Ads etc.), com o caminho de botões.
+
 ## Fluxo
 PLANEJAR → DISTRIBUIR → IMPLEMENTAR → TESTAR → REVISAR → HANDOFF → CONTINUAR.
 - Trabalho com várias etapas: GSD (`/gsd:new-project` ou `/gsd:phase`, `/gsd:plan-phase`, `/gsd:execute-phase`, `/gsd:verify-work`). Tarefa pequena: `/gsd:quick`.
