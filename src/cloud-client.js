@@ -468,5 +468,16 @@ document.getElementById('cloud-restore')?.addEventListener('change', event => { 
 window.addEventListener('online', () => sync());
 window.addEventListener('focus', () => sync());
 window.addEventListener('beforeunload', event => { if (dirty || busy) { event.preventDefault(); event.returnValue = ''; } });
-setInterval(() => { if (!document.hidden) sync(); }, 20_000);
+// Economia da cota: confere a nuvem a cada 60 s e para depois de 10 min sem uso;
+// volta a conferir assim que a pessoa mexe no painel. Alterações locais são enviadas na hora.
+const IDLE_MS = 10 * 60_000;
+let lastActivity = Date.now(), idle = false;
+const wake = () => { lastActivity = Date.now(); if (idle) { idle = false; sync(); } };
+['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(type => window.addEventListener(type, wake, { passive: true }));
+document.addEventListener('visibilitychange', () => { if (!document.hidden) wake(); });
+setInterval(() => {
+  if (document.hidden) return;
+  if (!dirty && Date.now() - lastActivity > IDLE_MS) { idle = true; return; }
+  sync();
+}, 60_000);
 sync();
