@@ -333,3 +333,18 @@ test('httpRequest: usa o endereço conferido, lê gzip, corta em 2 MB e não seg
     assert.equal(redirect.status, 302); assert.equal(redirect.body, '');
   } finally { server.close(); server.closeAllConnections?.(); }
 });
+
+test('segurança: códigos inventados não geram leituras do relatório no Blob', async () => {
+  const { store, blob } = makeStore();
+  const report = await store.create(sample());
+  let gets = 0; const original = blob.get;
+  const counted = createDiagnosticoStore({ ...blob, get: async (...a) => { gets++; return original(...a); }, token: () => 'tok', now: () => NOW });
+  for (let i = 0; i < 50; i++) assert.equal((await counted.find(String(i).padStart(22, 'Z'))).state, 'missing');
+  assert.equal(gets, 1); // só o índice, uma vez
+  assert.equal((await counted.find(report.token)).state, 'ok');
+});
+
+test('segurança: endereços IPv6 especiais bloqueados', () => {
+  for (const address of ['::ffff:0:127.0.0.1', '64:ff9b:1::a00:1', '192.88.99.1']) assert.equal(isPrivateAddress(address), true, address);
+  assert.equal(isPrivateAddress('2606:4700::1111'), false);
+});
