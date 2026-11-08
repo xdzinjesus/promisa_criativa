@@ -120,6 +120,8 @@ export default async function handler(req, res) {
       if (action === 'briefing-list') return json(res, 200, { items: await briefings.list() });
       if (action === 'briefing-get') return json(res, 200, await briefings.getAnswers(body?.token));
       if (action === 'briefing-revoke') return json(res, 200, await briefings.revoke(body?.token));
+      // LGPD: apaga respostas e links do formulário de um cliente.
+      if (action === 'briefing-delete-lead') return json(res, 200, await briefings.deleteLead(body?.leadId));
       if (action === 'read') {
         if (!validKey(body?.key)) return json(res, 400, { error: 'Registro inválido.' });
         const { manifest } = await loadManifest();

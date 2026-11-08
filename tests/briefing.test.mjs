@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createBriefingStore, TOKEN, answersPath, BRIEFINGS } from '../lib/briefing-store.js';
+import { createBriefingStore, TOKEN, answersPath, BRIEFINGS, newToken, readToken } from '../lib/briefing-store.js';
 import { createBriefingHandler, createRateLimiter, MIN_FILL_MS } from '../lib/briefing-handler.js';
 import { sameOrigin } from '../api/access.js';
 import { BRIEFING_QUESTIONS, validateAnswers, answersToText } from '../src/briefing-questions.js';
@@ -18,6 +18,7 @@ function memoryBlob() {
       if (options.ifMatch ? current?.etag !== options.ifMatch : current && !options.allowOverwrite) throw conflict();
       const etag = 'e' + (++revision); objects.set(path, { text, etag }); return { etag };
     },
+    async del(paths) { for (const path of [paths].flat()) { ops.push('del ' + path); objects.delete(path); } },
     token: () => 'test-token'
   };
 }
@@ -70,7 +71,8 @@ test('armazenamento: cria, lista e desativa com escrita condicional', async () =
   await assert.rejects(store.create('a/b', clock + DAY), { status: 400 });
   assert.deepEqual((await store.list()).map(i => i.state), ['open', 'open']);
   await store.revoke(one.token);
-  await assert.rejects(store.revoke('x'.repeat(22)), { status: 404 });
+  await assert.rejects(store.revoke('x'.repeat(22)), { status: 400 });
+  await assert.rejects(store.revoke('x'.repeat(32)), { status: 404 });
   assert.deepEqual((await store.list()).map(i => i.state), ['revoked', 'open']);
   clock += 2 * DAY;
   assert.equal((await store.list())[1].state, 'expired');
@@ -106,7 +108,7 @@ test('envio recusado para código vencido, desativado ou inexistente', async () 
   await store.revoke(b.token);
   const { answers } = validateAnswers(full());
   await assert.rejects(store.submit(b.token, answers), { status: 404 });
-  await assert.rejects(store.submit('Z'.repeat(22), answers), { status: 404 });
+  await assert.rejects(store.submit('Z'.repeat(32), answers), { status: 404 });
   clock += 2 * DAY;
   await assert.rejects(store.submit(a.token, answers), { status: 404 });
 });
@@ -194,7 +196,7 @@ test('rota: recusa origem diferente, formato errado e corpo grande', async () =>
   assert.equal((await call(handler, { ...post(item.token), headers: { origin: 'http://evil.test' } })).statusCode, 403);
   assert.equal((await call(handler, { ...post(item.token), headers: { origin: undefined } })).statusCode, 403);
   assert.equal((await call(handler, { ...post(item.token), headers: { 'content-type': 'text/plain' } })).statusCode, 415);
-  assert.equal((await call(handler, post(item.token, { answers: { ...full(), q1: 'x'.repeat(40_000) } }))).statusCode, 413);
+  assert.equal((await call(handler, post(item.token, { answers: { ...full(), q1: 'x'.repeat(70_000) } }))).statusCode, 413);
   assert.equal((await call(handler, { method: 'PUT' })).statusCode, 405);
 });
 
@@ -213,4 +215,90 @@ test('rota: limite de 5 envios por IP em 10 minutos', async () => {
 
 test('índice público fica em um único caminho de Blob', () => {
   assert.equal(BRIEFINGS, 'promisa/v1/briefings.json');
+});
+
+test('código assinado: guarda validade, recusa assinatura falsa e outro segredo', () => {
+  const token = newToken('s1', 1_000_000_000, 2_000_000_000);
+  assert.match(token, TOKEN);
+  assert.deepEqual(readToken('s1', token), { createdAt: 1_000_000_000, expiresAt: 2_000_000_000 });
+  assert.equal(readToken('s2', token), null);
+  const flipped = token.slice(0, 5) + (token[5] === 'A' ? 'B' : 'A') + token.slice(6);
+  assert.equal(readToken('s1', flipped), null);
+  assert.equal(readToken('', token), null);
+  assert.equal(readToken('s1', 'A'.repeat(32)), null);
+});
+
+test('rota: códigos inventados, vencidos ou apagados não leem o Blob', async () => {
+  let clock = 10_000_000;
+  const mem = memoryBlob(), store = createBriefingStore({ ...mem, now: () => clock });
+  const handler = createBriefingHandler({ find: t => store.find(t), submit: (t, a) => store.submit(t, a), sameOrigin, now: () => clock });
+  const item = await store.create('lead1', clock + DAY);
+  const forged = newToken('outro-segredo', clock, clock + DAY);
+  clock += 120_000;
+  mem.ops.length = 0;
+  // primeira visita ao código real: uma leitura; as seguintes usam a cópia
+  for (let i = 0; i < 5; i++) assert.equal((await call(handler, { query: { token: item.token } })).json.state, 'open');
+  assert.equal(mem.ops.length, 1);
+  for (let i = 0; i < 20; i++) assert.equal((await call(handler, { query: { token: forged } })).json.state, 'missing');
+  assert.equal((await call(handler, post(forged, { startedAt: clock - 5000 }))).statusCode, 404);
+  assert.equal(mem.ops.length, 1);
+  // apagado (LGPD): assinado e dentro da validade, mas a cópia é mais nova que o código
+  await store.deleteLead('lead1');
+  mem.ops.length = 0;
+  for (let i = 0; i < 10; i++) assert.equal((await call(handler, { query: { token: item.token } })).json.state, 'missing');
+  assert.deepEqual(mem.ops, []);
+  // vencido: decidido pelo próprio código, sem leitura
+  const later = await store.create('lead2', clock + 10 * 60_000);
+  clock += DAY;
+  mem.ops.length = 0;
+  assert.equal((await call(handler, { query: { token: later.token } })).json.state, 'expired');
+  assert.deepEqual(mem.ops, []);
+});
+
+test('rota: código respondido fica lembrado e não gera nova leitura', async () => {
+  let clock = 10_000_000;
+  const mem = memoryBlob(), store = createBriefingStore({ ...mem, now: () => clock });
+  const handler = createBriefingHandler({ find: t => store.find(t), submit: (t, a) => store.submit(t, a), sameOrigin, now: () => clock, allow: () => true });
+  const item = await store.create('l', clock + DAY);
+  clock += 120_000;
+  assert.equal((await call(handler, post(item.token, { startedAt: clock - 5000 }))).json.ok, true);
+  mem.ops.length = 0;
+  for (let i = 0; i < 10; i++) assert.equal((await call(handler, post(item.token, { startedAt: clock - 5000 }))).statusCode, 409);
+  assert.equal((await call(handler, { query: { token: item.token } })).json.state, 'answered');
+  assert.deepEqual(mem.ops, []);
+});
+
+test('dois envios simultâneos: só um grava, o outro é recusado', async () => {
+  const mem = memoryBlob(), store = createBriefingStore({ ...mem, now: () => 1_000_000, cacheMs: 0 });
+  const item = await store.create('l', 1_000_000 + DAY);
+  const { answers } = validateAnswers(full());
+  const results = await Promise.allSettled([store.submit(item.token, answers), store.submit(item.token, { ...answers, q1: 'outra' })]);
+  assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
+  assert.ok([409, 429].includes(results.find(r => r.status === 'rejected').reason.status));
+  assert.equal((await store.getAnswers(item.token)).answers.q1, 'Padaria Doce Pão, alimentação');
+  // em instâncias diferentes (sem memória compartilhada) a gravação condicional decide
+  const other = createBriefingStore({ ...mem, now: () => 1_000_000, cacheMs: 0 });
+  await assert.rejects(other.submit(item.token, answers), { status: 409 });
+});
+
+test('LGPD: excluir dados do cliente apaga respostas e links só dele', async () => {
+  const mem = memoryBlob(), store = createBriefingStore({ ...mem, now: () => 1_000_000, cacheMs: 0 });
+  const a1 = await store.create('alvo', 1_000_000 + DAY), a2 = await store.create('alvo', 1_000_000 + DAY), keep = await store.create('outro', 1_000_000 + DAY);
+  const { answers } = validateAnswers(full());
+  await store.submit(a1.token, answers);
+  await store.submit(keep.token, answers);
+  assert.deepEqual(await store.deleteLead('alvo'), { ok: true, removed: 2 });
+  assert.equal(mem.objects.has(answersPath(a1.token)), false);
+  assert.equal(mem.objects.has(answersPath(keep.token)), true);
+  assert.deepEqual((await store.list()).map(i => i.leadId), ['outro']);
+  await assert.rejects(store.getAnswers(a1.token), { status: 404 });
+  assert.equal(await store.find(a2.token), null);
+  assert.deepEqual(await store.deleteLead('alvo'), { ok: true, removed: 0 });
+  await assert.rejects(store.deleteLead('../x'), { status: 400 });
+});
+
+test('validação remove controles de direção do texto', () => {
+  const result = validateAnswers({ ...full(), q1: 'abc\u202Eevil\u2066x', q3: { selected: [], other: 'a\nb\u202Ec' } });
+  assert.equal(result.answers.q1, 'abcevilx');
+  assert.equal(result.answers.q3.other, 'abc');
 });

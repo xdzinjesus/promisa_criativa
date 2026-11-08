@@ -2,7 +2,7 @@ import { BRIEFING_INTRO, BRIEFING_QUESTIONS, BRIEFING_LIMITS, validateAnswer } f
 
 // Página pública do briefing: lê o código da URL, mostra o formulário e envia as respostas.
 const $ = id => document.getElementById(id);
-const token = (location.pathname.match(/^\/briefing\/([A-Za-z0-9_-]{22})\/?$/) || [])[1] || '';
+const token = (location.pathname.match(/^\/briefing\/([A-Za-z0-9_-]{32})\/?$/) || [])[1] || '';
 const DRAFT_KEY = 'promisa-briefing-draft:' + token;
 const states = ['loading', 'form', 'answered', 'unavailable', 'success'];
 let startedAt = Date.now(), submitting = false;

@@ -21,7 +21,10 @@ export const BRIEFING_LIMITS = Object.freeze({ text: 3000, other: 300 });
 
 // Remove caracteres de controle (mantém quebra de linha e tabulação em textos longos).
 export function cleanText(value, { multiline = true } = {}) {
-  const text = String(value ?? '').replace(multiline ? /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g : /[\u0000-\u001f\u007f]/g, '').replace(/\r\n?/g, '\n');
+  // Também remove controles de direção do texto (U+202A–202E, U+2066–2069), que podem
+  // disfarçar o conteúdo no painel, e normaliza separadores de linha Unicode.
+  const text = String(value ?? '').replace(/\r\n?|[\u2028\u2029]/g, '\n')
+    .replace(multiline ? /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\ufeff]/g : /[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069\ufeff]/g, '');
   return text.trim();
 }
 

@@ -94,13 +94,17 @@ async function exportLeadData(id){
  const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
  const sites=(await clientSiteAll()).filter(site=>String(site.leadId)===String(id)).map(site=>{const{files,...meta}=site;return{...meta,arquivos:(files||[]).map(f=>({path:f.path}))}});
  const projects=(Array.isArray(S.projects)?S.projects:[]).filter(p=>String(p.leadId||'')===String(id)||sites.some(site=>String(site.id)===String(p.siteId)));
- const data={exportadoEm:new Date().toISOString(),titular:lead,sitesVinculados:sites,projetosVinculados:projects,observacao:'Conteudo dos arquivos dos sites nao incluido.'};
+ const formularios=await briefingExport(id);
+ const data={exportadoEm:new Date().toISOString(),titular:lead,sitesVinculados:sites,projetosVinculados:projects,formulariosBriefing:formularios,observacao:'Conteudo dos arquivos dos sites nao incluido.'};
  const u=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})),a=document.createElement('a');
  a.href=u;a.download='dados-lead-'+String(lead.id).replace(/[^\w-]/g,'')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),30000);
 }
 async function deleteLeadData(id){
  const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
- if(!confirm('Excluir os dados (LGPD) de "'+lead.client+'"?\n\nO lead sera apagado e os vinculos (leadId e nome do cliente) serao removidos dos sites e projetos. Os sites dos clientes NAO serao excluidos.\n\nRecomendado: use "Exportar dados" antes.'))return;
+ if(!confirm('Excluir os dados (LGPD) de "'+lead.client+'"?\n\nO lead sera apagado, as respostas do formulario (briefing) serao excluidas e os vinculos (leadId e nome do cliente) serao removidos dos sites e projetos. Os sites dos clientes NAO serao excluidos.\n\nRecomendado: use "Exportar dados" antes.'))return;
+ // Respostas do formulário ficam online: apaga lá também. Se falhar, avisa mas segue com a exclusão local.
+ try{await demoLinksApi('briefing-delete-lead',{leadId:String(id)});briefingCache.items=briefingCache.items.filter(x=>String(x.leadId)!==String(id))}
+ catch(e){clientSiteToast('Atenção: não foi possível apagar as respostas do formulário online ('+(e.message||'erro')+'). Tente "Excluir dados" de novo mais tarde ou avise o suporte.')}
  const sites=await clientSiteAll(),db=await openClientSiteDB(),tx=db.transaction(SITE_STORE,'readwrite'),done=transactionDone(tx);
  for(const site of sites)if(String(site.leadId)===String(id))tx.objectStore(SITE_STORE).put({...site,leadId:'',clientName:'',updatedAt:new Date().toISOString()});
  await done;
@@ -405,6 +409,21 @@ function briefingSheetHtml(lead){
 function briefingMessage(lead,url){return `${demoGreeting()}, tudo certo? Aqui é o Alexandre, da Promisa Criativa. Para eu preparar uma demonstração do site da ${lead.client||'sua empresa'} do jeito de vocês, pode responder este formulário rapidinho? Leva uns 5 minutos: ${url}`}
 async function briefingCopyText(text,done){try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(text);else{const box=document.createElement('textarea');box.value=text;box.style.cssText='position:fixed;opacity:0';document.body.appendChild(box);box.select();document.execCommand('copy');box.remove()}clientSiteToast(done)}catch{clientSiteToast('Não foi possível copiar. Selecione o texto e copie manualmente.')}}
 function briefingCopyLink(url){return briefingCopyText(url,'Link copiado. Envie para o cliente.')}
+// LGPD: respostas do formulário para "Exportar dados". Nunca impede a exportação.
+async function briefingExport(id){
+ try{
+  const d=await demoLinksApi('briefing-list',{});
+  const items=(Array.isArray(d.items)?d.items:[]).filter(x=>String(x.leadId)===String(id));
+  const iso=v=>{const t=new Date(v);return Number.isNaN(t.getTime())?null:t.toISOString()};
+  const out=[];
+  for(const item of items){
+   const entry={criadoEm:iso(item.createdAt),validoAte:iso(item.expiresAt),situacao:item.state,respondidoEm:item.answeredAt||null};
+   if(item.state==='answered'){try{entry.respostas=(await demoLinksApi('briefing-get',{token:item.token})).answers}catch(e){entry.respostas=null;entry.erro=e.message||'Não foi possível ler as respostas.'}}
+   out.push(entry);
+  }
+  return out;
+ }catch(e){return{erro:'Não foi possível incluir as respostas do formulário: '+(e.message||'erro')}}
+}
 async function briefingPrepare(id){
  const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
  if(lead.briefingToken&&!confirm('Gerar um novo link do formulário? O link anterior continua valendo até vencer ou ser desativado.'))return;
@@ -419,7 +438,7 @@ async function briefingPrepare(id){
   const wa=(phone||'https://wa.me/')+'?text='+encodeURIComponent(briefingMessage(lead,url));
   const link=el('a','btn','Abrir WhatsApp de '+(lead.client||'cliente'));link.href=wa;link.target='_blank';link.rel='noopener noreferrer';
   link.addEventListener('click',()=>{if(link.dataset.used)return;link.dataset.used='1';lead.briefingToken=data.token;lead.briefingSentAt=new Date().toISOString();save();briefingRefresh(true).then(()=>{if(tab==='clients')drawClientsList()})});
-  const copy=el('button','sec','Copiar link');copy.type='button';copy.addEventListener('click',()=>briefingCopyLink(url));
+  const copy=el('button','sec','Copiar link');copy.type='button';copy.addEventListener('click',()=>{if(lead.briefingToken!==data.token){lead.briefingToken=data.token;lead.briefingSentAt=new Date().toISOString();save()}briefingCopyLink(url)});
   box.replaceChildren(el('small','','Link pronto (vale 30 dias). Toque no botão verde do WhatsApp para enviar.'),link,copy);
  }catch(e){box.innerHTML=original;clientSiteToast(e.message||'Não foi possível criar o link.')}
 }
