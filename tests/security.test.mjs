@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { validateEntry, validateState, safeFilePath } from '../src/data-validation.js';
+import { validateEntry, validateState, safeFilePath, validateSetting } from '../src/data-validation.js';
 import { mergeOperations, verifyObject } from '../lib/cloud-store.js';
 import { removableObjects, RETENTION_MS } from '../lib/storage-maintenance.js';
 import { reserveAttempt, createAuthStore } from '../lib/auth-store.js';
@@ -76,4 +76,10 @@ test('two production instances share attempt limits and session revocation with 
   await two.revokeSession('nonce');
   assert.equal(await one.sessionActive('nonce'), false);
   for (const path of objects.keys()) assert.ok(!path.includes('same-ip'));
+});
+
+test('demoMessage é uma configuração de texto com limite de 2000 caracteres', () => {
+  assert.equal(validateSetting('demoMessage', '{saudacao}, veja {link}'), '{saudacao}, veja {link}');
+  assert.throws(() => validateSetting('demoMessage', 'x'.repeat(2001)), /inválido/);
+  assert.throws(() => validateSetting('demoMessage', 5), /inválido/);
 });

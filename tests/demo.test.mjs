@@ -48,6 +48,23 @@ test('cria, lista e desativa links; código tem 128 bits e não se repete', asyn
   assert.equal((await store.list('a1'))[0].state, 'expired');
 });
 
+test('createMany cria vários links em uma única gravação, na ordem', async () => {
+  const mem = memoryBlob(); let puts = 0; const put = mem.put;
+  mem.put = async (...args) => { puts++; return put(...args); };
+  const store = createShareStore({ ...mem, now: () => 1_000_000, cacheMs: 0 });
+  const made = await store.createMany([{ siteId: 'a1', expiresAt: 1_000_000 + 864e5 }, { siteId: 'b2', expiresAt: 1_000_000 + 7 * 864e5 }]);
+  assert.equal(puts, 1);
+  assert.equal(made.length, 2);
+  assert.equal(made[0].siteKey, siteKeyFor('a1'));
+  assert.equal(made[1].siteKey, siteKeyFor('b2'));
+  assert.match(made[0].token, TOKEN);
+  assert.equal((await store.list('b2')).length, 1);
+  await assert.rejects(store.createMany([]), /1 a 50/);
+  await assert.rejects(store.createMany(Array.from({ length: 51 }, () => ({ siteId: 'a1', expiresAt: 1_000_000 + 864e5 }))), /1 a 50/);
+  await assert.rejects(store.createMany([{ siteId: 'a1', expiresAt: 1_000_000 + 864e5 }, { siteId: 'a1', expiresAt: 5 }]), /entre 5 minutos e 1 ano/);
+  assert.equal(puts, 1);
+});
+
 test('validade fora do intervalo permitido é recusada', async () => {
   const store = createShareStore({ ...memoryBlob(), now: () => 0 });
   await assert.rejects(store.create('a1', 60_000), /entre 5 minutos e 1 ano/);

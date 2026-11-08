@@ -6,7 +6,7 @@ import { saveKeys, loadKeys } from './vault-keys.js';
 
 const adapter = window.promisaAdapter;
 const collections = ['sales', 'exp', 'projects'];
-const defaults = { prospectNotes: '', siteHostingBaseUrl: '', plan: { meta: '', ticket: '', conv: '20', pacotes: '', publico: '', dif: '', obs: '' } };
+const defaults = { prospectNotes: '', siteHostingBaseUrl: '', demoMessage: '', plan: { meta: '', ticket: '', conv: '20', pacotes: '', publico: '', dif: '', obs: '' } };
 let paused = false;
 let busy = false, applying = false, generation = 0, timer, dirty = false, storageReady = false;
 let workspace = '', baseline = {}, baselinePlain = {}, currentConflicts = [];
