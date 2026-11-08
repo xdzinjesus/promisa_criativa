@@ -483,7 +483,7 @@ const demo=checkRow('É um site demonstrativo',cur.demo===true);
 const save=el('button','','Salvar e publicar');save.type='submit';
 const now=el('button','sec','Publicar destaques agora');now.type='button';
 const close=el('button','sec demo-links-close','Fechar');close.type='button';close.addEventListener('click',()=>dialog.close());
-const row=el('div','demo-links-form');row.append(save,now);
+form.append(save,now);
 now.addEventListener('click',async()=>{now.disabled=true;try{await publishFeatured()}catch(e){clientSiteToast(e.message||'Não foi possível publicar.')}finally{now.disabled=false}});
 form.addEventListener('submit',async event=>{event.preventDefault();const name=title.value.trim();
  if(on.checked){if(!name)return clientSiteToast('Digite o título do projeto.');const others=clientSiteRows.filter(s=>s.id!==site.id&&s.featured?.on).length;if(others>=FEATURED_MAX)return clientSiteToast('Já existem '+FEATURED_MAX+' projetos em destaque. Desligue um deles antes de ligar este.')}
@@ -492,7 +492,7 @@ form.addEventListener('submit',async event=>{event.preventDefault();const name=t
   try{await publishFeatured()}catch(e){clientSiteToast('Salvo, mas não foi publicado: '+(e.message||'erro')+'. Use "Publicar destaques agora".')}
   await drawClientSites();dialog.close()}
  catch(e){clientSiteToast(e.message||'Não foi possível salvar.')}finally{save.disabled=false}});
-dialog.append(el('h2','','⭐ Destaque no site'),el('p','demo-links-site',site.name||'Site'),form,row,close);document.body.append(dialog);dialog.showModal()}
+dialog.append(el('h2','','⭐ Destaque no site'),el('p','demo-links-site',site.name||'Site'),form,close);document.body.append(dialog);dialog.showModal()}
 function clientSiteToast(message){const el=document.createElement('div');el.textContent=message;el.style.cssText='position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:9px 15px;border-radius:20px;z-index:20;max-width:90vw';document.body.appendChild(el);setTimeout(()=>el.remove(),3500)}
 function clientSiteSlugify(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,48).replace(/-+$/g,'')}
 function uniqueClientSiteSlug(value,used){const base=clientSiteSlugify(value)||'site';let slug=base,n=2;while(used.has(slug))slug=`${base}-${n++}`;used.add(slug);return slug}
