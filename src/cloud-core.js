@@ -1,6 +1,6 @@
 import { assertSafeTree } from './data-validation.js';
 // Funções puras compartilhadas pelos testes e pelo sincronizador do navegador.
-export function planSync(local, baseline, remote) {
+export function planSync(local, baseline, remote, baselinePlain = null) {
   const operations = [], downloads = [], conflicts = [], matches = [];
   for (const key of new Set([...Object.keys(local), ...Object.keys(baseline), ...Object.keys(remote)])) {
     const base = baseline[key] ?? null;
@@ -11,11 +11,20 @@ export function planSync(local, baseline, remote) {
     if (firstVisit && online && local[key]?.isDefault) here = base;
     if (firstVisit && remote[key] && !online && here) { conflicts.push(key); continue; }
     if (here === online) { matches.push(key); continue; }
-    if (here !== base && online !== base) { conflicts.push(key); continue; }
-    if (here !== base) operations.push({ key, baseHash: base, hash: here });
+    // Com proteção ativa o hash local é do texto cifrado; o texto original é que diz se houve edição aqui.
+    const plain = local[key]?.plainHash ?? null;
+    const plainUnchanged = plain !== null && baselinePlain && Object.hasOwn(baselinePlain, key) && baselinePlain[key] === plain;
+    const localChanged = here !== base && !plainUnchanged;
+    if (localChanged && online !== base) { conflicts.push(key); continue; }
+    if (localChanged) operations.push({ key, baseHash: base, hash: here });
     else if (online !== base) downloads.push(key);
+    else if (here !== base) operations.push({ key, baseHash: base, hash: here }); // migração: mesmo conteúdo, nova forma (cifrada)
   }
   return { operations, downloads, conflicts, matches };
+}
+// Guarda as chaves no aparelho sem derrubar a ativação se o armazenamento local falhar.
+export async function persistKeysSafely(save, keys) {
+  try { await save(keys); return true; } catch { return false; }
 }
 export async function encodeValue(value, depth = 0) {
   if (depth === 0) assertSafeTree(value);
