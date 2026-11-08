@@ -4,6 +4,7 @@ import { reserveAttempt, clearAttempts } from '../lib/auth-store.js';
 import { createVaultStore, validateKeyring } from '../lib/vault-store.js';
 import { isBlobError } from '../lib/blob-utils.js';
 import { createShareStore, siteKeyFor } from '../lib/share-store.js';
+import { createFeaturedStore, cleanFeaturedItems } from '../lib/featured-store.js';
 import { createBriefingStore } from '../lib/briefing-store.js';
 import { validId } from '../src/data-validation.js';
 import { configured, loadManifest, commitOperations, signedRead, validKey, validPath, MAX_OBJECT_BYTES } from '../lib/cloud-store.js';
@@ -29,6 +30,7 @@ function storageErrorMessage(error) {
 }
 const shares = createShareStore();
 const briefings = createBriefingStore();
+const featured = createFeaturedStore();
 const vault = createVaultStore();
 const clientIp = req => String(req.headers['x-real-ip'] || req.headers['x-vercel-forwarded-for'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
 // Confirma a senha do painel antes de mexer na chave do cofre (com limite de tentativas).
@@ -108,6 +110,18 @@ export default async function handler(req, res) {
         }
         const created = ok.length ? await shares.createMany(ok.map(item => ({ siteId: item.siteId, expiresAt: item.expiresAt }))) : [];
         return json(res, 200, { shares: created.map((share, i) => ({ siteId: ok[i].siteId, token: share.token, expiresAt: share.expiresAt })), skipped });
+      }
+      // Projetos em destaque da página inicial (de 0 a 6; o site precisa já estar salvo online).
+      if (action === 'featured-publish') {
+        const items = cleanFeaturedItems(body?.items, validId);
+        const { manifest } = await loadManifest();
+        const ok = [], skipped = [];
+        for (const item of items) {
+          if (manifest.records[siteKeyFor(item.siteId)]?.hash) ok.push({ ...item, siteKey: siteKeyFor(item.siteId) });
+          else skipped.push({ siteId: item.siteId, reason: 'Site ainda não salvo online' });
+        }
+        const published = await featured.publish(ok);
+        return json(res, 200, { published: published.length, skipped });
       }
       if (action === 'share-revoke') return json(res, 200, await shares.revoke(body?.token));
       // Formulário de briefing do cliente: criar link, listar, ver respostas e desativar.
