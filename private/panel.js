@@ -15,7 +15,7 @@ const STAGE_ALIASES={Prospecto:'Novo',Contatado:'Em contato',Proposta:'Proposta 
 const normalizeLeadStage=stage=>STAGE_ALIASES[stage]||(STAGES.includes(stage)?stage:'Novo');
 function migrateLeadStages(){let changed=false;for(const lead of Array.isArray(S.sales)?S.sales:[]){const stage=normalizeLeadStage(lead.stage);if(lead.stage!==stage){lead.stage=stage;changed=true}}if(changed)save();return changed}
 migrateLeadStages();
-const TABS=[['dash',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,'Início'],['clients',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M17 5a3.5 3.5 0 0 1 0 7M21.5 20c0-2.8-1.8-4.8-4-5.6"/></svg>`,'Clientes'],['mySites',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>`,'Meus sites'],['plano',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/></svg>`,'Plano'],['notes',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H4v18h16V3h-4M8 3v3h8V3zM8 11h8M8 15h8"/></svg>`,'Anotações'],['projects',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h7l2 2h9v11H3z"/><path d="M3 11h18"/></svg>`,'Projetos'],['backup',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg>`,'Backup']];
+const TABS=[['dash',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,'Início'],['clients',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M17 5a3.5 3.5 0 0 1 0 7M21.5 20c0-2.8-1.8-4.8-4-5.6"/></svg>`,'Clientes'],['mySites',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>`,'Meus sites'],['plano',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/></svg>`,'Plano'],['notes',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H4v18h16V3h-4M8 3v3h8V3zM8 11h8M8 15h8"/></svg>`,'Anotações'],['projects',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h7l2 2h9v11H3z"/><path d="M3 11h18"/></svg>`,'Projetos'],['backup',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg>`,'Backup'],['prompts2',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>`,'Prompts de IA']];
 const MORE_ICON=`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>`;
 const TAB_ALIAS={vendas:'clients',sites:'clients'},tabKey=t=>TAB_ALIAS[t]||t;
 const CLIENT_FILTERS=[['all','Todos'],['Novo','Novos'],['Em contato','Em contato'],['Proposta enviada','Proposta'],['Fechado','Fechados'],['Perdido','Perdidos'],['pending','Demonstração pendente'],['briefing','Formulário respondido']];
@@ -32,10 +32,10 @@ function render(){
  document.getElementById("navMore")?.remove();
  const navBtn=t=>`<button type="button" class="${t[0]===tab?'on':''}" aria-current="${t[0]===tab?'page':'false'}" data-click="go" data-click-args="${esc(JSON.stringify([t[0]]))}"><span class="em">${t[1]}</span><span>${t[2]}</span></button>`;
  const group=(label,ids)=>`<div class="nav-group"><span class="nav-label">${label}</span>${TABS.filter(t=>ids.includes(t[0])).map(navBtn).join('')}</div>`;
- const primaryIds=['dash','clients','mySites'],moreIds=['plano','notes','projects','backup'],moreActive=moreIds.includes(tab);
+ const primaryIds=['dash','clients','mySites'],moreIds=['plano','notes','projects','backup','prompts2'],moreActive=moreIds.includes(tab);
  $('#nav').innerHTML=`<div class="brand"><img src="${ICON}" alt=""><div><b>Promisa</b><small>Gestão de negócios digitais</small></div></div>`+group('Principal',primaryIds)+group('Mais',moreIds)+`<div class="nav-mobile">${TABS.filter(t=>primaryIds.includes(t[0])).map(navBtn).join('')}<button type="button" class="${moreActive?'on':''}" id="moreToggle" aria-expanded="false" aria-controls="navMore" data-click="toggleMoreNav" data-click-args="[]"><span class="em">${MORE_ICON}</span><span>Mais</span></button></div><div id="navMore" aria-label="Mais seções">${TABS.filter(t=>moreIds.includes(t[0])).map(navBtn).join('')}</div>`;
  document.body.appendChild(document.getElementById("navMore"));
- $('#app').innerHTML=({dash,clients,plano,mySites:personalSites,projects,notes:notesPage,backup:backupPage})[tab]();
+ $('#app').innerHTML=({dash,clients,plano,mySites:personalSites,projects,notes:notesPage,backup:backupPage,prompts2:promptsPage})[tab]();
  if(tab==='mySites') drawClientSites();
  if(tab==='projects') drawProjects();
  if(tab==='clients') drawClients();
@@ -215,6 +215,7 @@ function openClientSheet(id,focus){
  <section id="sheetSiteSec"><h3>Site</h3>${siteBlocks}${attach}</section>
  <section><h3>Demonstração</h3><p class="cline">${sites.length||lead.demoSentAt?demoStatusHtml(lead):'<span class="lead-muted">Anexe um site para poder enviar.</span>'}</p><div class="sheet-grid">${ready?`<button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('sendDemoOne',lead.id)}">📤 Enviar demonstração</button>`:''}<button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('toggleDemoSent',lead.id)}">${lead.demoSentAt?'Desmarcar envio':'Marcar como enviada'}</button></div></section>
  ${briefingSheetHtml(lead)}
+ <section><h3>🤖 PROMPTS DE IA</h3><div class="sheet-grid three">${['essencial','profissional','premium'].map(pl=>`<button type="button" class="sec" data-click="openPlanPrompts" data-click-args="${ARGS(lead.id,pl)}">${{essencial:'Essencial',profissional:'Profissional',premium:'Premium'}[pl]}</button>`).join('')}</div></section>
  <section><h3>Privacidade (LGPD)</h3><div class="sheet-grid"><button type="button" class="sec" data-click="exportLeadData" data-click-args="${ARGS(lead.id)}">Exportar dados</button><button type="button" class="del" data-click="sheetDo" data-click-args="${ARGS('deleteLeadData',lead.id)}">Excluir dados (LGPD)</button></div></section>
  <section><button type="button" class="del wide" data-click="sheetDo" data-click-args="${ARGS('delSale',lead.id)}">Excluir cliente</button></section>`;
  const d=showSheet(lead.client,body);
@@ -493,6 +494,48 @@ form.addEventListener('submit',async event=>{event.preventDefault();const name=t
   await drawClientSites();dialog.close()}
  catch(e){clientSiteToast(e.message||'Não foi possível salvar.')}finally{save.disabled=false}});
 dialog.append(el('h2','','⭐ Destaque no site'),el('p','demo-links-site',site.name||'Site'),form,close);document.body.append(dialog);dialog.showModal()}
+function planPromptsList(planId,data,withHeading){
+ const lib=window.promisaPlanPrompts;const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n};
+ const wrap=el('div');
+ if(!lib){wrap.append(el('p','pp-note','Recarregue a página para ver os prompts.'));return wrap}
+ lib.buildPlanPrompts(planId,data).forEach(p=>{
+  const box=el('div','pp-item');const ta=el('textarea');ta.readOnly=true;ta.rows=10;ta.value=p.text;ta.setAttribute('aria-label',p.title);
+  const btn=el('button','','Copiar prompt');btn.type='button';btn.addEventListener('click',()=>promptCopy(ta));
+  box.append(el('h3','',p.title),el('small','','Usar em: '+p.tool),ta,btn);wrap.append(box)});
+ return wrap;
+}
+function promptCopy(ta){
+ const done=()=>clientSiteToast('Prompt copiado');
+ const fallback=()=>{ta.focus();ta.select();try{document.execCommand('copy')}catch(_){}done()};
+ try{navigator.clipboard.writeText(ta.value).then(done,fallback)}catch(e){fallback()}
+}
+async function openPlanPrompts(id,planId){
+ const lib=window.promisaPlanPrompts;if(!lib)return clientSiteToast('Recarregue a página para ver os prompts.');
+ const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
+ const plan=lib.PLANS.find(x=>x.id===planId);if(!plan)return;
+ let briefing=null;
+ try{const info=briefingInfo(lead);if(info?.state==='answered'){const d=await demoLinksApi('briefing-get',{token:info.item.token});if(d&&d.answers)briefing=d.answers}}catch(e){briefing=null}
+ const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n};
+ const dialog=el('dialog','project-preview-dialog demo-links-dialog');dialog.setAttribute('aria-label','Prompts de IA');
+ const close=el('button','sec','Fechar');close.type='button';close.addEventListener('click',()=>dialog.close());
+ const actions=el('div','pp-actions');actions.append(close);
+ dialog.append(el('h2','','Prompts de IA · '+plan.name+' · '+lead.client));
+ if(!briefing)dialog.append(el('p','pp-note','Sem respostas do formulário: os campos aparecem como [PREENCHER].'));
+ dialog.append(planPromptsList(planId,{empresa:lead.client,telefone:lead.contact,briefing:briefing||{}}),actions);
+ dialog.addEventListener('close',()=>dialog.remove());document.body.append(dialog);dialog.showModal();
+}
+function promptsPage(){
+ const lib=window.promisaPlanPrompts;
+ const root=document.createElement('div');
+ const h=document.createElement('h1');h.textContent='Prompts de IA';
+ const sub=document.createElement('p');sub.className='sub';sub.textContent='Dica: abra o cliente em Clientes → ⋯ → Prompts de IA para gerar já preenchido com os dados e as respostas do formulário.';
+ root.append(h,sub);
+ if(lib)lib.PLANS.forEach(pl=>{const sec=document.createElement('div');sec.className='card';const t=document.createElement('h2');t.className='pp-plan';t.textContent=pl.name+' · '+pl.subtitle;sec.append(t,planPromptsList(pl.id,{empresa:'',telefone:'',briefing:{}}));root.append(sec)});
+ else{const n=document.createElement('p');n.textContent='Recarregue a página para ver os prompts.';root.append(n)}
+ setTimeout(()=>{const app=document.getElementById('app');if(app&&tab==='prompts2')app.replaceChildren(root)},0);
+ return '';
+}
+
 function clientSiteToast(message){const el=document.createElement('div');el.textContent=message;el.style.cssText='position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:9px 15px;border-radius:20px;z-index:20;max-width:90vw';document.body.appendChild(el);setTimeout(()=>el.remove(),3500)}
 function clientSiteSlugify(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,48).replace(/-+$/g,'')}
 function uniqueClientSiteSlug(value,used){const base=clientSiteSlugify(value)||'site';let slug=base,n=2;while(used.has(slug))slug=`${base}-${n++}`;used.add(slug);return slug}
@@ -600,7 +643,7 @@ async function boundedDecompress(bytes,limit){const reader=new Blob([bytes]).str
 const previewResources=new Map();
 function releasePreview(url){for(const resource of previewResources.get(url)||[])URL.revokeObjectURL(resource);previewResources.delete(url);URL.revokeObjectURL(url)}
 async function safePreviewDocument(url){const doc=new DOMParser().parseFromString(await(await fetch(url)).text(),'text/html');doc.querySelectorAll('script,iframe,object,embed,base,meta[http-equiv],link').forEach(el=>{if(el.tagName==='LINK'&&el.rel==='stylesheet'&&el.href.startsWith('blob:'))return;el.remove()});for(const el of doc.querySelectorAll('*'))for(const attr of [...el.attributes])if(attr.name.startsWith('on'))el.removeAttribute(attr.name);const policy=document.createElement('meta');policy.httpEquiv='Content-Security-Policy';policy.content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline' blob:; font-src blob: data:; script-src 'none'; connect-src 'none'; form-action 'none'; frame-src 'none'";doc.head.prepend(policy);return '<!doctype html>'+doc.documentElement.outerHTML}
-const panelActions={openFeatured,publishFeatured,briefingPrepare,briefingView,briefingRevoke,briefingCopyLink,sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,attachSite,pay,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
+const panelActions={openPlanPrompts,openFeatured,publishFeatured,briefingPrepare,briefingView,briefingRevoke,briefingCopyLink,sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,attachSite,pay,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
  attachProjectZipClear:attachProjectZip,importClientFolderClear:importClientFolder,importClientHtmlClear:importClientHtml,importClientZipClear:importClientZip,runGeneralBackupClear:runGeneralBackup,
  sheetDo(name,...args){if(name==='sheetDo'||!Object.hasOwn(panelActions,name))return;closeSheet();return panelActions[name](...args)},
  pset2Calc(...args){pset2(...args);upCalc()},pickFile(id){document.getElementById(id).click()}};

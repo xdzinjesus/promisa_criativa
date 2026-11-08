@@ -17,6 +17,7 @@ await build({ entryPoints: ['src/cloud-client.js'], bundle: true, minify: true, 
 await build({ entryPoints: ['src/panel-security.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/security.js' });
 await build({ entryPoints: ['src/briefing-page.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/briefing.js' });
 await build({ entryPoints: ['src/briefing-panel.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/briefing-panel.js' });
+await build({ entryPoints: ['src/plan-prompts-panel.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/plan-prompts.js' });
 await build({ entryPoints: ['src/vault-login.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/vault-login.js' });
 await writeFile('public/robots.txt', `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /catalogo\nDisallow: /acesso.html\nDisallow: /api/\nDisallow: /demo/\nDisallow: /projeto/\nDisallow: /briefing/\nDisallow: /briefing.html\nSitemap: ${origin}/sitemap.xml\n`);
 await writeFile('public/sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>${origin}/</loc></url><url><loc>${origin}/privacidade.html</loc></url></urlset>\n`);
