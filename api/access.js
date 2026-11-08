@@ -20,6 +20,10 @@ function equal(a, b) {
   const x = Buffer.from(a), y = Buffer.from(b);
   return x.length === y.length && timingSafeEqual(x, y);
 }
+// Compara a senha informada com a do painel (digests de tamanho fixo, tempo constante).
+export function passwordMatches(candidate, config) {
+  return typeof candidate === 'string' && equal(signature(candidate, config.secret), signature(config.password, config.secret));
+}
 export function session(req, config) {
   const token = String(req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith('promisa_session='))?.slice(16);
   if (!token || token.length > 512) return false;

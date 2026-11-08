@@ -46,7 +46,10 @@ form.addEventListener('submit', async event => {
     const response = await fetch('/api/access?action=login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ password: input.value }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Não foi possível entrar.');
+    const password = input.value;
     input.value = '';
+    // Destrava os dados protegidos com a mesma senha; nunca impede nem atrasa o login por mais de 15 s.
+    try { await Promise.race([Promise.resolve(window.promisaVault?.afterLogin(password)).catch(() => {}), new Promise(resolve => setTimeout(resolve, 15_000))]); } catch {}
     showChoice();
   } catch (cause) {
     error.textContent = cause.message === 'Failed to fetch' ? 'Sem conexão. Verifique sua internet e tente novamente.' : cause.message;
