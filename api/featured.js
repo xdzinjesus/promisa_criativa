@@ -1,4 +1,4 @@
-import { createFeaturedStore } from '../lib/featured-store.js';
+import { createFeaturedStore, publicItems } from '../lib/featured-store.js';
 import { createDemoHandler } from '../lib/demo-site.js';
 import { cached, readSite } from '../lib/site-cache.js';
 
@@ -45,7 +45,7 @@ export default async function handler(req, res) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return json(res, 200, { items: [] }, 'public, max-age=60');
   try {
     const list = await items();
-    return json(res, 200, { items: list.map(({ id, title, category, demo }) => ({ id, title, category, demo: Boolean(demo) })) }, 'public, max-age=60');
+    return json(res, 200, { items: publicItems(list) }, 'public, max-age=60');
   } catch (error) {
     console.error('[featured]', error?.constructor?.name || error?.name, error?.message);
     return json(res, 503, { error: 'Indisponível.' });

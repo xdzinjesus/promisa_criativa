@@ -336,6 +336,17 @@ body::before{content:'';position:fixed;inset:0 0 auto;height:96px;z-index:55;poi
 @keyframes mark-ring{0%{opacity:.85;transform:scale(.55)}100%{opacity:0;transform:scale(1.55)}}
 @keyframes mark-glow{0%,100%{opacity:1}35%{opacity:1;filter:brightness(1.8)}}
 @media(prefers-reduced-motion:reduce){.hero-art.is-popping .mark-pop,.hero-art.is-popping .mark-entry::after,.hero-art.is-popping .ambient{animation:none!important}}
+
+/* Projetos em destaque dinâmicos: prévia ao vivo (somente leitura) */
+.live-frame{position:relative;aspect-ratio:16/11;overflow:hidden;background:linear-gradient(135deg,#1a1520,#241a33);contain:layout paint}
+.live-frame.is-feature{aspect-ratio:16/10}
+.live-frame iframe{position:absolute;left:0;top:0;width:1280px;height:800px;border:0;transform-origin:0 0;pointer-events:none;background:#fff;opacity:0;transition:opacity .35s var(--ease)}
+.live-frame.is-loaded iframe{opacity:1}
+.projects-grid[data-count="1"]{grid-template-columns:minmax(0,1fr)}
+.projects-grid[data-count="1"] .project-feature{max-width:980px;margin-inline:auto;width:100%}
+@media(max-width:900px){.projects-grid[data-count]{grid-template-columns:1fr}.live-frame.is-feature{aspect-ratio:16/10}}
+@media(prefers-reduced-motion:reduce){.live-frame iframe{transition:none}}
+
 /* Toque com "Reduzir movimento": brilho suave, sem movimento */
 @keyframes mark-glow-soft{0%,100%{filter:url(#logo-knockout) drop-shadow(0 16px 24px #6f2cc66a)}40%{filter:url(#logo-knockout) drop-shadow(0 0 42px #b78cffcc) brightness(1.25)}}
 .hero-art.is-glowing .mark-image{animation:mark-glow-soft .9s ease!important}
