@@ -4,6 +4,7 @@ import { resolve, extname, sep } from 'node:path';
 import handler from '../api/access.js';
 import cloudHandler from '../api/cloud.js';
 import demoHandler from '../api/demo.js';
+import featuredHandler from '../api/featured.js';
 import briefingHandler from '../api/briefing.js';
 
 const root = resolve('public');
@@ -14,6 +15,9 @@ const server = http.createServer(async (req, res) => {
     const url = new URL(req.url, 'http://localhost');
     const demo = /^\/demo\/([^/]+)(?:\/(.*))?$/.exec(url.pathname);
     if (demo) { let path = demo[2] || ''; try { path = decodeURIComponent(path); } catch { path = ''; } req.query = { token: demo[1], path }; return await demoHandler(req, res); }
+    const project = /^\/projeto\/([^/]+)(?:\/(.*))?$/.exec(url.pathname);
+    if (project) { let path = project[2] || ''; try { path = decodeURIComponent(path); } catch { path = ''; } req.query = { mode: 'site', id: project[1], path }; return await featuredHandler(req, res); }
+    if (url.pathname === '/api/featured') { req.query = {}; return await featuredHandler(req, res); }
     if (url.pathname === '/api/briefing') { req.query = Object.fromEntries(url.searchParams); return await briefingHandler(req, res); }
     if (/^\/briefing\/[^/]+\/?$/.test(url.pathname)) url.pathname = '/briefing.html';
     const route = config.rewrites.find(item => item.source === url.pathname);

@@ -15,10 +15,6 @@
           "value": "strict-origin-when-cross-origin"
         },
         {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
           "key": "Permissions-Policy",
           "value": "camera=(), microphone=(), geolocation=()"
         },
@@ -29,6 +25,15 @@
         {
           "key": "Cross-Origin-Opener-Policy",
           "value": "same-origin"
+        }
+      ]
+    },
+    {
+      "source": "/((?!projeto/).*)",
+      "headers": [
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
         }
       ]
     },
@@ -46,7 +51,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action https://wa.me; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action https://wa.me; upgrade-insecure-requests"
         }
       ]
     },
@@ -55,7 +60,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action https://wa.me; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action https://wa.me; upgrade-insecure-requests"
         }
       ]
     },
@@ -64,7 +69,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action https://wa.me; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action https://wa.me; upgrade-insecure-requests"
         }
       ]
     },
@@ -73,7 +78,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action https://wa.me; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action https://wa.me; upgrade-insecure-requests"
         }
       ]
     },
@@ -178,6 +183,9 @@
     },
     "api/briefing.js": {
       "maxDuration": 15
+    },
+    "api/featured.js": {
+      "maxDuration": 15
     }
   },
   "rewrites": [
@@ -208,6 +216,22 @@
     {
       "source": "/demo/:token/:path+",
       "destination": "/api/demo?token=:token&path=:path+"
+    },
+    {
+      "source": "/projeto/:id",
+      "destination": "/api/featured?mode=site&id=:id"
+    },
+    {
+      "source": "/projeto/:id/",
+      "destination": "/api/featured?mode=site&id=:id"
+    },
+    {
+      "source": "/projeto/:id/:path+",
+      "destination": "/api/featured?mode=site&id=:id&path=:path+"
+    },
+    {
+      "source": "/projeto/:id/:path+/",
+      "destination": "/api/featured?mode=site&id=:id&path=:path+/"
     },
     {
       "source": "/demo/:token/:path+/",

@@ -47,6 +47,79 @@
   }), { threshold: .09, rootMargin: '0px 0px -20px 0px' });
   reveals.forEach(el => observer.observe(el));
  }
+ // Projetos em destaque gerenciados pelo painel. Sem itens (ou com erro), a lista estática do HTML permanece.
+ const projectsGrid = $('.projects-grid');
+ if (projectsGrid && 'fetch' in window) {
+  const VIRTUAL_W = 1280;
+  const make = (tag, cls, text) => { const node = document.createElement(tag); if (cls) node.className = cls; if (text !== undefined) node.textContent = text; return node; };
+  const ready = new WeakSet();
+  const fitFrame = box => {
+   const frame = box.firstElementChild; if (!frame) return;
+   const width = box.clientWidth, height = box.clientHeight; if (!width) return;
+   const scale = width / VIRTUAL_W;
+   frame.style.height = Math.ceil(height / scale) + 'px';
+   frame.style.transform = 'scale(' + scale.toFixed(4) + ')';
+  };
+  const sizer = 'ResizeObserver' in window ? new ResizeObserver(entries => entries.forEach(entry => fitFrame(entry.target))) : null;
+  const loader = 'IntersectionObserver' in window ? new IntersectionObserver(entries => entries.forEach(entry => {
+   if (!entry.isIntersecting) return;
+   loader.unobserve(entry.target); load(entry.target);
+  }), { rootMargin: '200px 0px' }) : null;
+  const load = box => {
+   if (ready.has(box)) return; ready.add(box);
+   const frame = box.firstElementChild;
+   frame.addEventListener('load', () => box.classList.add('is-loaded'), { once: true });
+   frame.src = box.dataset.src;
+  };
+  const card = (item, index, count) => {
+   const feature = index === 0 && count !== 2;
+   const figure = make('figure', 'project project-preview reveal project-live' + (feature ? ' project-feature' : ''));
+   figure.style.setProperty('--delay', Math.min(index, 4) * 70 + 'ms');
+   const visual = make('div', 'project-visual'), win = make('div', 'preview-window');
+   const chrome = make('div', 'preview-chrome'); chrome.setAttribute('aria-hidden', 'true');
+   chrome.append(make('i'), make('i'), make('i'), make('span'));
+   const box = make('div', 'live-frame' + (feature ? ' is-feature' : ''));
+   box.dataset.src = '/projeto/' + encodeURIComponent(item.id) + '/';
+   const frame = document.createElement('iframe');
+   frame.setAttribute('sandbox', 'allow-scripts'); frame.setAttribute('loading', 'lazy'); frame.setAttribute('tabindex', '-1');
+   frame.setAttribute('aria-hidden', 'true'); frame.setAttribute('scrolling', 'no'); frame.setAttribute('referrerpolicy', 'no-referrer');
+   frame.title = item.title;
+   box.append(frame); win.append(chrome, box); visual.append(win);
+   const meta = make('figcaption', 'project-meta'), inner = make('div');
+   inner.append(make('h3', '', item.title));
+   const sub = [item.demo ? 'Site demonstrativo' : '', item.category].filter(Boolean).join(' · ');
+   if (sub) inner.append(make('p', '', sub));
+   meta.append(inner); figure.append(visual, meta);
+   return { figure, box };
+  };
+  const render = items => {
+   const cards = items.map((item, i) => card(item, i, items.length));
+   projectsGrid.dataset.count = String(items.length);
+   projectsGrid.replaceChildren(...cards.map(c => c.figure));
+   cards.forEach(({ figure, box }) => {
+    fitFrame(box); sizer?.observe(box);
+    if (loader) loader.observe(box); else load(box);
+    reveals.push(figure);
+    if (observer) observer.observe(figure); else figure.classList.add('is-visible');
+   });
+   const note = $('.project-note');
+   if (note) {
+    const demos = items.filter(item => item.demo).map(item => item.title);
+    const list = demos.length > 1 ? demos.slice(0, -1).join(', ') + ' e ' + demos[demos.length - 1] : demos[0];
+    note.textContent = 'Prévias das páginas iniciais dos projetos.' + (demos.length ? ' ' + list + (demos.length > 1 ? ' são sites demonstrativos.' : ' é um site demonstrativo.') : '');
+   }
+  };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 4000);
+  fetch('/api/featured', { signal: controller.signal, headers: { Accept: 'application/json' } })
+   .then(response => response.ok ? response.json() : null)
+   .then(data => {
+    const items = Array.isArray(data?.items) ? data.items.filter(item => item && typeof item.id === 'string' && typeof item.title === 'string' && item.title).slice(0, 6) : [];
+    if (items.length) render(items);
+   })
+   .catch(() => {})
+   .finally(() => clearTimeout(timer));
+ }
  const art = $('#hero-art');
  let artFrame = 0, pointerX = 0, pointerY = 0;
  const resetArt = () => {
@@ -71,13 +144,22 @@
  }, { passive: true });
  art.addEventListener('pointerleave', resetArt);
  // Toque ou clique: o P gira em 3D com um pulinho e solta uma onda de luz.
- art.addEventListener('pointerdown', () => {
-  if (reduced.matches) return;
-  art.classList.remove('is-popping');
+ // Com "Reduzir movimento" ligado, só um brilho suave (sem giro).
+ let lastPop = 0;
+ const pop = () => {
+  const now = Date.now();
+  if (now - lastPop < 450) return;
+  lastPop = now;
+  const cls = reduced.matches ? 'is-glowing' : 'is-popping';
+  art.classList.remove('is-popping', 'is-glowing');
   void art.offsetWidth;
-  art.classList.add('is-popping');
- });
- art.addEventListener('animationend', event => { if (event.animationName === 'mark-pop') art.classList.remove('is-popping'); });
+  art.classList.add(cls);
+  clearTimeout(art._popTimer);
+  art._popTimer = setTimeout(() => art.classList.remove(cls), 1100);
+ };
+ art.addEventListener('pointerdown', pop);
+ art.addEventListener('touchstart', pop, { passive: true });
+ art.addEventListener('click', pop);
  let spotFrame = 0;
  $$('.spotlight').forEach(card => card.addEventListener('pointermove', event => {
   if (!fine.matches || reduced.matches || event.pointerType === 'touch' || spotFrame) return;
