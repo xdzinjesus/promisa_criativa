@@ -370,3 +370,26 @@ body::before{content:'';position:fixed;inset:0 0 auto;height:96px;z-index:55;poi
 .footer-ig{display:inline-flex;align-items:center;gap:7px}
 .footer-ig .ig-icon{width:17px;height:17px;color:#f78fc9}
 @media(max-width:760px){.ig-card{grid-template-columns:1fr;text-align:center;justify-items:center;padding:28px 20px;gap:18px}.ig-text p{margin:0 auto}.ig-btn{width:100%;justify-content:center}.ig-chip{font-size:.84rem}}
+
+/* Planos (sem preço; valor sob consulta pelo WhatsApp) */
+.plans-section{border-top:1px solid var(--line)}
+.plans-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;align-items:start}
+.plan-card{position:relative;display:flex;flex-direction:column;gap:14px;padding:30px 26px;border:1px solid var(--line);border-radius:var(--radius);background:#120f1ad9}
+.plan-card.is-featured{border-color:#b584ff80;background:radial-gradient(ellipse at 50% 0%,#7c3aed33,transparent 65%),#16111f;box-shadow:0 24px 60px #7c3aed2e}
+.plan-badge{position:absolute;top:-13px;left:50%;transform:translateX(-50%);padding:5px 14px;border-radius:999px;background:linear-gradient(135deg,#9c6aff,#7c3aed);color:#fff;font-size:.74rem;font-weight:700;letter-spacing:.04em;white-space:nowrap}
+.plan-head{display:flex;align-items:center;gap:14px}
+.plan-medal{font-size:1.9rem;line-height:1}
+.plan-head h3{font-size:1.35rem;margin:0}
+.plan-sub{margin:2px 0 0;color:var(--pale);font-size:.9rem;font-weight:600}
+.plan-ideal{margin:0;font-size:.92rem;line-height:1.6}
+.plan-body{display:grid;gap:6px}
+.plan-group{margin:8px 0 2px;color:#e9e2f7;font-size:.82rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.plan-list{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.plan-list li{display:grid;grid-template-columns:18px 1fr;gap:10px;align-items:start;font-size:.9rem;line-height:1.5;color:#d7d1e3}
+.plan-list .icon{width:16px;height:16px;margin-top:3px;color:#a98bff}
+.plan-deadline{margin:4px 0 0;font-size:.85rem;color:#b7aec6}
+.plan-cta{margin-top:auto;justify-content:center;width:100%}
+.btn-ghost{background:transparent!important;border:1px solid #b584ff66!important;color:#f3f1f8!important;box-shadow:none!important}
+.btn-ghost:hover,.btn-ghost:focus-visible{background:#ffffff0d!important;border-color:#b584ffaa!important}
+.plans-note{margin:28px 0 0;text-align:center;font-size:.86rem;color:#b7aec6}
+@media(max-width:1024px){.plans-grid{grid-template-columns:1fr;max-width:560px;margin:0 auto}.plan-card.is-featured{order:-1}}
