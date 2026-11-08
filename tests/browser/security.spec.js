@@ -74,7 +74,7 @@ test('backup restores HTML and original ZIP bytes, and project deletion removes 
   await page.getByRole('button', { name: 'Fechar prévia' }).click();
   // Build a valid ZIP through the application's existing exporter, then import it through the file picker.
   const zipBytes = await page.evaluate(async () => [...new Uint8Array(await (await createClientSiteZip({ name: 'Site de teste', htmlPath: 'index.html', files: [{ path: 'index.html', type: 'text/html', data: '<h1>Site anexado</h1>' }] })).arrayBuffer())]);
-  await page.locator('#nav [data-click="go"]').filter({ hasText: 'Sites dos clientes' }).first().click();
+  await page.locator('#nav [data-click="go"]').filter({ hasText: 'Clientes' }).first().click();
   await page.locator('#clientZipInput').setInputFiles({ name: 'original.zip', mimeType: 'application/zip', buffer: Buffer.from(zipBytes) });
   await expect(page.locator('#clientSiteList')).toContainText('original');
   await page.locator('#nav [data-click="go"]').filter({ hasText: 'Backup' }).first().click();
@@ -116,6 +116,7 @@ test('clear-local logout removes IndexedDB and localStorage without deleting oth
   });
   await expect(page.locator('#cloud-status')).toContainText('não configurado');
   page.on('dialog', dialog => dialog.accept());
+  await page.locator('.tb-menu > summary').click();
   await page.locator('[data-clear-local]').click();
   await expect(page).toHaveURL(/acesso\.html/);
   expect(await page.evaluate(() => localStorage.getItem('painel_v1'))).toBeNull();
