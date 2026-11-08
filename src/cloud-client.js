@@ -1,15 +1,17 @@
 import { validateEntry, validateState } from './data-validation.js';
 import { uploadRecord } from './cloud-transfer.js';
-import { planSync, encodeValue, decodeValue, digest } from './cloud-core.js';
+import { planSync, persistKeysSafely, encodeValue, decodeValue, digest } from './cloud-core.js';
 import { createKeyring, unlockKeyring, rewrapKeyring, seal, open, isEncryptedKey } from './vault.js';
 import { saveKeys, loadKeys } from './vault-keys.js';
 
 const adapter = window.promisaAdapter;
 const collections = ['sales', 'exp', 'projects'];
-const defaults = { prospectNotes: '', siteHostingBaseUrl: '', plan: { meta: '', ticket: '', conv: '20', pacotes: '', publico: '', dif: '', obs: '' } };
+const defaults = { prospectNotes: '', siteHostingBaseUrl: '', demoMessage: '', plan: { meta: '', ticket: '', conv: '20', pacotes: '', publico: '', dif: '', obs: '' } };
 let paused = false;
 let busy = false, applying = false, generation = 0, timer, dirty = false, storageReady = false;
-let workspace = '', baseline = {}, currentConflicts = [];
+let workspace = '', baseline = {}, baselinePlain = {}, currentConflicts = [];
+let keysNotSaved = false;
+const downloadedPlain = new Map();
 let completedOnce = false;
 const uploaded = new Map();
 // Cofre: keyring = chave embrulhada guardada online; keys = chaves deste aparelho (null = travado).
@@ -45,7 +47,7 @@ async function request(action, body) {
   }
   return data;
 }
-const savedMessage = () => 'Salvo online · ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (keys ? ' · 🔒 protegido' : '');
+const savedMessage = () => 'Salvo online · ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (keys ? ' · 🔒 protegido' : '') + (keys && keysNotSaved ? ' · aviso: a chave não foi guardada neste aparelho; digite a senha de novo ao reabrir' : '');
 function vaultButtons() {
   // Ativação liberada só depois das correções de migração (revisão: H1/H2).
   if (encryptButton) encryptButton.hidden = !(VAULT_ENABLE_UI && storageReady && keyringLoaded && !keyring);
@@ -64,6 +66,13 @@ async function loadVault(reload = false) {
 }
 function saveBaseline() {
   localStorage.setItem('promisa-cloud-baseline:' + workspace, JSON.stringify(baseline));
+  localStorage.setItem('promisa-cloud-baselineplain:' + workspace, JSON.stringify(baselinePlain));
+}
+function showLocked() {
+  currentConflicts = [];
+  if (conflictButton) conflictButton.hidden = true;
+  vaultButtons();
+  message('Seus dados online estão protegidos. Toque em "Destravar" e digite a senha do painel.', 'error');
 }
 async function capture({ plain = false } = {}) {
   const values = {};
@@ -79,16 +88,17 @@ async function capture({ plain = false } = {}) {
   for (const [key, value] of Object.entries(values)) {
     const encoded = await encodeValue(value);
     const text = JSON.stringify({ version: 1, value: encoded });
+    const plainHash = await digest(text);
     const setting = key.startsWith('settings:') ? decodeURIComponent(key.slice(9)) : null;
     const isDefault = setting !== null && JSON.stringify(await encodeValue(defaults[setting])) === JSON.stringify(encoded);
     if (!plain && keys && isEncryptedKey(key)) {
       // A cifragem é determinística: o mesmo conteúdo sempre gera o mesmo texto e o mesmo hash.
       // Guarda só os hashes; o texto cifrado é refeito apenas se o registro for enviado.
-      const current = keys, plainHash = await digest(text), memo = sealed.get(key);
+      const current = keys, memo = sealed.get(key);
       let hash = memo?.keysId === current.id && memo.plainHash === plainHash ? memo.hash : null;
       if (!hash) { hash = await digest(await seal(current, key, text)); sealed.set(key, { keysId: current.id, plainHash, hash }); }
-      entries[key] = { text, hash, isDefault, seal: () => seal(current, key, text) };
-    } else entries[key] = { text, hash: await digest(text), isDefault };
+      entries[key] = { text, hash, plainHash, isDefault, seal: () => seal(current, key, text) };
+    } else entries[key] = { text, hash: plainHash, plainHash, isDefault };
   }
   return entries;
 }
@@ -101,9 +111,16 @@ async function readRecord(key, expectedHash) {
   if (await digest(text) !== hash) throw new Error('A verificação do arquivo falhou. O arquivo local foi preservado.');
   let data = JSON.parse(text);
   if (data.version === 2) {
-    if (!keys || !isEncryptedKey(key)) throw new Error('Os dados online estão protegidos. Toque em "Destravar dados" e digite a senha do painel.');
-    data = JSON.parse(await open(keys, key, text));
-  }
+    if (!keys && isEncryptedKey(key)) await loadVault(true);
+    if (!keys || !isEncryptedKey(key)) {
+      const locked = new Error('Os dados online estão protegidos. Toque em "Destravar dados" e digite a senha do painel.');
+      if (keyring && !keys) locked.code = 'LOCKED';
+      throw locked;
+    }
+    const inner = await open(keys, key, text);
+    downloadedPlain.set(key, await digest(inner));
+    data = JSON.parse(inner);
+  } else downloadedPlain.set(key, hash);
   if (data.version !== 1 || !Object.hasOwn(data, 'value')) throw new Error('Formato de arquivo online incompatível.');
   return validateEntry(key, decodeValue(data.value));
 }
@@ -175,13 +192,12 @@ async function sync(force = false) {
     if (workspace !== manifest.workspace) {
       workspace = manifest.workspace;
       baseline = JSON.parse(localStorage.getItem('promisa-cloud-baseline:' + workspace) || '{}');
+      try { baselinePlain = JSON.parse(localStorage.getItem('promisa-cloud-baselineplain:' + workspace) || '{}'); } catch { baselinePlain = {}; }
       completedOnce = false;
     }
     await loadVault();
     if (keyring && !keys) {
-      currentConflicts = [];
-      if (conflictButton) conflictButton.hidden = true;
-      message('Seus dados online estão protegidos. Toque em "Destravar" e digite a senha do painel.', 'error');
+      showLocked();
       return;
     }
     vaultButtons();
@@ -191,7 +207,7 @@ async function sync(force = false) {
     }
     const local = await capture();
     if (generation !== started) { schedule(); return; }
-    const plan = planSync(local, baseline, manifest.records);
+    const plan = planSync(local, baseline, manifest.records, baselinePlain);
     if (plan.conflicts.length) {
       currentConflicts = plan.conflicts;
       if (conflictButton) conflictButton.hidden = false;
@@ -199,9 +215,10 @@ async function sync(force = false) {
       return;
     }
     // Outro aparelho pode ter ativado a proteção desde o início desta página: nunca envia texto legível nesse caso.
-    if (!keyring && plan.operations.length) {
+    // O mesmo vale para downloads: uma página aberta antes da ativação não tem a chave.
+    if (!keyring && (plan.operations.length || plan.downloads.length)) {
       await loadVault(true);
-      if (keyring) { completedOnce = false; schedule(); return; }
+      if (keyring) { completedOnce = false; if (keys) schedule(); else showLocked(); return; }
     }
     currentConflicts = [];
     if (conflictButton) conflictButton.hidden = true;
@@ -231,21 +248,27 @@ async function sync(force = false) {
       for (let offset = 0; offset < plan.operations.length; offset += 20) {
         const batch = plan.operations.slice(offset, offset + 20);
         await request('commit', { operations: batch });
-        for (const operation of batch) baseline[operation.key] = operation.hash;
+        for (const operation of batch) { baseline[operation.key] = operation.hash; baselinePlain[operation.key] = local[operation.key]?.plainHash ?? null; }
         saveBaseline();
       }
     }
     // Se houve digitação durante o upload, conserva a edição e recebe o remoto no próximo ciclo.
     if (generation !== started) { schedule(); return; }
     await applyRecords(incoming);
-    for (const key of [...plan.downloads, ...plan.matches]) baseline[key] = manifest.records[key]?.hash ?? null;
+    for (const key of [...plan.downloads, ...plan.matches]) {
+      baseline[key] = manifest.records[key]?.hash ?? null;
+      const plain = plan.downloads.includes(key) ? downloadedPlain.get(key) : local[key]?.plainHash;
+      if (plain) baselinePlain[key] = plain; else delete baselinePlain[key];
+    }
+    downloadedPlain.clear();
     saveBaseline();
     dirty = false;
     completedOnce = true;
     uploaded.clear();
     message(savedMessage(), 'saved');
   } catch (error) {
-    if (error.status === 401) { message('Sessão encerrada. Entre novamente para sincronizar.', 'error'); location.assign('/acesso.html'); }
+    if (error.code === 'LOCKED') showLocked();
+    else if (error.status === 401) { message('Sessão encerrada. Entre novamente para sincronizar.', 'error'); location.assign('/acesso.html'); }
     else if (error.code === 'STORAGE_NOT_CONFIGURED') {
       storageReady = false;
       message('Armazenamento online não configurado. Os dados continuam apenas neste aparelho.', 'error');
@@ -275,7 +298,12 @@ async function resolveConflicts(preference, dialog) {
       if (preference === 'online') changes.set(key, manifest.records[key]?.hash ? await readRecord(key, manifest.records[key].hash) : undefined);
     }
     if (preference === 'online') await applyRecords(changes);
-    for (const key of currentConflicts) baseline[key] = manifest.records[key]?.hash ?? null;
+    for (const key of currentConflicts) {
+      baseline[key] = manifest.records[key]?.hash ?? null;
+      const plain = preference === 'online' ? downloadedPlain.get(key) : null;
+      if (plain) baselinePlain[key] = plain; else delete baselinePlain[key];
+    }
+    downloadedPlain.clear();
     saveBaseline();
     dialog.close();
     currentConflicts = [];
@@ -368,6 +396,7 @@ function showEncrypt() {
     paragraphs: [
       'Vamos embaralhar os dados que ficam online, para que só quem sabe a senha do painel consiga lê-los. Serão protegidos: leads, despesas, projetos, anotações e anexos. Os sites dos clientes não são protegidos, por causa dos links de demonstração.',
       'Atenção: se você esquecer a senha do painel, os dados online protegidos não poderão ser recuperados. A cópia deste aparelho continua normal.',
+      'As versões antigas sem criptografia são apagadas do armazenamento em até 7 dias.',
       'Antes de ativar, será baixada uma cópia de segurança. Digite a senha do painel para continuar.'
     ],
     fields: [{ name: 'password', label: 'Senha do painel', autocomplete: 'current-password' }],
@@ -383,8 +412,9 @@ function showEncrypt() {
         const created = await createKeyring(password);
         try { await request('vault-create', { password, keyring: created.keyring }); }
         catch (error) { if (error.status === 409) { conflict = true; return; } throw error; }
-        await saveKeys(created.keys);
+        keysNotSaved = !(await persistKeysSafely(saveKeys, created.keys));
         activateKeys(created.keys, created.keyring);
+        if (keysNotSaved) message('Proteção ativada, mas a chave não pôde ser guardada neste aparelho. Ela vale só enquanto esta página estiver aberta.', 'error');
       });
       if (conflict) {
         await loadVault(true);
@@ -416,10 +446,11 @@ function showUnlock() {
           if (!old) { ui.showField('old'); throw new Error('A senha do painel foi trocada. Digite também a senha antiga do painel, uma única vez.'); }
           try { await unlockKeyring(keyring, old); } catch (cause) { throw cause.code === 'WRONG_KEY' ? new Error('A senha antiga não está correta.') : cause; }
           const next = await rewrapKeyring(keyring, old, password);
-          await request('vault-replace', { password, previous: keyring, keyring: next.keyring });
+          try { await request('vault-replace', { password, previous: keyring, keyring: next.keyring }); }
+          catch (cause) { if (cause.status === 409) await loadVault(true).catch(() => {}); throw cause; }
           unlocked = { keys: next.keys, keyring: next.keyring };
         }
-        await saveKeys(unlocked.keys);
+        keysNotSaved = !(await persistKeysSafely(saveKeys, unlocked.keys));
         activateKeys(unlocked.keys, unlocked.keyring);
       });
       message('Dados desbloqueados. Sincronizando…', 'pending');

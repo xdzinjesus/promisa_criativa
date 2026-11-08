@@ -94,6 +94,19 @@ export default async function handler(req, res) {
         const share = await shares.create(body.siteId, body.expiresAt);
         return json(res, 200, { token: share.token, createdAt: share.createdAt, expiresAt: share.expiresAt, state: 'active' });
       }
+      if (action === 'share-create-many') {
+        const items = body?.items;
+        if (!Array.isArray(items) || items.length < 1 || items.length > 50) return json(res, 400, { error: 'Informe de 1 a 50 sites.' });
+        if (items.some(item => !validId(item?.siteId))) return json(res, 400, { error: 'Site inválido.' });
+        const { manifest } = await loadManifest();
+        const ok = [], skipped = [];
+        for (const item of items) {
+          if (manifest.records[siteKeyFor(item.siteId)]?.hash) ok.push(item);
+          else skipped.push({ siteId: item.siteId, reason: 'Site ainda não salvo online' });
+        }
+        const created = ok.length ? await shares.createMany(ok.map(item => ({ siteId: item.siteId, expiresAt: item.expiresAt }))) : [];
+        return json(res, 200, { shares: created.map((share, i) => ({ siteId: ok[i].siteId, token: share.token, expiresAt: share.expiresAt })), skipped });
+      }
       if (action === 'share-revoke') return json(res, 200, await shares.revoke(body?.token));
       if (action === 'read') {
         if (!validKey(body?.key)) return json(res, 400, { error: 'Registro inválido.' });
