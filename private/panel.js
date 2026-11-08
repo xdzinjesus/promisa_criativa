@@ -18,7 +18,7 @@ migrateLeadStages();
 const TABS=[['dash',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,'Início'],['clients',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M17 5a3.5 3.5 0 0 1 0 7M21.5 20c0-2.8-1.8-4.8-4-5.6"/></svg>`,'Clientes'],['mySites',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>`,'Meus sites'],['plano',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/></svg>`,'Plano'],['notes',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H4v18h16V3h-4M8 3v3h8V3zM8 11h8M8 15h8"/></svg>`,'Anotações'],['projects',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h7l2 2h9v11H3z"/><path d="M3 11h18"/></svg>`,'Projetos'],['backup',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg>`,'Backup']];
 const MORE_ICON=`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>`;
 const TAB_ALIAS={vendas:'clients',sites:'clients'},tabKey=t=>TAB_ALIAS[t]||t;
-const CLIENT_FILTERS=[['all','Todos'],['Novo','Novos'],['Em contato','Em contato'],['Proposta enviada','Proposta'],['Fechado','Fechados'],['Perdido','Perdidos'],['pending','Demonstração pendente']];
+const CLIENT_FILTERS=[['all','Todos'],['Novo','Novos'],['Em contato','Em contato'],['Proposta enviada','Proposta'],['Fechado','Fechados'],['Perdido','Perdidos'],['pending','Demonstração pendente'],['briefing','Formulário respondido']];
 const STAGE_CLASS={Novo:'st-new','Em contato':'st-contact','Proposta enviada':'st-prop',Fechado:'st-won',Perdido:'st-lost'};
 let tab=(()=>{const q=tabKey(new URLSearchParams(location.search).get('tab'));return TABS.some(t=>t[0]===q)?q:'dash'})(),activeSiteType='cliente',clientFilter='all',clientQuery='',clientsLoaded=false,pendingSiteLeadId='';
 
@@ -94,13 +94,17 @@ async function exportLeadData(id){
  const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
  const sites=(await clientSiteAll()).filter(site=>String(site.leadId)===String(id)).map(site=>{const{files,...meta}=site;return{...meta,arquivos:(files||[]).map(f=>({path:f.path}))}});
  const projects=(Array.isArray(S.projects)?S.projects:[]).filter(p=>String(p.leadId||'')===String(id)||sites.some(site=>String(site.id)===String(p.siteId)));
- const data={exportadoEm:new Date().toISOString(),titular:lead,sitesVinculados:sites,projetosVinculados:projects,observacao:'Conteudo dos arquivos dos sites nao incluido.'};
+ const formularios=await briefingExport(id);
+ const data={exportadoEm:new Date().toISOString(),titular:lead,sitesVinculados:sites,projetosVinculados:projects,formulariosBriefing:formularios,observacao:'Conteudo dos arquivos dos sites nao incluido.'};
  const u=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})),a=document.createElement('a');
  a.href=u;a.download='dados-lead-'+String(lead.id).replace(/[^\w-]/g,'')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),30000);
 }
 async function deleteLeadData(id){
  const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
- if(!confirm('Excluir os dados (LGPD) de "'+lead.client+'"?\n\nO lead sera apagado e os vinculos (leadId e nome do cliente) serao removidos dos sites e projetos. Os sites dos clientes NAO serao excluidos.\n\nRecomendado: use "Exportar dados" antes.'))return;
+ if(!confirm('Excluir os dados (LGPD) de "'+lead.client+'"?\n\nO lead sera apagado, as respostas do formulario (briefing) serao excluidas e os vinculos (leadId e nome do cliente) serao removidos dos sites e projetos. Os sites dos clientes NAO serao excluidos.\n\nRecomendado: use "Exportar dados" antes.'))return;
+ // Respostas do formulário ficam online: apaga lá também. Se falhar, avisa mas segue com a exclusão local.
+ try{await demoLinksApi('briefing-delete-lead',{leadId:String(id)});briefingCache.items=briefingCache.items.filter(x=>String(x.leadId)!==String(id))}
+ catch(e){clientSiteToast('Atenção: não foi possível apagar as respostas do formulário online ('+(e.message||'erro')+'). Tente "Excluir dados" de novo mais tarde ou avise o suporte.')}
  const sites=await clientSiteAll(),db=await openClientSiteDB(),tx=db.transaction(SITE_STORE,'readwrite'),done=transactionDone(tx);
  for(const site of sites)if(String(site.leadId)===String(id))tx.objectStore(SITE_STORE).put({...site,leadId:'',clientName:'',updatedAt:new Date().toISOString()});
  await done;
@@ -117,6 +121,7 @@ const siteBytes=site=>clientSiteSize((site.files||[]).reduce((n,f)=>n+(f.size||0
 function clientMatches(lead){
  const stage=normalizeLeadStage(lead.stage);
  if(clientFilter==='pending'){if(!demoLeadReady(lead)||lead.demoSentAt)return false}
+ else if(clientFilter==='briefing'){if(!briefingAnswered(lead))return false}
  else if(clientFilter!=='all'&&stage!==clientFilter)return false;
  const q=clientQuery.trim().toLocaleLowerCase('pt-BR');if(!q)return true;
  if(((lead.client||'')+' '+(lead.contact||'')).toLocaleLowerCase('pt-BR').includes(q))return true;
@@ -132,7 +137,7 @@ function clientCardHtml(s){
  if(site&&ready&&!s.demoSentAt)acts=`<button type="button" data-click="sendDemoOne" data-click-args="${ARGS(s.id)}">📤 Enviar demonstração</button><button type="button" class="sec" data-click="openClientSite" data-click-args="${ARGS(site.id)}">👁 Ver site</button>`;
  else if(site)acts=`<button type="button" class="sec" data-click="openClientSite" data-click-args="${ARGS(site.id)}">👁 Ver site</button>`;
  else acts=`<button type="button" data-click="openClientSheet" data-click-args="${ARGS(s.id,'site')}">＋ Anexar site</button>`;
- return `<article class="ccard"><div class="ccard-top"><b class="cname">${esc(s.client)}</b><span class="chips"><span class="chip ${STAGE_CLASS[stage]||''}">${esc(stage)}</span>${pay}</span></div><div class="cline">${phone}</div><div class="cline cstat">${siteLine}${demoLine}</div><div class="cacts">${acts}<button type="button" class="sec more" aria-label="Mais opções de ${esc(s.client)}" data-click="openClientSheet" data-click-args="${ARGS(s.id)}">⋯</button></div></article>`;
+ return `<article class="ccard"><div class="ccard-top"><b class="cname">${esc(s.client)}</b><span class="chips"><span class="chip ${STAGE_CLASS[stage]||''}">${esc(stage)}</span>${pay}</span></div><div class="cline">${phone}</div><div class="cline cstat">${siteLine}${demoLine}${briefingBadgeHtml(s)}</div><div class="cacts">${acts}<button type="button" class="sec more" aria-label="Mais opções de ${esc(s.client)}" data-click="openClientSheet" data-click-args="${ARGS(s.id)}">⋯</button></div></article>`;
 }
 function clients(){
  activeSiteType='cliente';
@@ -170,6 +175,7 @@ function drawOrphans(){
 }
 async function drawClients(){
  drawClientsList();drawOrphans();
+ briefingRefresh().then(()=>{if(tab==='clients')drawClientsList()});
  const run=++clientsRun;
  try{
   const rows=await loadSiteRows();
@@ -208,6 +214,7 @@ function openClientSheet(id,focus){
  const body=`<section><h3>Dados</h3><div class="sheet-fields">${field('Nome','client','text',lead.client,'input')}${field('Telefone / WhatsApp','contact','tel',lead.contact||'','input','inputmode="tel"')}${field('Serviço','service','text',lead.service||'','input')}${field('Valor (R$)','value','number',lead.value||0,'input','inputmode="decimal" min="0"')}${field('Data','date','date',lead.date||'','change')}<label class="sf"><span>Etapa</span><select data-change="sheetSet" data-change-args="${ARGS(lead.id,'stage')}" data-change-value="value">${STAGES.map(x=>`<option ${x===stage?'selected':''}>${x}</option>`).join('')}</select></label></div><button type="button" class="sec wide" id="sheetPaid" aria-pressed="${!!lead.paid}" data-click="sheetTogglePaid" data-click-args="${ARGS(lead.id)}">${lead.paid?'✅ Pago · desfazer':'Marcar como pago'}</button></section>
  <section id="sheetSiteSec"><h3>Site</h3>${siteBlocks}${attach}</section>
  <section><h3>Demonstração</h3><p class="cline">${sites.length||lead.demoSentAt?demoStatusHtml(lead):'<span class="lead-muted">Anexe um site para poder enviar.</span>'}</p><div class="sheet-grid">${ready?`<button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('sendDemoOne',lead.id)}">📤 Enviar demonstração</button>`:''}<button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('toggleDemoSent',lead.id)}">${lead.demoSentAt?'Desmarcar envio':'Marcar como enviada'}</button></div></section>
+ ${briefingSheetHtml(lead)}
  <section><h3>Privacidade (LGPD)</h3><div class="sheet-grid"><button type="button" class="sec" data-click="exportLeadData" data-click-args="${ARGS(lead.id)}">Exportar dados</button><button type="button" class="del" data-click="sheetDo" data-click-args="${ARGS('deleteLeadData',lead.id)}">Excluir dados (LGPD)</button></div></section>
  <section><button type="button" class="del wide" data-click="sheetDo" data-click-args="${ARGS('delSale',lead.id)}">Excluir cliente</button></section>`;
  const d=showSheet(lead.client,body);
@@ -371,6 +378,92 @@ async function openDemoQueue(ids){
  setup();dialog.showModal();
 }
 
+// Formulário de briefing: link público para o cliente responder 10 perguntas.
+let briefingCache={at:0,items:[]},briefingPending=null;
+function briefingRefresh(force){
+ if(!force&&Date.now()-briefingCache.at<60000)return Promise.resolve(briefingCache.items);
+ if(briefingPending)return briefingPending;
+ briefingPending=demoLinksApi('briefing-list',{}).then(d=>{briefingCache={at:Date.now(),items:Array.isArray(d.items)?d.items:[]};return briefingCache.items}).catch(()=>{briefingCache={at:Date.now()-50000,items:[]};return []}).finally(()=>{briefingPending=null});
+ return briefingPending;
+}
+function briefingInfo(lead){
+ const mine=briefingCache.items.filter(x=>String(x.leadId)===String(lead.id));
+ const done=mine.filter(x=>x.state==='answered').sort((a,b)=>String(b.answeredAt).localeCompare(String(a.answeredAt)))[0];
+ if(done)return{state:'answered',item:done};
+ const waiting=mine.find(x=>x.state==='open'&&x.token===lead.briefingToken);
+ return waiting?{state:'open',item:waiting}:null;
+}
+function briefingAnswered(lead){return briefingInfo(lead)?.state==='answered'}
+function briefingBadgeHtml(lead){
+ const info=briefingInfo(lead);if(!info)return '';
+ return info.state==='answered'?`<span class="demo-badge is-sent">📋 Formulário respondido · ${esc(demoShortDate(info.item.answeredAt))}</span>`:'<span class="demo-badge is-pending">📋 Formulário enviado · aguardando</span>';
+}
+function briefingSheetHtml(lead){
+ const info=briefingInfo(lead),has=!!lead.briefingToken;
+ const status=info?briefingBadgeHtml(lead):has?'<span class="lead-muted">Link enviado. Sem resposta registrada.</span>':'<span class="lead-muted">Ainda não enviado.</span>';
+ const send=has?`<button type="button" class="sec" data-click="briefingPrepare" data-click-args="${ARGS(lead.id)}">🔁 Gerar novo link</button>`:`<button type="button" data-click="briefingPrepare" data-click-args="${ARGS(lead.id)}">📋 Enviar formulário pelo WhatsApp</button>`;
+ const view=info?.state==='answered'?`<button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('briefingView',lead.id)}">👁 Ver respostas</button>`:'';
+ const off=info?.state==='open'?`<button type="button" class="del" data-click="sheetDo" data-click-args="${ARGS('briefingRevoke',lead.id)}">Desativar link</button>`:'';
+ return `<section><h3>Formulário (briefing)</h3><p class="cline">${status}</p><div class="briefing-box" id="briefingBox"><div class="sheet-grid">${view}${send}${off}</div></div></section>`;
+}
+function briefingMessage(lead,url){return `${demoGreeting()}, tudo certo? Aqui é o Alexandre, da Promisa Criativa. Para eu preparar uma demonstração do site da ${lead.client||'sua empresa'} do jeito de vocês, pode responder este formulário rapidinho? Leva uns 5 minutos: ${url}`}
+async function briefingCopyText(text,done){try{if(navigator.clipboard&&window.isSecureContext)await navigator.clipboard.writeText(text);else{const box=document.createElement('textarea');box.value=text;box.style.cssText='position:fixed;opacity:0';document.body.appendChild(box);box.select();document.execCommand('copy');box.remove()}clientSiteToast(done)}catch{clientSiteToast('Não foi possível copiar. Selecione o texto e copie manualmente.')}}
+function briefingCopyLink(url){return briefingCopyText(url,'Link copiado. Envie para o cliente.')}
+// LGPD: respostas do formulário para "Exportar dados". Nunca impede a exportação.
+async function briefingExport(id){
+ try{
+  const d=await demoLinksApi('briefing-list',{});
+  const items=(Array.isArray(d.items)?d.items:[]).filter(x=>String(x.leadId)===String(id));
+  const iso=v=>{const t=new Date(v);return Number.isNaN(t.getTime())?null:t.toISOString()};
+  const out=[];
+  for(const item of items){
+   const entry={criadoEm:iso(item.createdAt),validoAte:iso(item.expiresAt),situacao:item.state,respondidoEm:item.answeredAt||null};
+   if(item.state==='answered'){try{entry.respostas=(await demoLinksApi('briefing-get',{token:item.token})).answers}catch(e){entry.respostas=null;entry.erro=e.message||'Não foi possível ler as respostas.'}}
+   out.push(entry);
+  }
+  return out;
+ }catch(e){return{erro:'Não foi possível incluir as respostas do formulário: '+(e.message||'erro')}}
+}
+async function briefingPrepare(id){
+ const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
+ if(lead.briefingToken&&!confirm('Gerar um novo link do formulário? O link anterior continua valendo até vencer ou ser desativado.'))return;
+ const box=document.getElementById('briefingBox');if(!box)return;
+ const original=box.innerHTML;box.querySelectorAll('button').forEach(b=>{b.disabled=true});
+ const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node};
+ try{
+  // O link é criado ANTES de mostrar o botão: no iPhone o WhatsApp só abre por um toque direto em um link.
+  const data=await demoLinksApi('briefing-create',{leadId:String(lead.id),expiresAt:Date.now()+30*864e5});
+  if(!document.body.contains(box))return clientSiteToast('Link criado, mas a janela foi fechada. Abra de novo e gere outro.');
+  const url=location.origin+'/briefing/'+data.token,phone=contactLink(lead.contact);
+  const wa=(phone||'https://wa.me/')+'?text='+encodeURIComponent(briefingMessage(lead,url));
+  const link=el('a','btn','Abrir WhatsApp de '+(lead.client||'cliente'));link.href=wa;link.target='_blank';link.rel='noopener noreferrer';
+  link.addEventListener('click',()=>{if(link.dataset.used)return;link.dataset.used='1';lead.briefingToken=data.token;lead.briefingSentAt=new Date().toISOString();save();briefingRefresh(true).then(()=>{if(tab==='clients')drawClientsList()})});
+  const copy=el('button','sec','Copiar link');copy.type='button';copy.addEventListener('click',()=>{if(lead.briefingToken!==data.token){lead.briefingToken=data.token;lead.briefingSentAt=new Date().toISOString();save()}briefingCopyLink(url)});
+  box.replaceChildren(el('small','','Link pronto (vale 30 dias). Toque no botão verde do WhatsApp para enviar.'),link,copy);
+ }catch(e){box.innerHTML=original;clientSiteToast(e.message||'Não foi possível criar o link.')}
+}
+async function briefingView(id){
+ const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
+ const info=briefingInfo(lead);if(info?.state!=='answered')return clientSiteToast('Este formulário ainda não foi respondido.');
+ const lib=window.promisaBriefingQuestions;if(!lib)return clientSiteToast('Recarregue a página para ver as respostas.');
+ let data;try{data=await demoLinksApi('briefing-get',{token:info.item.token})}catch(e){return clientSiteToast(e.message)}
+ const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node};
+ const dialog=el('dialog','project-preview-dialog demo-links-dialog');dialog.setAttribute('aria-label','Respostas do formulário');
+ const list=el('div','briefing-answers');
+ lib.BRIEFING_QUESTIONS.forEach((q,i)=>{const v=data.answers?.[q.id];const text=typeof v==='string'?v:[...(v?.selected||[]),...(v?.other?['Outro: '+v.other]:[])].join('; ');const block=el('div');block.append(el('h3','',(i+1)+'. '+q.label),el('p',text?'':'lead-muted',text||'(sem resposta)'));list.append(block)});
+ const plain=lib.answersToText(data.answers,'Briefing de '+lead.client);
+ const copy=el('button','','Copiar respostas');copy.type='button';copy.addEventListener('click',()=>briefingCopyText(plain,'Respostas copiadas.'));
+ const close=el('button','sec','Fechar');close.type='button';close.addEventListener('click',()=>dialog.close());
+ const actions=el('div','briefing-actions');actions.append(copy,close);
+ dialog.append(el('h2','',lead.client),el('p','demo-links-info','Respondido em '+demoLinkDate(Date.parse(data.answeredAt))),list,actions);
+ dialog.addEventListener('close',()=>dialog.remove());document.body.append(dialog);dialog.showModal();
+}
+async function briefingRevoke(id){
+ const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
+ const info=briefingInfo(lead);if(info?.state!=='open'||!confirm('Desativar o link do formulário? O cliente não poderá mais responder por ele.'))return;
+ try{await demoLinksApi('briefing-revoke',{token:info.item.token});delete lead.briefingToken;delete lead.briefingSentAt;save();await briefingRefresh(true);drawClientsList();clientSiteToast('Link desativado.')}catch(e){clientSiteToast(e.message)}
+}
+
 function clientSiteToast(message){const el=document.createElement('div');el.textContent=message;el.style.cssText='position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:9px 15px;border-radius:20px;z-index:20;max-width:90vw';document.body.appendChild(el);setTimeout(()=>el.remove(),3500)}
 function clientSiteSlugify(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,48).replace(/-+$/g,'')}
 function uniqueClientSiteSlug(value,used){const base=clientSiteSlugify(value)||'site';let slug=base,n=2;while(used.has(slug))slug=`${base}-${n++}`;used.add(slug);return slug}
@@ -478,7 +571,7 @@ async function boundedDecompress(bytes,limit){const reader=new Blob([bytes]).str
 const previewResources=new Map();
 function releasePreview(url){for(const resource of previewResources.get(url)||[])URL.revokeObjectURL(resource);previewResources.delete(url);URL.revokeObjectURL(url)}
 async function safePreviewDocument(url){const doc=new DOMParser().parseFromString(await(await fetch(url)).text(),'text/html');doc.querySelectorAll('script,iframe,object,embed,base,meta[http-equiv],link').forEach(el=>{if(el.tagName==='LINK'&&el.rel==='stylesheet'&&el.href.startsWith('blob:'))return;el.remove()});for(const el of doc.querySelectorAll('*'))for(const attr of [...el.attributes])if(attr.name.startsWith('on'))el.removeAttribute(attr.name);const policy=document.createElement('meta');policy.httpEquiv='Content-Security-Policy';policy.content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline' blob:; font-src blob: data:; script-src 'none'; connect-src 'none'; form-action 'none'; frame-src 'none'";doc.head.prepend(policy);return '<!doctype html>'+doc.documentElement.outerHTML}
-const panelActions={sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,attachSite,pay,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
+const panelActions={briefingPrepare,briefingView,briefingRevoke,briefingCopyLink,sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,attachSite,pay,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
  attachProjectZipClear:attachProjectZip,importClientFolderClear:importClientFolder,importClientHtmlClear:importClientHtml,importClientZipClear:importClientZip,runGeneralBackupClear:runGeneralBackup,
  sheetDo(name,...args){if(name==='sheetDo'||!Object.hasOwn(panelActions,name))return;closeSheet();return panelActions[name](...args)},
  pset2Calc(...args){pset2(...args);upCalc()},pickFile(id){document.getElementById(id).click()}};
