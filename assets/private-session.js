@@ -39,6 +39,12 @@ document.querySelectorAll('[data-logout]').forEach(button => button.addEventList
         request.onerror = () => reject(request.error);
         request.onblocked = () => reject(new Error('Feche as outras abas do painel e tente apagar os dados novamente.'));
       });
+      await new Promise((resolve, reject) => {
+        const request = indexedDB.deleteDatabase('promisa-vault');
+        request.onsuccess = resolve;
+        request.onerror = () => reject(request.error);
+        request.onblocked = () => reject(new Error('Feche as outras abas do painel e tente apagar os dados novamente.'));
+      });
       localStorage.removeItem('painel_v1');
       for (const key of Object.keys(localStorage)) if (key.startsWith('promisa-cloud-baseline:')) localStorage.removeItem(key);
     }

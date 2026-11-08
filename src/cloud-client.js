@@ -1,6 +1,8 @@
 import { validateEntry, validateState } from './data-validation.js';
 import { uploadRecord } from './cloud-transfer.js';
 import { planSync, encodeValue, decodeValue, digest } from './cloud-core.js';
+import { createKeyring, unlockKeyring, rewrapKeyring, seal, open, isEncryptedKey } from './vault.js';
+import { saveKeys, loadKeys } from './vault-keys.js';
 
 const adapter = window.promisaAdapter;
 const collections = ['sales', 'exp', 'projects'];
@@ -10,6 +12,11 @@ let busy = false, applying = false, generation = 0, timer, dirty = false, storag
 let workspace = '', baseline = {}, currentConflicts = [];
 let completedOnce = false;
 const uploaded = new Map();
+// Cofre: keyring = chave embrulhada guardada online; keys = chaves deste aparelho (null = travado).
+let keyring = null, keyringLoaded = false, keys = null;
+const sealed = new Map();
+const encryptButton = document.getElementById('cloud-encrypt');
+const unlockButton = document.getElementById('cloud-unlock');
 const status = document.getElementById('cloud-status');
 const syncButton = document.getElementById('cloud-sync');
 const conflictButton = document.getElementById('cloud-conflicts');
@@ -37,10 +44,26 @@ async function request(action, body) {
   }
   return data;
 }
+const savedMessage = () => 'Salvo online · ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (keys ? ' · 🔒 protegido' : '');
+function vaultButtons() {
+  if (encryptButton) encryptButton.hidden = !(storageReady && keyringLoaded && !keyring);
+  if (unlockButton) unlockButton.hidden = !(keyringLoaded && keyring && !keys);
+}
+async function loadVault(reload = false) {
+  if (keyringLoaded && !reload) return;
+  const result = await request('vault');
+  keyring = result.keyring || null;
+  keys = null;
+  if (keyring) {
+    try { const stored = await loadKeys(); if (stored?.id === keyring.id) keys = stored; } catch { /* sem chaves guardadas: fica travado */ }
+  }
+  keyringLoaded = true;
+  vaultButtons();
+}
 function saveBaseline() {
   localStorage.setItem('promisa-cloud-baseline:' + workspace, JSON.stringify(baseline));
 }
-async function capture() {
+async function capture({ plain = false } = {}) {
   const values = {};
   const state = structuredClone(adapter.getState());
   for (const name of collections) for (const item of state[name] || []) {
@@ -55,7 +78,15 @@ async function capture() {
     const encoded = await encodeValue(value);
     const text = JSON.stringify({ version: 1, value: encoded });
     const setting = key.startsWith('settings:') ? decodeURIComponent(key.slice(9)) : null;
-    entries[key] = { text, hash: await digest(text), isDefault: setting !== null && JSON.stringify(await encodeValue(defaults[setting])) === JSON.stringify(encoded) };
+    const isDefault = setting !== null && JSON.stringify(await encodeValue(defaults[setting])) === JSON.stringify(encoded);
+    if (!plain && keys && isEncryptedKey(key)) {
+      // A cifragem é determinística: o mesmo conteúdo sempre gera o mesmo texto e o mesmo hash.
+      // Guarda só os hashes; o texto cifrado é refeito apenas se o registro for enviado.
+      const current = keys, plainHash = await digest(text), memo = sealed.get(key);
+      let hash = memo?.keysId === current.id && memo.plainHash === plainHash ? memo.hash : null;
+      if (!hash) { hash = await digest(await seal(current, key, text)); sealed.set(key, { keysId: current.id, plainHash, hash }); }
+      entries[key] = { text, hash, isDefault, seal: () => seal(current, key, text) };
+    } else entries[key] = { text, hash: await digest(text), isDefault };
   }
   return entries;
 }
@@ -66,7 +97,11 @@ async function readRecord(key, expectedHash) {
   if (!response.ok) throw new Error('Não foi possível baixar o arquivo online. Tente novamente.');
   const text = await response.text();
   if (await digest(text) !== hash) throw new Error('A verificação do arquivo falhou. O arquivo local foi preservado.');
-  const data = JSON.parse(text);
+  let data = JSON.parse(text);
+  if (data.version === 2) {
+    if (!keys || !isEncryptedKey(key)) throw new Error('Os dados online estão protegidos. Toque em "Destravar dados" e digite a senha do painel.');
+    data = JSON.parse(await open(keys, key, text));
+  }
   if (data.version !== 1 || !Object.hasOwn(data, 'value')) throw new Error('Formato de arquivo online incompatível.');
   return validateEntry(key, decodeValue(data.value));
 }
@@ -140,8 +175,16 @@ async function sync(force = false) {
       baseline = JSON.parse(localStorage.getItem('promisa-cloud-baseline:' + workspace) || '{}');
       completedOnce = false;
     }
+    await loadVault();
+    if (keyring && !keys) {
+      currentConflicts = [];
+      if (conflictButton) conflictButton.hidden = true;
+      message('Seus dados online estão protegidos. Toque em "Destravar" e digite a senha do painel.', 'error');
+      return;
+    }
+    vaultButtons();
     if (completedOnce && !dirty && Object.keys(manifest.records).every(key => Object.hasOwn(baseline, key) && baseline[key] === (manifest.records[key]?.hash ?? null)) && Object.keys(baseline).every(key => (baseline[key] ?? null) === (manifest.records[key]?.hash ?? null))) {
-      message('Salvo online · ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), 'saved');
+      message(savedMessage(), 'saved');
       return;
     }
     const local = await capture();
@@ -152,6 +195,11 @@ async function sync(force = false) {
       if (conflictButton) conflictButton.hidden = false;
       message('Há versões diferentes neste aparelho e online. Resolva as diferenças para continuar.', 'error');
       return;
+    }
+    // Outro aparelho pode ter ativado a proteção desde o início desta página: nunca envia texto legível nesse caso.
+    if (!keyring && plan.operations.length) {
+      await loadVault(true);
+      if (keyring) { completedOnce = false; schedule(); return; }
     }
     currentConflicts = [];
     if (conflictButton) conflictButton.hidden = true;
@@ -167,7 +215,8 @@ async function sync(force = false) {
       if (!operation.hash) continue;
       const cached = uploaded.get(operation.hash);
       if (cached) { operation.path = cached; continue; }
-      const blob = new Blob([local[operation.key].text], { type: 'application/json' });
+      const entry = local[operation.key];
+      const blob = new Blob([entry.seal ? await entry.seal() : entry.text], { type: 'application/json' });
       if (blob.size > 200 * 1024 * 1024) throw new Error('Este conjunto de arquivos ultrapassa 200 MB no envio online. Seus arquivos locais foram preservados.');
       const path = `promisa/v1/objects/${crypto.randomUUID()}.json`;
       const result = await uploadRecord(path, blob, progress => message(`Enviando ${i + 1} de ${plan.operations.length}: ${Math.round(progress.percentage)}%…`, 'pending'));
@@ -192,7 +241,7 @@ async function sync(force = false) {
     dirty = false;
     completedOnce = true;
     uploaded.clear();
-    message('Salvo online · ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }), 'saved');
+    message(savedMessage(), 'saved');
   } catch (error) {
     if (error.status === 401) { message('Sessão encerrada. Entre novamente para sincronizar.', 'error'); location.assign('/acesso.html'); }
     else if (error.code === 'STORAGE_NOT_CONFIGURED') {
@@ -205,7 +254,7 @@ async function sync(force = false) {
   }
 }
 async function downloadLocalCopy() {
-  const entries = await capture();
+  const entries = await capture({ plain: true });
   const file = { format: 'promisa-cloud-local-copy', version: 1, createdAt: new Date().toISOString(), entries: Object.fromEntries(Object.entries(entries).map(([key, entry]) => [key, JSON.parse(entry.text)])) };
   const url = URL.createObjectURL(new Blob([JSON.stringify(file)], { type: 'application/json' }));
   const a = document.createElement('a'); a.href = url; a.download = `promisa-copia-local-${Date.now()}.json`; a.click();
@@ -259,9 +308,128 @@ async function restoreLocalCopy(file) {
     await applyRecords(changes); changed();
   } catch (error) { message(error.message, 'error'); }
 }
+// Caixa de diálogo simples com campos de senha. `run` recebe os valores e pode lançar um erro para exibi-lo.
+function passwordDialog({ title, paragraphs, fields, confirm, cancel = 'Cancelar', run }) {
+  const dialog = document.createElement('dialog'); dialog.className = 'cloud-dialog';
+  const form = document.createElement('form'); form.method = 'dialog';
+  const heading = document.createElement('h2'); heading.textContent = title;
+  form.append(heading);
+  for (const text of paragraphs) { const p = document.createElement('p'); p.textContent = text; form.append(p); }
+  const inputs = {}, wrappers = {};
+  for (const field of fields) {
+    const label = document.createElement('label'); label.textContent = field.label; label.style.display = 'block';
+    const input = document.createElement('input'); input.type = 'password'; input.name = field.name; input.autocomplete = field.autocomplete || 'current-password'; input.maxLength = 256; input.required = true; input.style.cssText = 'display:block;width:100%;margin:6px 0 12px';
+    label.append(input); label.hidden = Boolean(field.hidden); input.disabled = Boolean(field.hidden);
+    inputs[field.name] = input; wrappers[field.name] = label; form.append(label);
+  }
+  const error = document.createElement('p'); error.setAttribute('role', 'alert'); error.style.color = '#ffb4b4';
+  const progress = document.createElement('p'); progress.setAttribute('role', 'status');
+  const ok = document.createElement('button'); ok.type = 'submit'; ok.textContent = confirm;
+  const no = document.createElement('button'); no.type = 'button'; no.textContent = cancel;
+  form.append(error, progress, ok, no); dialog.append(form); document.body.append(dialog);
+  let working = false;
+  const ui = {
+    progress: text => { progress.textContent = text; },
+    showField: name => { wrappers[name].hidden = false; inputs[name].disabled = false; inputs[name].focus(); },
+    close: () => dialog.close()
+  };
+  no.addEventListener('click', () => { if (!working) dialog.close(); });
+  dialog.addEventListener('cancel', event => { if (working) event.preventDefault(); });
+  dialog.addEventListener('close', () => dialog.remove());
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    if (working) return;
+    working = true; error.textContent = ''; ok.disabled = true; no.disabled = true;
+    const values = Object.fromEntries(Object.entries(inputs).map(([name, input]) => [name, input.disabled ? '' : input.value]));
+    try { await run(values, ui); progress.textContent = ''; dialog.close(); }
+    catch (cause) { error.textContent = cause.message || 'Não foi possível concluir.'; progress.textContent = ''; }
+    finally { working = false; ok.disabled = false; no.disabled = false; }
+  });
+  dialog.showModal(); Object.values(inputs)[0]?.focus();
+}
+// Mantém o sincronizador parado enquanto a chave é criada ou trocada.
+async function withVaultLock(task) {
+  if (busy) throw new Error('Aguarde a sincronização terminar e tente de novo.');
+  busy = true;
+  if (syncButton) syncButton.disabled = true;
+  try { return await task(); }
+  finally { busy = false; if (syncButton) syncButton.disabled = false; }
+}
+function activateKeys(next, nextKeyring) {
+  keyring = nextKeyring; keys = next; keyringLoaded = true; sealed.clear(); uploaded.clear();
+  // Força nova comparação: os hashes mudam quando a proteção é ativada ou destravada.
+  completedOnce = false; vaultButtons();
+}
+function showEncrypt() {
+  passwordDialog({
+    title: 'Proteger os dados online com senha',
+    paragraphs: [
+      'Vamos embaralhar os dados que ficam online, para que só quem sabe a senha do painel consiga lê-los. Serão protegidos: leads, despesas, projetos, anotações e anexos. Os sites dos clientes não são protegidos, por causa dos links de demonstração.',
+      'Atenção: se você esquecer a senha do painel, os dados online protegidos não poderão ser recuperados. A cópia deste aparelho continua normal.',
+      'Antes de ativar, será baixada uma cópia de segurança. Digite a senha do painel para continuar.'
+    ],
+    fields: [{ name: 'password', label: 'Senha do painel', autocomplete: 'current-password' }],
+    confirm: 'Baixar cópia e ativar',
+    run: async ({ password }, ui) => {
+      let conflict = false;
+      await withVaultLock(async () => {
+        ui.progress('Baixando a cópia de segurança…');
+        await downloadLocalCopy();
+        ui.progress('Conferindo a senha…');
+        await request('vault-verify', { password });
+        ui.progress('Criando a proteção…');
+        const created = await createKeyring(password);
+        try { await request('vault-create', { password, keyring: created.keyring }); }
+        catch (error) { if (error.status === 409) { conflict = true; return; } throw error; }
+        await saveKeys(created.keys);
+        activateKeys(created.keys, created.keyring);
+      });
+      if (conflict) {
+        await loadVault(true);
+        throw new Error('A proteção já foi ativada em outro aparelho. Use "Destravar dados" e digite a senha do painel.');
+      }
+      ui.progress('Protegendo os dados online…');
+      message('Protegendo os dados online…', 'pending');
+      sync(true);
+    }
+  });
+}
+function showUnlock() {
+  passwordDialog({
+    title: 'Destravar os dados online',
+    paragraphs: ['Digite a senha do painel para ler os dados protegidos neste aparelho.'],
+    fields: [
+      { name: 'password', label: 'Senha do painel', autocomplete: 'current-password' },
+      { name: 'old', label: 'Senha antiga do painel', autocomplete: 'off', hidden: true }
+    ],
+    confirm: 'Destravar',
+    run: async ({ password, old }, ui) => {
+      await withVaultLock(async () => {
+        await request('vault-verify', { password });
+        let unlocked;
+        try { unlocked = { keys: await unlockKeyring(keyring, password), keyring }; }
+        catch (error) {
+          if (error.code !== 'WRONG_KEY') throw error;
+          // O servidor aceitou a senha, mas ela não abre a chave: a senha do painel foi trocada.
+          if (!old) { ui.showField('old'); throw new Error('A senha do painel foi trocada. Digite também a senha antiga do painel, uma única vez.'); }
+          try { await unlockKeyring(keyring, old); } catch (cause) { throw cause.code === 'WRONG_KEY' ? new Error('A senha antiga não está correta.') : cause; }
+          const next = await rewrapKeyring(keyring, old, password);
+          await request('vault-replace', { password, previous: keyring, keyring: next.keyring });
+          unlocked = { keys: next.keys, keyring: next.keyring };
+        }
+        await saveKeys(unlocked.keys);
+        activateKeys(unlocked.keys, unlocked.keyring);
+      });
+      message('Dados desbloqueados. Sincronizando…', 'pending');
+      sync(true);
+    }
+  });
+}
 window.promisaCloud = { changed, sync, downloadLocalCopy, restoreLocalCopy, hasPending: () => dirty || busy, pause() { paused = true; clearTimeout(timer); generation++; }, resume() { paused = false; schedule(); } };
 syncButton?.addEventListener('click', () => sync(true));
 conflictButton?.addEventListener('click', showConflicts);
+encryptButton?.addEventListener('click', showEncrypt);
+unlockButton?.addEventListener('click', showUnlock);
 document.getElementById('cloud-copy')?.addEventListener('click', () => downloadLocalCopy().catch(error => message(error.message, 'error')));
 document.getElementById('cloud-restore')?.addEventListener('change', event => { restoreLocalCopy(event.target.files[0]); event.target.value = ''; });
 window.addEventListener('online', () => sync());

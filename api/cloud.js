@@ -1,5 +1,7 @@
 import { handleUpload } from '@vercel/blob/client';
-import { settings, authorized, sameOrigin } from './access.js';
+import { settings, authorized, sameOrigin, passwordMatches } from './access.js';
+import { reserveAttempt, clearAttempts } from '../lib/auth-store.js';
+import { createVaultStore, validateKeyring } from '../lib/vault-store.js';
 import { isBlobError } from '../lib/blob-utils.js';
 import { createShareStore, siteKeyFor } from '../lib/share-store.js';
 import { validId } from '../src/data-validation.js';
@@ -25,6 +27,24 @@ function storageErrorMessage(error) {
   return 'Não foi possível acessar o armazenamento online. Verifique a conexão e a configuração do Vercel Blob privado.';
 }
 const shares = createShareStore();
+const vault = createVaultStore();
+const clientIp = req => String(req.headers['x-real-ip'] || req.headers['x-vercel-forwarded-for'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
+// Confirma a senha do painel antes de mexer na chave do cofre (com limite de tentativas).
+// Responde sozinho e devolve false quando a senha não é aceita.
+async function verifyPassword(req, res, body, config) {
+  if (typeof body?.password !== 'string' || !body.password || body.password.length > 256) { json(res, 400, { error: 'Informe uma senha válida.' }); return false; }
+  const ip = 'vault:' + clientIp(req);
+  const retryAfter = await reserveAttempt(ip);
+  if (retryAfter) { res.setHeader('Retry-After', String(retryAfter)); json(res, 429, { error: 'Muitas tentativas. Aguarde antes de tentar novamente.' }); return false; }
+  const valid = passwordMatches(body.password, config);
+  if (!valid) {
+    await new Promise(resolve => setTimeout(resolve, 600));
+    json(res, 401, { error: 'Senha incorreta.', code: 'WRONG_PASSWORD' });
+    return false;
+  }
+  await clearAttempts(ip);
+  return true;
+}
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'private, no-store');
   res.setHeader('Vercel-CDN-Cache-Control', 'no-store');
@@ -35,13 +55,22 @@ export default async function handler(req, res) {
   if (!config || !await authorized(req, config)) return json(res, 401, { error: 'Sua sessão terminou. Entre novamente.' });
   if (!['GET', 'POST'].includes(req.method)) return json(res, 405, { error: 'Método não permitido.' });
   if (req.method === 'POST' && !sameOrigin(req)) return json(res, 403, { error: 'Origem não permitida.' });
-  if (!configured()) return json(res, 503, { error: 'Conecte um Vercel Blob privado ao projeto e configure BLOB_READ_WRITE_TOKEN para ativar o armazenamento online.', code: 'STORAGE_NOT_CONFIGURED' });
   const url = new URL(req.url, 'http://localhost');
   const action = req.query?.action || url.searchParams.get('action');
+  // A conferência da senha não usa o armazenamento (o limite de tentativas tem reserva em memória).
+  if (!configured() && !(req.method === 'POST' && action === 'vault-verify')) return json(res, 503, { error: 'Conecte um Vercel Blob privado ao projeto e configure BLOB_READ_WRITE_TOKEN para ativar o armazenamento online.', code: 'STORAGE_NOT_CONFIGURED' });
     if (req.method === 'GET' && action === 'manifest') return json(res, 200, (await loadManifest()).manifest);
+    if (req.method === 'GET' && action === 'vault') return json(res, 200, { keyring: await vault.get() });
     if (req.method === 'POST') {
       if (!String(req.headers['content-type'] || '').startsWith('application/json')) return json(res, 415, { error: 'Formato inválido.' });
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      if (action === 'vault-verify') return await verifyPassword(req, res, body, config) ? json(res, 200, { ok: true }) : undefined;
+      if (action === 'vault-create' || action === 'vault-replace') {
+        if (!await verifyPassword(req, res, body, config)) return;
+        if (action === 'vault-create') { await vault.create(validateKeyring(body.keyring)); return json(res, 200, { ok: true }); }
+        await vault.replace(validateKeyring(body.previous), validateKeyring(body.keyring));
+        return json(res, 200, { ok: true });
+      }
       if (action === 'upload') {
         // A chave principal nunca é enviada ao navegador; o SDK gera uma autorização restrita.
         const result = await handleUpload({
