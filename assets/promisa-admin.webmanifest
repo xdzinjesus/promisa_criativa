@@ -1,0 +1,17 @@
+{
+  "name": "Promisa · Painel",
+  "short_name": "Promisa",
+  "description": "Central administrativa da Promisa Criação Digital",
+  "start_url": "/admin",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "pt-BR",
+  "background_color": "#09080e",
+  "theme_color": "#09080e",
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
