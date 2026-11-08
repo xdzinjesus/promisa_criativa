@@ -85,6 +85,31 @@ test('relying party: www and apex share promisa.online; localhost in dev', () =>
   assert.equal(relyingParty({ headers: { host: 'localhost:4193' } }).rpID, 'localhost');
 });
 
+test('relying party: allowlist only — Host header and preview deployments cannot widen it', () => {
+  for (const host of ['evil.example', 'promisa-git-x.vercel.app', '127.0.0.1:4193', 'promisa.online.evil.example', 'sub.promisa.online', 'promisa.online:8443', '']) {
+    assert.equal(relyingParty({ headers: { host } }), null, host);
+  }
+  const saved = { ...process.env };
+  try {
+    Object.assign(process.env, { VERCEL: '1', VERCEL_ENV: 'production' });
+    assert.equal(relyingParty({ headers: { host: 'localhost:4193' } }), null);
+    assert.equal(relyingParty({ headers: { host: 'www.promisa.online' } }).rpID, 'promisa.online');
+    process.env.VERCEL_ENV = 'preview';
+    assert.equal(relyingParty({ headers: { host: 'www.promisa.online' } }), null);
+    assert.equal(relyingParty({ headers: { host: 'promisa-git-x.vercel.app' } }), null);
+    process.env.PASSKEY_HOSTS = 'promisa-git-x.vercel.app';
+    assert.deepEqual(relyingParty({ headers: { host: 'promisa-git-x.vercel.app' } }), { rpID: 'promisa-git-x.vercel.app', origins: ['https://promisa-git-x.vercel.app'] });
+  } finally {
+    for (const key of ['VERCEL', 'VERCEL_ENV', 'PASSKEY_HOSTS']) if (saved[key] === undefined) delete process.env[key]; else process.env[key] = saved[key];
+  }
+});
+
+test('api: passkey actions are refused on hosts outside the allowlist', async () => {
+  const res = await call({ query: { action: 'passkey-auth-options' }, body: {}, headers: { host: 'preview.vercel.app', origin: 'http://preview.vercel.app' } });
+  assert.equal(res.statusCode, 403);
+  assert.ok(!res.headers['set-cookie']);
+});
+
 test('api: session-only endpoints return 401 without a session', async () => {
   for (const action of ['passkey-register-options', 'passkey-register-verify', 'passkey-list', 'passkey-delete']) {
     const res = await call({ query: { action }, body: {} });
@@ -111,8 +136,15 @@ test('api: auth-verify with an invalid response is 401, reserves attempts and se
   assert.equal(bad.statusCode, 401);
   assert.equal(JSON.parse(bad.content).error, 'Não foi possível confirmar a chave de acesso.');
   assert.ok(!/promisa_session=[^;]+\./.test(String(bad.headers['set-cookie'])));
-  for (let i = 0; i < 4; i++) await call({ query: { action: 'passkey-auth-verify' }, body: { response: { id: 'nope' } }, address });
-  const blocked = await call({ query: { action: 'passkey-auth-verify' }, body: { response: { id: 'nope' } }, address });
+  // Sem desafio assinado: recusa sem tocar no armazenamento.
+  const noChallenge = await call({ query: { action: 'passkey-auth-verify' }, body: { response: { id: 'nope' } }, address: 'pk-nochallenge' });
+  assert.equal(noChallenge.statusCode, 401);
+  for (let i = 0; i < 4; i++) {
+    const fresh = await call({ query: { action: 'passkey-auth-options' }, body: {}, address });
+    await call({ query: { action: 'passkey-auth-verify' }, body: { response: { id: 'nope' } }, headers: { cookie: cookiesOf(fresh) }, address });
+  }
+  const last = await call({ query: { action: 'passkey-auth-options' }, body: {}, address });
+  const blocked = await call({ query: { action: 'passkey-auth-verify' }, body: { response: { id: 'nope' } }, headers: { cookie: cookiesOf(last) }, address });
   assert.equal(blocked.statusCode, 429);
 });
 
@@ -131,8 +163,18 @@ test('api: full flow with mocked WebAuthn verification; list hides public keys',
   });
   try {
     const session = await login();
-    const regOptions = await call({ query: { action: 'passkey-register-options' }, body: {}, headers: { cookie: session } });
+    const noPassword = await call({ query: { action: 'passkey-register-options' }, body: {}, headers: { cookie: session } });
+    assert.equal(noPassword.statusCode, 400);
+    const wrongPassword = await call({ query: { action: 'passkey-register-options' }, body: { password: 'wrong-password-123' }, headers: { cookie: session } });
+    assert.equal(wrongPassword.statusCode, 403);
+    assert.ok(!String(wrongPassword.headers['set-cookie'] || '').includes('promisa_webauthn'));
+    const regOptions = await call({ query: { action: 'passkey-register-options' }, body: { password: process.env.ADMIN_PASSWORD }, headers: { cookie: session } });
     assert.equal(regOptions.statusCode, 200);
+    // O desafio de registro fica preso à sessão que digitou a senha.
+    const otherSession = await login();
+    const crossSession = await call({ query: { action: 'passkey-register-verify' }, body: { response: { id: 'cred-1' }, name: 'iPhone' }, headers: { cookie: `${otherSession}; ${cookiesOf(regOptions)}` } });
+    assert.equal(crossSession.statusCode, 400);
+    passkeyDeps.used = createUsedChallenges();
     const parsed = JSON.parse(regOptions.content);
     assert.equal(parsed.rp.id, 'localhost'); assert.equal(parsed.authenticatorSelection.residentKey, 'required'); assert.equal(parsed.authenticatorSelection.userVerification, 'required');
     assert.equal(parsed.attestation, 'none');
@@ -160,6 +202,10 @@ test('api: full flow with mocked WebAuthn verification; list hides public keys',
     const check = await call({ method: 'GET', query: { action: 'session' }, headers: { cookie: sessionCookie.split(';')[0] } });
     assert.equal(check.statusCode, 200);
     assert.equal((await passkeyDeps.store.find('cred-1')).counter, 5);
+    // A mesma resposta reenviada a outra instância (sem memória local) é recusada pelo registro de uso.
+    passkeyDeps.used = createUsedChallenges();
+    const replayed = await call({ query: { action: 'passkey-auth-verify' }, body: { response: { id: 'cred-1' } }, headers: { cookie: cookiesOf(authOptions) } });
+    assert.equal(replayed.statusCode, 401);
     // Desafio do tipo errado (registro) não serve para entrar.
     const wrong = await call({ query: { action: 'passkey-auth-verify' }, body: { response: { id: 'cred-1' } }, headers: { cookie: cookiesOf(regOptions) } });
     assert.equal(wrong.statusCode, 401);

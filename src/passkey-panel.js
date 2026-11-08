@@ -27,17 +27,25 @@ if (openButton && browserSupportsWebAuthn()) {
     head.append(el('h2', 'Face ID / chaves de acesso', { id: 'passkey-title' }), el('button', '✕', { type: 'button', className: 'sheet-x', ariaLabel: 'Fechar' }));
     head.lastChild.addEventListener('click', () => dialog.close());
     const body = el('div', null, { className: 'sheet-body' });
+    // Nome do aparelho + senha do painel (confirmação: sessão roubada não ativa aparelho novo).
+    const form = el('form', null, { className: 'passkey-form' });
+    const field = (label, input) => { const wrap = el('label', null, { className: 'passkey-field' }); wrap.append(el('span', label), input); return wrap; };
+    form.append(
+      field('Nome deste aparelho', el('input', null, { id: 'passkey-name', type: 'text', maxLength: 40, required: true, value: guessName(), autocomplete: 'off' })),
+      field('Senha do painel (para confirmar)', el('input', null, { id: 'passkey-password', type: 'password', maxLength: 256, required: true, autocomplete: 'current-password' })),
+      el('button', 'Ativar neste aparelho', { type: 'submit', id: 'passkey-add', className: 'passkey-btn' })
+    );
     body.append(
       el('p', 'Com uma chave de acesso você entra na área administrativa só encostando o dedo ou olhando para o celular, sem digitar a senha. A senha continua funcionando normalmente.'),
       el('p', 'Toque em “Ativar neste aparelho” e confirme com Face ID, digital ou o desbloqueio do aparelho. Faça isso em cada aparelho que você usa.'),
-      el('button', 'Ativar neste aparelho', { type: 'button', id: 'passkey-add', className: 'passkey-btn' }),
+      form,
       el('p', '', { id: 'passkey-msg', role: 'status' }),
       el('h3', 'Aparelhos ativados'),
       el('ul', null, { id: 'passkey-list', className: 'passkey-list' })
     );
     dialog.append(head, body);
     document.body.append(dialog);
-    body.querySelector('#passkey-add').addEventListener('click', register);
+    form.addEventListener('submit', event => { event.preventDefault(); register(); });
   }
   const message = (text, bad) => { const node = dialog.querySelector('#passkey-msg'); node.textContent = text; node.className = bad ? 'passkey-bad' : 'passkey-ok'; };
 
@@ -66,12 +74,14 @@ if (openButton && browserSupportsWebAuthn()) {
 
   async function register() {
     const add = dialog.querySelector('#passkey-add');
-    const name = (prompt('Dê um nome para este aparelho:', guessName()) || '').trim().slice(0, 40);
-    if (!name) return;
+    const passwordInput = dialog.querySelector('#passkey-password');
+    const name = dialog.querySelector('#passkey-name').value.trim().slice(0, 40);
+    const password = passwordInput.value;
+    if (!name || !password) return;
     add.disabled = true;
     message('');
     try {
-      const options = await api('passkey-register-options');
+      const options = await api('passkey-register-options', { password });
       let credential;
       try { credential = await startRegistration({ optionsJSON: options }); }
       catch (cause) {
@@ -83,7 +93,7 @@ if (openButton && browserSupportsWebAuthn()) {
       message('Pronto! Da próxima vez, toque em "Entrar com Face ID" na tela de acesso.');
       await refresh();
     } catch (cause) { message(cause.message === 'Failed to fetch' ? 'Sem conexão. Tente novamente.' : cause.message, true); }
-    finally { add.disabled = false; }
+    finally { add.disabled = false; passwordInput.value = ''; }
   }
 
   openButton.addEventListener('click', () => {
