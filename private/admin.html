@@ -215,7 +215,105 @@ details,pre,.project-file-row,.site-hosting-config{background:#0f0c16;border-col
 .demo-link-actions{display:flex;flex-wrap:wrap;gap:8px}
 .demo-links-empty{margin:0;color:#a59eb3;font-size:.9rem}
 .demo-links-dialog .demo-links-close{display:block;margin:20px 0 0 auto}
+/* Painel simplificado: barra superior compacta, clientes em cartões e folha de opções. */
+.topbar{display:flex;align-items:center;gap:10px;max-width:1440px;margin:0 auto;padding:10px 16px 0;min-height:52px}
+.tb-brand{display:flex;align-items:center;gap:8px;color:#fff;text-decoration:none;flex:none}
+.tb-brand img{width:30px;height:30px;object-fit:contain;filter:hue-rotate(52deg) saturate(1.15)}
+.tb-brand b{font-family:Sora,system-ui,sans-serif;font-size:18px;letter-spacing:-.03em}
+.tb-status{flex:1;min-width:0;margin:0;font-size:12px;line-height:1.3;color:var(--mut);display:flex;align-items:center;justify-content:flex-end;text-align:right;padding:6px 10px;border-radius:999px;background:#ffffff0a;border:1px solid #ffffff17;max-height:44px;overflow:hidden}
+.tb-status[data-state=saved]{color:#74d6ab;background:#5fdca914;border-color:#5fdca94d}
+.tb-status[data-state=pending]{color:#f6c46b;background:#f6c46b14;border-color:#f6c46b4d}
+.tb-status[data-state=error]{color:#ffb4bd;background:#ff859014;border-color:#ff85904d}
+.tb-alerts{display:flex;gap:6px;flex:none}.tb-alerts button{min-height:44px;padding:8px 12px;font-size:13px}.tb-alerts button[hidden]{display:none}
+.tb-menu{position:relative;flex:none;border:0;padding:0;margin:0;background:none}
+.tb-menu>summary{list-style:none;display:flex;align-items:center;min-height:44px;padding:0 14px;border:1px solid #ffffff24;border-radius:12px;background:#ffffff0a;color:#eadfff;cursor:pointer;font-weight:700;font-size:14px;white-space:nowrap}
+.tb-menu>summary::-webkit-details-marker{display:none}
+.tb-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:40;width:min(340px,calc(100vw - 24px));display:grid;gap:6px;padding:12px;border:1px solid #ffffff26;border-radius:16px;background:#14101c;box-shadow:0 18px 50px #000a}
+.tb-panel a,.tb-panel button,.tb-file{display:flex;align-items:center;min-height:44px;padding:8px 12px;border:1px solid #ffffff1f;border-radius:12px;background:#ffffff0a;color:#eadfff;text-decoration:none;font-size:14px;font-weight:600;box-shadow:none;text-align:left;cursor:pointer;margin:0}
+.tb-panel button[hidden]{display:none}
+.tb-panel .danger{color:var(--red);border-color:#ff85903d}
+.tb-file{flex-direction:column;align-items:flex-start;gap:6px}.tb-file input{width:100%;margin:0;font-size:12px;padding:6px}
+.tb-note{margin:4px 2px 0;font-size:12px;line-height:1.5;color:var(--mut)}
+main{padding-top:14px}
+.page-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}.page-head>div{min-width:0}.page-head h1,.page-head h2{margin-bottom:4px}.page-head .sub{margin-bottom:12px}
+.page-head>button,.menu>summary{min-height:44px}
+.csearch{margin:0 0 10px;min-height:48px}
+.fchips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.fchip{flex:none;min-height:44px;padding:8px 14px;border-radius:999px;background:#ffffff0a;border:1px solid #ffffff24;color:#eadfff;box-shadow:none;font-size:14px;white-space:nowrap}
+.fchip[aria-pressed=true]{background:#9c6aff33;border-color:#b790ff;color:#fff}
+.demo-bulk{margin:0 0 12px}.demo-bulk button{min-height:48px}
+.clients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:8px}
+.ccard{display:grid;gap:8px;padding:14px;border:1px solid #ffffff17;border-radius:18px;background:linear-gradient(145deg,#ffffff0b,#ffffff04),#121019;min-width:0}
+.ccard-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.cname{font-size:17px;line-height:1.3;overflow-wrap:anywhere}
+.chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;flex:none}
+.chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap;background:#ffffff14;color:#eadfff}
+.st-new{background:#5b9cff26;color:#a9ccff}.st-contact{background:#f6c46b26;color:#f6c46b}.st-prop{background:#9c6aff33;color:#d7c1ff}.st-won{background:#5fdca926;color:#7ee6b8}.st-lost{background:#ff859026;color:#ff9aa4}.st-warn{background:#f6c46b26;color:#f6c46b}
+.cline{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:center;font-size:14px;min-width:0}.cline .contact-link{font-size:15px}.cline small{color:var(--mut)}
+.cstat .demo-badge{margin-top:0}
+.cacts{display:flex;gap:8px;margin-top:4px}.cacts button{min-height:48px;font-size:14px;flex:1 1 0;min-width:0;padding:8px 10px;white-space:normal;line-height:1.2}.cacts button:first-child:not(:last-child):not(.more){flex:1.4 1 0}.cacts .more{flex:0 0 52px;font-size:20px;line-height:1}
+.ccard.sk i{display:block;height:16px;border-radius:8px;background:#ffffff12}.ccard.sk i:first-child{width:55%}.ccard.sk i:nth-child(2){width:35%}.ccard.sk i:nth-child(3){width:75%}
+@media(prefers-reduced-motion:no-preference){.ccard.sk i{animation:skpulse 1.2s ease-in-out infinite}@keyframes skpulse{50%{opacity:.4}}}
+.cform{padding:14px}.cform-grid,.sheet-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px}
+.sf{display:grid;gap:2px;font-size:13px;color:var(--mut);min-width:0}.sf input,.sf select{margin:0;min-height:48px}
+button.wide{width:100%;min-height:48px}
+.orphans{margin-top:24px}.orphans .page-head h2{margin:0 0 10px}
+.menu{position:relative;border:0;padding:0;margin:0;background:none}
+.menu>summary{list-style:none;display:flex;align-items:center;padding:0 16px;border-radius:12px;background:linear-gradient(120deg,#8a4de8,#6d2fd0);color:#fff;font-weight:700;cursor:pointer;border:1px solid #c9a8ff40}
+.menu>summary::-webkit-details-marker{display:none}
+.menu-panel{position:absolute;right:0;top:calc(100% + 6px);z-index:30;display:grid;gap:6px;min-width:200px;padding:10px;border:1px solid #ffffff26;border-radius:14px;background:#14101c;box-shadow:0 14px 40px #000a}
+.menu-panel button{min-height:44px}
+.orow{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #ffffff14}.orow:last-child{border:0}
+.oname{display:grid;min-width:0}.oname b{overflow-wrap:anywhere}.oname small{color:var(--mut)}
+.oacts{display:flex;gap:8px;flex:none}.oacts button{min-height:44px;min-width:56px}
+dialog.sheet{padding:0;border:1px solid #ffffff26;background:#14101c;color:var(--tx);overflow:hidden;display:none;flex-direction:column}
+dialog.sheet[open]{display:flex}
+dialog.sheet::backdrop{background:#000b}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #ffffff17}.sheet-head h2{margin:0;font-size:18px;overflow-wrap:anywhere}
+.sheet-x{min-width:44px;min-height:44px;padding:0}
+.sheet-body{overflow-y:auto;padding:8px 16px 20px;-webkit-overflow-scrolling:touch}
+.sheet-body section{padding:12px 0;border-bottom:1px solid #ffffff14}.sheet-body section:last-child{border:0}
+.sheet-body h3{margin:0 0 10px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+.sheet-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:8px 0}.sheet-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.sheet-grid button,.sheet-body button.wide,.sheet-body button.del{min-height:48px}
+.sheet-body button.del{border:1px solid #ff85903d}
+.sheet-label{margin:12px 0 0;font-size:13px;color:var(--mut)}
+.sheet-site{padding:10px 0;border-bottom:1px dashed #ffffff1f;display:grid;gap:8px}.sheet-site-name{margin:0;display:grid;gap:2px}.sheet-site-name small{color:var(--mut)}
+.steps{padding:14px}.steps h2{margin:0 0 8px}
+.step{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;margin:0 0 8px;padding:10px 14px;text-align:left;background:#ffffff0a;border:1px solid #ffffff24;color:#fff;box-shadow:none;font-size:15px}
+.step:last-child{margin-bottom:0}.step>span:nth-child(2){flex:1}
+.step:hover{background:#9c6aff22}
+@media(max-width:759px){
+ .topbar{padding:8px 12px 0;gap:8px}
+ .tb-brand b{display:none}
+ .tb-status{font-size:11.5px;padding:5px 9px;text-align:left;justify-content:flex-start}
+ main{padding-top:8px}h1{font-size:26px}
+ .grid.g3{grid-template-columns:repeat(3,minmax(0,1fr))!important}.kpi{padding:10px 12px}.kpi b{font-size:19px}.kpi small:last-child{display:none}
+ .kpi small{font-size:12px}
+ .grid{gap:8px}
+ .clients-grid{grid-template-columns:1fr}
+ dialog.sheet{position:fixed;inset:auto 0 0 0;margin:0;width:100%;max-width:100%;max-height:90dvh;border-radius:20px 20px 0 0;border-bottom:0}
+ #nav{height:calc(72px + env(safe-area-inset-bottom,0px))}
+ #nav .nav-mobile button{min-height:56px;font-size:11px}
+ #navMore{grid-template-columns:1fr;bottom:calc(80px + env(safe-area-inset-bottom,0px))}
+ #navMore button{min-height:52px;font-size:14px}
+ body{padding-bottom:calc(92px + env(safe-area-inset-bottom,0px))}
+ .site-toolbar button{min-height:48px}
+ .client-site-fields{grid-template-columns:1fr}
+}
+@media(min-width:760px){
+ .topbar{padding:14px clamp(26px,3vw,46px) 0}
+ .tb-status{flex:0 1 auto;margin-left:auto}
+ .tb-brand{display:none}
+ dialog.sheet{width:min(580px,92vw);max-height:86dvh;border-radius:20px;margin:auto}
+ .clients-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+}
+@media(max-width:380px){.sheet-grid,.sheet-grid.three{grid-template-columns:1fr}.cacts{flex-wrap:wrap}.cacts button{flex:1 1 100%}.cacts .more{flex:1 1 100%}}
+/* Menu Mais: ícone e nome na mesma linha, estilo lista */
+#navMore button{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:12px!important;text-align:left;background:#1c1628!important;border:1px solid #ffffff1a!important;color:#f3f1f8!important;padding:12px 16px!important}
+#navMore button .em{margin:0!important;display:inline-flex;width:22px}
+#navMore button.on{border-color:#9c6aff!important;background:#2a1f45!important}
 </style></head><body>
-<div style="max-width:1120px;margin:auto;padding:20px 16px 0"><div class="private-toolbar"><a href="/acesso.html">← Escolher área</a><a href="/admin">Área administrativa</a><a href="/catalogo">Catálogo dos meus projetos</a><button type="button" class="session-logout" data-logout>Sair</button><button type="button" class="session-logout" data-logout data-clear-local>Sair e apagar dados deste aparelho</button></div><p class="private-notice">Os dados e anexos são compartilhados entre aparelhos quando o indicador mostra Salvo online. Importar arquivos não publica sites na internet. “Sair” mantém a cópia local; em aparelho compartilhado, use “Sair e apagar dados deste aparelho”.</p></div><div class="cloud-shell"><section class="cloud-bar" aria-label="Armazenamento online"><div><strong>Dados e arquivos online</strong><p id="cloud-status" role="status" aria-live="polite">Conectando ao armazenamento…</p></div><div class="cloud-actions"><button type="button" id="cloud-sync">Sincronizar agora</button><button type="button" id="cloud-conflicts" hidden>Resolver diferenças</button><button type="button" id="cloud-encrypt" hidden>Ativar criptografia</button><button type="button" id="cloud-unlock" hidden>Destravar dados</button><details><summary>Cópia de segurança</summary><button type="button" id="cloud-copy">Baixar cópia deste aparelho</button><label>Restaurar cópia<input type="file" id="cloud-restore" accept=".json,application/json"></label></details></div></section></div><main id="app"></main>
+<header class="topbar"><a class="tb-brand" href="/admin" aria-label="Promisa, início"><img src="/assets/asset-1.webp" alt="" width="30" height="30"><b>Promisa</b></a><p id="cloud-status" class="tb-status" role="status" aria-live="polite">Conectando ao armazenamento…</p><div class="tb-alerts"><button type="button" id="cloud-conflicts" hidden>Resolver diferenças</button><button type="button" id="cloud-unlock" hidden>Destravar dados</button></div><details class="tb-menu"><summary>⋯ Conta</summary><div class="tb-panel"><a href="/acesso.html">← Escolher área</a><a href="/catalogo">Catálogo dos meus projetos</a><button type="button" id="cloud-sync">Sincronizar agora</button><button type="button" id="cloud-encrypt" hidden>Ativar criptografia</button><button type="button" id="cloud-copy">Cópia de segurança: baixar deste aparelho</button><label class="tb-file">Restaurar cópia<input type="file" id="cloud-restore" accept=".json,application/json"></label><button type="button" class="session-logout" data-logout>Sair</button><button type="button" class="session-logout danger" data-logout data-clear-local>Sair e apagar dados deste aparelho</button><p class="tb-note">Os dados e anexos são compartilhados entre aparelhos quando o indicador mostra Salvo online. Importar arquivos não publica sites na internet. “Sair” mantém a cópia local; em aparelho compartilhado, use “Sair e apagar dados deste aparelho”.</p></div></details></header>
+<main id="app"></main>
 <nav id="nav"></nav>
 <script src="/assets/security.js" defer></script><script src="/api/access?view=panel" defer></script><script src="/assets/private-session.js" defer></script><script src="/assets/cloud.js" defer></script></body></html>
