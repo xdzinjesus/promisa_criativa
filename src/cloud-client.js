@@ -3,6 +3,7 @@ import { uploadRecord } from './cloud-transfer.js';
 import { planSync, persistKeysSafely, encodeValue, decodeValue, digest } from './cloud-core.js';
 import { createKeyring, unlockKeyring, rewrapKeyring, seal, open, isEncryptedKey } from './vault.js';
 import { saveKeys, loadKeys } from './vault-keys.js';
+import { buildSiteEntries, canSplit, resolveSiteDownloads, withSitePairs, conflictLabels, batchOperations, siteKey, siteFilesKey } from './site-split.js';
 
 const adapter = window.promisaAdapter;
 const collections = ['sales', 'exp', 'projects'];
@@ -17,6 +18,7 @@ const uploaded = new Map();
 // Cofre: keyring = chave embrulhada guardada online; keys = chaves deste aparelho (null = travado).
 let keyring = null, keyringLoaded = false, keys = null;
 const sealed = new Map();
+const filesMemo = new Map();
 const VAULT_ENABLE_UI = false;
 const encryptButton = document.getElementById('cloud-encrypt');
 const unlockButton = document.getElementById('cloud-unlock');
@@ -74,7 +76,8 @@ function showLocked() {
   vaultButtons();
   message('Seus dados online estão protegidos. Toque em "Destravar" e digite a senha do painel.', 'error');
 }
-async function capture({ plain = false } = {}) {
+// full = cópia local: sites inteiros, como ficam no aparelho. Sem full, cada site vira dois registros online.
+async function capture({ plain = false, full = false } = {}) {
   const values = {};
   const state = structuredClone(adapter.getState());
   for (const name of collections) for (const item of state[name] || []) {
@@ -82,9 +85,15 @@ async function capture({ plain = false } = {}) {
     values[name + ':' + encodeURIComponent(item.id)] = item;
   }
   for (const [key, value] of Object.entries(state)) if (!collections.includes(key)) values['settings:' + encodeURIComponent(key)] = value;
-  for (const item of await adapter.sites()) values['sites:' + encodeURIComponent(item.id)] = item;
+  const splitEntries = {}, seenSites = new Set();
+  for (const item of await adapter.sites()) {
+    if (full || !canSplit(item)) { values['sites:' + encodeURIComponent(item.id)] = item; continue; }
+    const pair = await buildSiteEntries(item, filesMemo);
+    splitEntries[pair.files.key] = pair.files; splitEntries[pair.meta.key] = pair.meta; seenSites.add(String(item.id));
+  }
+  for (const id of [...filesMemo.keys()]) if (!seenSites.has(id)) filesMemo.delete(id);
   for (const item of await adapter.attachments()) values['attachments:' + encodeURIComponent(item.id)] = item;
-  const entries = {};
+  const entries = { ...splitEntries };
   for (const [key, value] of Object.entries(values)) {
     const encoded = await encodeValue(value);
     const text = JSON.stringify({ version: 1, value: encoded });
@@ -123,6 +132,12 @@ async function readRecord(key, expectedHash) {
   } else downloadedPlain.set(key, hash);
   if (data.version !== 1 || !Object.hasOwn(data, 'value')) throw new Error('Formato de arquivo online incompatível.');
   return validateEntry(key, decodeValue(data.value));
+}
+// Junta dados e arquivos baixados (novo formato) em sites completos; registros antigos completos seguem funcionando.
+async function resolveIncoming(incoming, records, local) {
+  return resolveSiteDownloads(incoming, records,
+    id => { const entry = local[siteFilesKey(id)]; return entry?.site ? { site: entry.site, filesHash: entry.hash } : null; },
+    (key, hash) => readRecord(key, hash));
 }
 async function applyRecords(changes) {
   if (!changes.size) return;
@@ -209,7 +224,7 @@ async function sync(force = false) {
     if (generation !== started) { schedule(); return; }
     const plan = planSync(local, baseline, manifest.records, baselinePlain);
     if (plan.conflicts.length) {
-      currentConflicts = plan.conflicts;
+      currentConflicts = withSitePairs(plan.conflicts);
       if (conflictButton) conflictButton.hidden = false;
       message('Há versões diferentes neste aparelho e online. Resolva as diferenças para continuar.', 'error');
       return;
@@ -228,6 +243,7 @@ async function sync(force = false) {
       message(`Baixando dados e arquivos: ${i + 1} de ${plan.downloads.length}…`, 'pending');
       incoming.set(key, manifest.records[key]?.hash ? await readRecord(key, manifest.records[key].hash) : undefined);
     }
+    const resolved = await resolveIncoming(incoming, manifest.records, local);
     if (generation !== started) { schedule(); return; }
     for (let i = 0; i < plan.operations.length; i++) {
       const operation = plan.operations[i];
@@ -235,7 +251,7 @@ async function sync(force = false) {
       const cached = uploaded.get(operation.hash);
       if (cached) { operation.path = cached; continue; }
       const entry = local[operation.key];
-      const blob = new Blob([entry.seal ? await entry.seal() : entry.text], { type: 'application/json' });
+      const blob = new Blob([entry.seal ? await entry.seal() : entry.load ? await entry.load() : entry.text], { type: 'application/json' });
       if (blob.size > 200 * 1024 * 1024) throw new Error('Este conjunto de arquivos ultrapassa 200 MB no envio online. Seus arquivos locais foram preservados.');
       const path = `promisa/v1/objects/${crypto.randomUUID()}.json`;
       const result = await uploadRecord(path, blob, progress => message(`Enviando ${i + 1} de ${plan.operations.length}: ${Math.round(progress.percentage)}%…`, 'pending'));
@@ -245,8 +261,7 @@ async function sync(force = false) {
     if (paused) return;
     if (plan.operations.length) {
       message('Confirmando salvamento online…', 'pending');
-      for (let offset = 0; offset < plan.operations.length; offset += 20) {
-        const batch = plan.operations.slice(offset, offset + 20);
+      for (const batch of batchOperations(plan.operations)) {
         await request('commit', { operations: batch });
         for (const operation of batch) { baseline[operation.key] = operation.hash; baselinePlain[operation.key] = local[operation.key]?.plainHash ?? null; }
         saveBaseline();
@@ -254,7 +269,7 @@ async function sync(force = false) {
     }
     // Se houve digitação durante o upload, conserva a edição e recebe o remoto no próximo ciclo.
     if (generation !== started) { schedule(); return; }
-    await applyRecords(incoming);
+    await applyRecords(resolved);
     for (const key of [...plan.downloads, ...plan.matches]) {
       baseline[key] = manifest.records[key]?.hash ?? null;
       const plain = plan.downloads.includes(key) ? downloadedPlain.get(key) : local[key]?.plainHash;
@@ -279,7 +294,7 @@ async function sync(force = false) {
   }
 }
 async function downloadLocalCopy() {
-  const entries = await capture({ plain: true });
+  const entries = await capture({ plain: true, full: true });
   const file = { format: 'promisa-cloud-local-copy', version: 1, createdAt: new Date().toISOString(), entries: Object.fromEntries(Object.entries(entries).map(([key, entry]) => [key, JSON.parse(entry.text)])) };
   const url = URL.createObjectURL(new Blob([JSON.stringify(file)], { type: 'application/json' }));
   const a = document.createElement('a'); a.href = url; a.download = `promisa-copia-local-${Date.now()}.json`; a.click();
@@ -330,7 +345,7 @@ async function restoreLocalCopy(file) {
     if (backup.format !== 'promisa-cloud-local-copy' || backup.version !== 1 || !backup.entries || Object.keys(backup.entries).length > 5000) throw new Error('Cópia local inválida.');
     const changes = new Map();
     for (const [key, entry] of Object.entries(backup.entries)) {
-      if (!/^(sales|exp|projects|settings|sites|attachments):[A-Za-z0-9%_.~-]{1,180}$/.test(key) || entry?.version !== 1) throw new Error('Cópia local inválida.');
+      if (!/^(sales|exp|projects|settings|sites|sitefiles|attachments):[A-Za-z0-9%_.~-]{1,180}$/.test(key) || entry?.version !== 1) throw new Error('Cópia local inválida.');
       changes.set(key, validateEntry(key, decodeValue(entry.value)));
     }
     if (!confirm('Restaurar os registros desta cópia no aparelho? Registros com o mesmo identificador serão substituídos.')) return;

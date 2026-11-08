@@ -1,5 +1,5 @@
 const ID = /^[A-Za-z0-9_.~-]{1,180}$/;
-const collections = new Set(['sales', 'exp', 'projects', 'sites', 'attachments']);
+const collections = new Set(['sales', 'exp', 'projects', 'sites', 'sitefiles', 'attachments']);
 const settings = new Set(['prospectNotes', 'siteHostingBaseUrl', 'plan', 'demoMessage']);
 const forbidden = new Set(['__proto__', 'constructor', 'prototype']);
 export function validId(id) { return (typeof id === 'string' || Number.isSafeInteger(id)) && ID.test(String(id)); }
@@ -43,7 +43,7 @@ export function validateRecord(kind, raw, expectedId, { encoded = false } = {}) 
     if (e.obs !== undefined && (typeof e.obs !== 'string' || e.obs.length > 2000)) throw new Error('Observações de entrega inválidas.');
   }
   if (value.paid !== undefined && typeof value.paid !== 'boolean') throw new Error('Situação de pagamento inválida.');
-  if (kind === 'sites') {
+  const checkFiles = () => {
     if (!Array.isArray(value.files) || !value.files.length || value.files.length > 5000 || !safeFilePath(value.htmlPath)) throw new Error('Arquivos do site inválidos.');
     const paths = new Set();
     for (const file of value.files) {
@@ -52,6 +52,17 @@ export function validateRecord(kind, raw, expectedId, { encoded = false } = {}) 
     }
     if (!paths.has(value.htmlPath)) throw new Error('A página principal não está no arquivo.');
     if (value.sourceZip && (!blob(value.sourceZip.blob) || typeof value.sourceZip.name !== 'string')) throw new Error('ZIP original inválido.');
+  };
+  if (kind === 'sites') {
+    // Registro online só com os dados do site: os arquivos ficam em sitefiles:<id> (identificados por filesHash).
+    if (value.filesHash !== undefined) {
+      if (typeof value.filesHash !== 'string' || !/^[a-f0-9]{64}$/.test(value.filesHash)) throw new Error('Identificação dos arquivos do site inválida.');
+      if (value.files !== undefined || value.htmlPath !== undefined || value.sourceZip !== undefined) throw new Error('Registro do site com arquivos misturados.');
+    } else checkFiles();
+  }
+  if (kind === 'sitefiles') {
+    if (Object.keys(value).some(name => !['id', 'htmlPath', 'files', 'sourceZip'].includes(name))) throw new Error('Campo inesperado nos arquivos do site.');
+    checkFiles();
   }
   if (kind === 'attachments' && !blob(value.blob)) throw new Error('Conteúdo do anexo inválido.');
   return value;
@@ -75,7 +86,7 @@ export function validateSetting(name, value) {
   return value;
 }
 export function validateEntry(key, value, options) {
-  if (typeof key !== 'string' || !/^(sales|exp|projects|settings|sites|attachments):[A-Za-z0-9%_.~-]{1,180}$/.test(key)) throw new Error('Chave de registro inválida.');
+  if (typeof key !== 'string' || !/^(sales|exp|projects|settings|sites|sitefiles|attachments):[A-Za-z0-9%_.~-]{1,180}$/.test(key)) throw new Error('Chave de registro inválida.');
   const split = key.indexOf(':'), kind = key.slice(0, split), id = decodeURIComponent(key.slice(split + 1));
   if (value === undefined) return value;
   return kind === 'settings' ? validateSetting(id, value) : validateRecord(kind, value, id, options);
