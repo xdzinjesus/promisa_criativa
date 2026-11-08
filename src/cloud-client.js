@@ -3,7 +3,7 @@ import { uploadRecord } from './cloud-transfer.js';
 import { planSync, persistKeysSafely, encodeValue, decodeValue, digest } from './cloud-core.js';
 import { createKeyring, unlockKeyring, rewrapKeyring, seal, open, isEncryptedKey } from './vault.js';
 import { saveKeys, loadKeys } from './vault-keys.js';
-import { buildSiteEntries, canSplit, resolveSiteDownloads, withSitePairs, conflictLabels, batchOperations, siteKey, siteFilesKey } from './site-split.js';
+import { buildSiteEntries, canSplit, resolveSiteDownloads, withSitePairs, conflictLabels, batchOperations, siteFilesKey } from './site-split.js';
 
 const adapter = window.promisaAdapter;
 const collections = ['sales', 'exp', 'projects'];
@@ -312,7 +312,7 @@ async function resolveConflicts(preference, dialog) {
     for (const key of currentConflicts) {
       if (preference === 'online') changes.set(key, manifest.records[key]?.hash ? await readRecord(key, manifest.records[key].hash) : undefined);
     }
-    if (preference === 'online') await applyRecords(changes);
+    if (preference === 'online') await applyRecords(await resolveIncoming(changes, manifest.records, {}));
     for (const key of currentConflicts) {
       baseline[key] = manifest.records[key]?.hash ?? null;
       const plain = preference === 'online' ? downloadedPlain.get(key) : null;
@@ -328,9 +328,9 @@ async function resolveConflicts(preference, dialog) {
 function showConflicts() {
   const dialog = document.createElement('dialog'); dialog.className = 'cloud-dialog';
   const title = document.createElement('h2'); title.textContent = 'Qual versão deseja conservar?';
-  const text = document.createElement('p'); text.textContent = `${currentConflicts.length} registro(s) foram alterados de formas diferentes. Antes de aplicar sua escolha, será baixada uma cópia dos dados e arquivos deste aparelho.`;
+  const text = document.createElement('p'); text.textContent = `${conflictLabels(currentConflicts).length} registro(s) foram alterados de formas diferentes. Antes de aplicar sua escolha, será baixada uma cópia dos dados e arquivos deste aparelho.`;
   const list = document.createElement('ul');
-  for (const key of currentConflicts) { const item = document.createElement('li'); item.textContent = key; list.append(item); }
+  for (const label of conflictLabels(currentConflicts)) { const item = document.createElement('li'); item.textContent = label; list.append(item); }
   const local = document.createElement('button'); local.textContent = 'Conservar versão deste aparelho'; local.addEventListener('click', () => resolveConflicts('local', dialog));
   const online = document.createElement('button'); online.textContent = 'Carregar versão online'; online.addEventListener('click', () => resolveConflicts('online', dialog));
   const cancel = document.createElement('button'); cancel.textContent = 'Decidir depois'; cancel.addEventListener('click', () => dialog.close());
@@ -345,7 +345,7 @@ async function restoreLocalCopy(file) {
     if (backup.format !== 'promisa-cloud-local-copy' || backup.version !== 1 || !backup.entries || Object.keys(backup.entries).length > 5000) throw new Error('Cópia local inválida.');
     const changes = new Map();
     for (const [key, entry] of Object.entries(backup.entries)) {
-      if (!/^(sales|exp|projects|settings|sites|sitefiles|attachments):[A-Za-z0-9%_.~-]{1,180}$/.test(key) || entry?.version !== 1) throw new Error('Cópia local inválida.');
+      if (!/^(sales|exp|projects|settings|sites|attachments):[A-Za-z0-9%_.~-]{1,180}$/.test(key) || entry?.version !== 1) throw new Error('Cópia local inválida.');
       changes.set(key, validateEntry(key, decodeValue(entry.value)));
     }
     if (!confirm('Restaurar os registros desta cópia no aparelho? Registros com o mesmo identificador serão substituídos.')) return;
