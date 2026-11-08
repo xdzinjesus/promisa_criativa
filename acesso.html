@@ -6,7 +6,8 @@
 <title>Acesso privado · Promisa</title>
 <link rel="icon" href="/assets/asset-1.webp"><link rel="stylesheet" href="/assets/access.css">
 <script src="/assets/vault-login.js?v=1" defer></script>
-<script src="/assets/access.js?v=4" defer></script>
+<script src="/assets/access.js?v=5" defer></script>
+<script src="/assets/passkey.js?v=1" defer></script>
 </head>
 <body class="access-page">
 <main class="access-wrap">
@@ -15,7 +16,12 @@
 <span class="eyebrow">Seu espaço de trabalho</span>
 <h1 id="login-title">Área administrativa</h1>
 <p>Entre com sua senha para acessar a gestão da Promisa e o catálogo dos seus projetos.</p>
+<div id="passkey-block" hidden>
+<button type="button" class="primary" id="passkey-login"><span>Entrar com Face ID / digital</span><span aria-hidden="true">🔐</span></button>
+<p class="passkey-or"><span>ou use a senha</span></p>
+</div>
 <form id="access-form">
+<input type="text" name="username" value="admin" autocomplete="username" hidden>
 <label for="admin-password">Senha de acesso</label>
 <div class="password-field"><input type="password" id="admin-password" name="password" autocomplete="current-password" required maxlength="256"><button type="button" id="toggle-password" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div>
 <p id="access-error" class="access-error" role="alert"></p>

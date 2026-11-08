@@ -26,6 +26,7 @@ function showChoice() {
   document.getElementById('choice-panel').hidden = false;
   document.getElementById('choice-title').focus();
 }
+window.promisaAccess = { showChoice, ready: () => gateReady };
 document.getElementById('toggle-password').addEventListener('click', event => {
   const input = document.getElementById('admin-password');
   const visible = input.type === 'password';

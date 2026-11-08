@@ -104,3 +104,5 @@ label{display:block;font-size:13px;margin-bottom:9px;font-weight:600}
 
 @media(max-width:540px){.access-choices{grid-template-columns:1fr}.access-brand{margin-bottom:24px}.private-toolbar{gap:8px}.private-toolbar .session-logout{margin-left:0}.catalog-controls select{width:100%}.cloud-actions{width:100%}.cloud-actions>button{flex:1}.cloud-bar{padding:14px}.cloud-shell{padding:0 16px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+#passkey-block{margin:22px 0 4px}#passkey-block .primary{cursor:pointer}.passkey-or{display:flex;align-items:center;gap:12px;margin:18px 0 0;color:var(--muted);font-size:13px}.passkey-or::before,.passkey-or::after{content:"";flex:1;height:1px;background:#ffffff1f}
