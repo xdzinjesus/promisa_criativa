@@ -336,3 +336,6 @@ body::before{content:'';position:fixed;inset:0 0 auto;height:96px;z-index:55;poi
 @keyframes mark-ring{0%{opacity:.85;transform:scale(.55)}100%{opacity:0;transform:scale(1.55)}}
 @keyframes mark-glow{0%,100%{opacity:1}35%{opacity:1;filter:brightness(1.8)}}
 @media(prefers-reduced-motion:reduce){.hero-art.is-popping .mark-pop,.hero-art.is-popping .mark-entry::after,.hero-art.is-popping .ambient{animation:none!important}}
+/* Toque com "Reduzir movimento": brilho suave, sem movimento */
+@keyframes mark-glow-soft{0%,100%{filter:url(#logo-knockout) drop-shadow(0 16px 24px #6f2cc66a)}40%{filter:url(#logo-knockout) drop-shadow(0 0 42px #b78cffcc) brightness(1.25)}}
+.hero-art.is-glowing .mark-image{animation:mark-glow-soft .9s ease!important}

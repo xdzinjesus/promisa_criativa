@@ -71,13 +71,22 @@
  }, { passive: true });
  art.addEventListener('pointerleave', resetArt);
  // Toque ou clique: o P gira em 3D com um pulinho e solta uma onda de luz.
- art.addEventListener('pointerdown', () => {
-  if (reduced.matches) return;
-  art.classList.remove('is-popping');
+ // Com "Reduzir movimento" ligado, só um brilho suave (sem giro).
+ let lastPop = 0;
+ const pop = () => {
+  const now = Date.now();
+  if (now - lastPop < 450) return;
+  lastPop = now;
+  const cls = reduced.matches ? 'is-glowing' : 'is-popping';
+  art.classList.remove('is-popping', 'is-glowing');
   void art.offsetWidth;
-  art.classList.add('is-popping');
- });
- art.addEventListener('animationend', event => { if (event.animationName === 'mark-pop') art.classList.remove('is-popping'); });
+  art.classList.add(cls);
+  clearTimeout(art._popTimer);
+  art._popTimer = setTimeout(() => art.classList.remove(cls), 1100);
+ };
+ art.addEventListener('pointerdown', pop);
+ art.addEventListener('touchstart', pop, { passive: true });
+ art.addEventListener('click', pop);
  let spotFrame = 0;
  $$('.spotlight').forEach(card => card.addEventListener('pointermove', event => {
   if (!fine.matches || reduced.matches || event.pointerType === 'touch' || spotFrame) return;
