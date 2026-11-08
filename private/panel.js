@@ -15,7 +15,7 @@ const STAGE_ALIASES={Prospecto:'Novo',Contatado:'Em contato',Proposta:'Proposta 
 const normalizeLeadStage=stage=>STAGE_ALIASES[stage]||(STAGES.includes(stage)?stage:'Novo');
 function migrateLeadStages(){let changed=false;for(const lead of Array.isArray(S.sales)?S.sales:[]){const stage=normalizeLeadStage(lead.stage);if(lead.stage!==stage){lead.stage=stage;changed=true}}if(changed)save();return changed}
 migrateLeadStages();
-const TABS=[['dash',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,'Início'],['clients',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M17 5a3.5 3.5 0 0 1 0 7M21.5 20c0-2.8-1.8-4.8-4-5.6"/></svg>`,'Clientes'],['mySites',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>`,'Meus sites'],['plano',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/></svg>`,'Plano'],['notes',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H4v18h16V3h-4M8 3v3h8V3zM8 11h8M8 15h8"/></svg>`,'Anotações'],['projects',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h7l2 2h9v11H3z"/><path d="M3 11h18"/></svg>`,'Projetos'],['backup',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg>`,'Backup'],['prompts2',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>`,'Prompts de IA']];
+const TABS=[['dash',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,'Início'],['clients',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M17 5a3.5 3.5 0 0 1 0 7M21.5 20c0-2.8-1.8-4.8-4-5.6"/></svg>`,'Clientes'],['mySites',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>`,'Meus sites'],['entregas',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5zM3 7.5l9 4.5 9-4.5M12 12v9"/></svg>`,'Entregas'],['plano',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/></svg>`,'Plano'],['notes',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H4v18h16V3h-4M8 3v3h8V3zM8 11h8M8 15h8"/></svg>`,'Anotações'],['projects',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h7l2 2h9v11H3z"/><path d="M3 11h18"/></svg>`,'Projetos'],['backup',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg>`,'Backup'],['prompts2',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>`,'Prompts de IA']];
 const MORE_ICON=`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>`;
 const TAB_ALIAS={vendas:'clients',sites:'clients'},tabKey=t=>TAB_ALIAS[t]||t;
 const CLIENT_FILTERS=[['all','Todos'],['Novo','Novos'],['Em contato','Em contato'],['Proposta enviada','Proposta'],['Fechado','Fechados'],['Perdido','Perdidos'],['pending','Demonstração pendente'],['briefing','Formulário respondido']];
@@ -32,13 +32,14 @@ function render(){
  document.getElementById("navMore")?.remove();
  const navBtn=t=>`<button type="button" class="${t[0]===tab?'on':''}" aria-current="${t[0]===tab?'page':'false'}" data-click="go" data-click-args="${esc(JSON.stringify([t[0]]))}"><span class="em">${t[1]}</span><span>${t[2]}</span></button>`;
  const group=(label,ids)=>`<div class="nav-group"><span class="nav-label">${label}</span>${TABS.filter(t=>ids.includes(t[0])).map(navBtn).join('')}</div>`;
- const primaryIds=['dash','clients','mySites'],moreIds=['plano','notes','projects','backup','prompts2'],moreActive=moreIds.includes(tab);
+ const primaryIds=['dash','clients','mySites'],moreIds=['entregas','plano','notes','projects','backup','prompts2'],moreActive=moreIds.includes(tab);
  $('#nav').innerHTML=`<div class="brand"><img src="${ICON}" alt=""><div><b>Promisa</b><small>Gestão de negócios digitais</small></div></div>`+group('Principal',primaryIds)+group('Mais',moreIds)+`<div class="nav-mobile">${TABS.filter(t=>primaryIds.includes(t[0])).map(navBtn).join('')}<button type="button" class="${moreActive?'on':''}" id="moreToggle" aria-expanded="false" aria-controls="navMore" data-click="toggleMoreNav" data-click-args="[]"><span class="em">${MORE_ICON}</span><span>Mais</span></button></div><div id="navMore" aria-label="Mais seções">${TABS.filter(t=>moreIds.includes(t[0])).map(navBtn).join('')}</div>`;
  document.body.appendChild(document.getElementById("navMore"));
- $('#app').innerHTML=({dash,clients,plano,mySites:personalSites,projects,notes:notesPage,backup:backupPage,prompts2:promptsPage})[tab]();
+ $('#app').innerHTML=({dash,clients,entregas:entregasPage,plano,mySites:personalSites,projects,notes:notesPage,backup:backupPage,prompts2:promptsPage})[tab]();
  if(tab==='mySites') drawClientSites();
  if(tab==='projects') drawProjects();
  if(tab==='clients') drawClients();
+ if(tab==='entregas') drawEntregas();
  if(tab==='dash') drawDemoLeads();
  if(tab==='backup') drawBackupSummary();
  window.scrollTo(0,0);
@@ -70,12 +71,13 @@ function dash(){
  <h2>Funil</h2><div class="card">${STAGES.map(st=>{const l=S.sales.filter(s=>s.stage===st);return `<div class="item"><span>${st}</span><span><b>${l.length}</b> <small>${R(sum(l))}</small></span></div>`}).join('')}</div>`;
 }
 function nextStepsHtml(){
- const nPend=demoPendingLeads().length,nCont=S.sales.filter(s=>normalizeLeadStage(s.stage)==='Em contato').length,nPay=S.sales.filter(s=>normalizeLeadStage(s.stage)==='Fechado'&&!s.paid).length;
+ const nPend=demoPendingLeads().length,nCont=S.sales.filter(s=>normalizeLeadStage(s.stage)==='Em contato').length,nPay=S.sales.filter(s=>normalizeLeadStage(s.stage)==='Fechado'&&!s.paid).length,nEnt=closedLeads().filter(l=>!entProgress(l).complete).length;
  const step=(icon,text,filter)=>`<button type="button" class="step" data-click="goClients" data-click-args="${esc(JSON.stringify([filter]))}"><span aria-hidden="true">${icon}</span><span>${text}</span><span aria-hidden="true">›</span></button>`;
  const items=[];
  if(nPend)items.push(step('📤',nPend+(nPend===1?' demonstração para enviar':' demonstrações para enviar'),'pending'));
  if(nCont)items.push(step('💬',nCont+(nCont===1?' cliente em contato':' clientes em contato'),'Em contato'));
  if(nPay)items.push(step('💰',nPay+(nPay===1?' pagamento pendente':' pagamentos pendentes'),'Fechado'));
+ if(nEnt)items.push(`<button type="button" class="step" data-click="openEntregas" data-click-args="[]"><span aria-hidden="true">📦</span><span>${nEnt+(nEnt===1?' entrega em andamento':' entregas em andamento')}</span><span aria-hidden="true">›</span></button>`);
  if(!S.sales.length)items.push(step('＋','Cadastre o seu primeiro cliente','all'));
  return `<div class="card steps"><h2>Próximos passos</h2>${items.slice(0,3).join('')||'<p class="lead-muted">Tudo em dia por enquanto ✅</p>'}</div>`;
 }
@@ -132,12 +134,13 @@ function clientCardHtml(s){
  const phone=link?`<a class="contact-link" href="${esc(link)}" target="_blank" rel="noopener">${esc(s.contact)}</a>`:'<span class="lead-muted">Sem telefone</span>';
  const siteLine=site?`<span>🌐 Site anexado <small>(${esc(site.name)})</small></span>`:'<span class="lead-muted">Sem site</span>';
  const demoLine=s.demoSentAt?demoStatusHtml(s):site?'<span class="demo-badge is-pending">⏳ Demonstração não enviada</span>':'';
+ const entP=stage==='Fechado'&&s.entrega?.plano?entProgress(s):null,entLine=entP&&entP.total?`<div class="cline"><span>📦 Entregas: ${entP.done}/${entP.total}</span></div>`:'';
  const pay=stage==='Fechado'?`<span class="chip ${s.paid?'st-won':'st-warn'}">${s.paid?'Pago':'A receber'}</span>`:'';
  let acts;
  if(site&&ready&&!s.demoSentAt)acts=`<button type="button" data-click="sendDemoOne" data-click-args="${ARGS(s.id)}">📤 Enviar demonstração</button><button type="button" class="sec" data-click="openClientSite" data-click-args="${ARGS(site.id)}">👁 Ver site</button>`;
  else if(site)acts=`<button type="button" class="sec" data-click="openClientSite" data-click-args="${ARGS(site.id)}">👁 Ver site</button>`;
  else acts=`<button type="button" data-click="openClientSheet" data-click-args="${ARGS(s.id,'site')}">＋ Anexar site</button>`;
- return `<article class="ccard"><div class="ccard-top"><b class="cname">${esc(s.client)}</b><span class="chips"><span class="chip ${STAGE_CLASS[stage]||''}">${esc(stage)}</span>${pay}</span></div><div class="cline">${phone}</div><div class="cline cstat">${siteLine}${demoLine}${briefingBadgeHtml(s)}</div><div class="cacts">${acts}<button type="button" class="sec more" aria-label="Mais opções de ${esc(s.client)}" data-click="openClientSheet" data-click-args="${ARGS(s.id)}">⋯</button></div></article>`;
+ return `<article class="ccard"><div class="ccard-top"><b class="cname">${esc(s.client)}</b><span class="chips"><span class="chip ${STAGE_CLASS[stage]||''}">${esc(stage)}</span>${pay}</span></div><div class="cline">${phone}</div><div class="cline cstat">${siteLine}${demoLine}${briefingBadgeHtml(s)}</div>${entLine}<div class="cacts">${acts}<button type="button" class="sec more" aria-label="Mais opções de ${esc(s.client)}" data-click="openClientSheet" data-click-args="${ARGS(s.id)}">⋯</button></div></article>`;
 }
 function clients(){
  activeSiteType='cliente';
@@ -212,6 +215,7 @@ function openClientSheet(id,focus){
  const siteBlocks=sites.map(site=>`<div class="sheet-site"><p class="sheet-site-name"><b>🌐 ${esc(site.name)}</b><small>${(site.files||[]).length} arquivo(s) · ${siteBytes(site)}</small>${site.featured?.on?'<span class="demo-badge is-sent">⭐ Em destaque</span>':''}</p><div class="sheet-grid"><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openClientSite',site.id)}">👁 Ver site</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openDemoLinks',site.id)}">🔗 Link de demonstração</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openFeatured',site.id)}">⭐ Destaque no site</button><button type="button" class="sec" data-click="downloadClientSiteZip" data-click-args="${ARGS(site.id)}">⬇ Baixar arquivos</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('renameClientSite',site.id)}">✏ Renomear</button></div><label class="sf"><span>Andamento</span><select data-change="saveClientSiteStatus" data-change-args="${ARGS(site.id)}" data-change-value="value">${siteStatuses(site).map(x=>`<option ${x===site.status?'selected':''}>${esc(x)}</option>`).join('')}</select></label><button type="button" class="del" data-click="sheetDo" data-click-args="${ARGS('deleteClientSite',site.id)}">Remover site</button></div>`).join('');
  const attach=`<p class="sheet-label">${sites.length?'Substituir ou anexar outro site':'Anexar site'}</p><div class="sheet-grid three"><button type="button" class="sec" data-click="attachSite" data-click-args="${ARGS(lead.id,'clientHtmlInput')}">HTML</button><button type="button" class="sec" data-click="attachSite" data-click-args="${ARGS(lead.id,'clientZipInput')}">ZIP</button><button type="button" class="sec" data-click="attachSite" data-click-args="${ARGS(lead.id,'clientFolderInput')}">Pasta</button></div>`;
  const body=`<section><h3>Dados</h3><div class="sheet-fields">${field('Nome','client','text',lead.client,'input')}${field('Telefone / WhatsApp','contact','tel',lead.contact||'','input','inputmode="tel"')}${field('Serviço','service','text',lead.service||'','input')}${field('Valor (R$)','value','number',lead.value||0,'input','inputmode="decimal" min="0"')}${field('Data','date','date',lead.date||'','change')}<label class="sf"><span>Etapa</span><select data-change="sheetSet" data-change-args="${ARGS(lead.id,'stage')}" data-change-value="value">${STAGES.map(x=>`<option ${x===stage?'selected':''}>${x}</option>`).join('')}</select></label></div><button type="button" class="sec wide" id="sheetPaid" aria-pressed="${!!lead.paid}" data-click="sheetTogglePaid" data-click-args="${ARGS(lead.id)}">${lead.paid?'✅ Pago · desfazer':'Marcar como pago'}</button></section>
+ ${stage==='Fechado'?`<section><button type="button" class="sec wide" data-click="sheetDo" data-click-args="${ARGS('openEntregas',lead.id)}">📦 Ver entregas</button></section>`:''}
  <section id="sheetSiteSec"><h3>Site</h3>${siteBlocks}${attach}</section>
  <section><h3>Demonstração</h3><p class="cline">${sites.length||lead.demoSentAt?demoStatusHtml(lead):'<span class="lead-muted">Anexe um site para poder enviar.</span>'}</p><div class="sheet-grid">${ready?`<button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('sendDemoOne',lead.id)}">📤 Enviar demonstração</button>`:''}<button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('toggleDemoSent',lead.id)}">${lead.demoSentAt?'Desmarcar envio':'Marcar como enviada'}</button></div></section>
  ${briefingSheetHtml(lead)}
@@ -536,6 +540,53 @@ function promptsPage(){
  return '';
 }
 
+let entregaFilter='open';const entregaOpen=new Map();
+const ENT_FILTERS=[['open','Em andamento'],['done','Concluídas'],['all','Todas']];
+const closedLeads=()=>(S.sales||[]).filter(s=>normalizeLeadStage(s.stage)==='Fechado');
+const entProgress=lead=>window.promisaDelivery.deliveryProgress(lead.entrega);
+const entDate=iso=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||''));return m?m[3]+'/'+m[2]+'/'+m[1]:''};
+function entEnsure(lead){if(!lead.entrega||typeof lead.entrega!=='object'||Array.isArray(lead.entrega))lead.entrega={};const e=lead.entrega;if(typeof e.plano!=='string')e.plano='';if(!e.feitos||typeof e.feitos!=='object'||Array.isArray(e.feitos))e.feitos={};if(typeof e.obs!=='string')e.obs='';return e}
+function entregaCardHtml(lead){
+ const D=window.promisaDelivery,e=lead.entrega||{},plano=Object.hasOwn(D.DELIVERY_PLANS,e.plano)?e.plano:'',feitos=e.feitos||{},prog=D.deliveryProgress({plano,feitos});
+ const select=`<label class="sf"><span>Plano contratado</span><select data-change="entregaSetPlan" data-change-args="${ARGS(lead.id)}" data-change-value="value"><option value="">Escolha o plano</option>${Object.entries(D.DELIVERY_PLANS).map(([k,v])=>`<option value="${k}"${k===plano?' selected':''}>${v}</option>`).join('')}</select></label>`;
+ let body;
+ if(!plano)body='<p class="ent-prompt">Escolha o plano para ver o que precisa ser entregue.</p>';
+ else{
+  const groups=D.deliveryGroups(plano);let open=entregaOpen.get(String(lead.id));
+  if(!open){const first=groups.find(g=>g.items.some(i=>!Object.hasOwn(feitos,i.id)));open=new Set(first?[first.id]:[])}
+  body=`<div class="ent-prog"><div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${prog.pct}" aria-label="Progresso das entregas"><i style="width:${prog.pct}%"></i></div><small><b>${prog.done} de ${prog.total}</b> feitas · ${prog.pct}%</small></div>`+groups.map(g=>{const n=g.items.filter(i=>Object.hasOwn(feitos,i.id)).length;return `<details class="ent-group" data-ent-lead="${esc(lead.id)}" data-ent-group="${esc(g.id)}"${open.has(g.id)?' open':''}><summary><span>${esc(g.label)}</span><small>${n}/${g.items.length}</small></summary>${g.items.map(i=>{const done=Object.hasOwn(feitos,i.id);return `<label class="ent-item${done?' is-done':''}"><input type="checkbox" data-ent-item="${esc(i.id)}"${done?' checked':''} data-change="entregaToggle" data-change-args="${ARGS(lead.id,i.id)}"><span>${esc(i.label)}${done&&entDate(feitos[i.id])?`<small>Feito em ${esc(entDate(feitos[i.id]))}</small>`:''}</span></label>`}).join('')}</details>`}).join('')+`<label class="sf"><span>Observações</span><textarea maxlength="2000" rows="3" placeholder="Anotações sobre esta entrega" data-change="entregaObs" data-change-args="${ARGS(lead.id)}" data-change-value="value">${esc(e.obs||'')}</textarea></label>`;
+ }
+ return `<article class="ccard ent-card" data-ent-card="${esc(lead.id)}" tabindex="-1"><div class="ccard-top"><b class="cname">${esc(lead.client)}</b><span class="chips">${prog.complete?'<span class="chip st-won">✅ Concluída</span>':''}</span></div>${select}${body}</article>`;
+}
+function entregasPage(){return `<div class="page-head"><div><h1>Entregas</h1><p class="sub">Marque o que já foi feito em cada cliente fechado.</p></div></div><div id="entChips" class="fchips" role="group" aria-label="Filtrar entregas"></div><div id="entCards" class="clients-grid" aria-live="polite"></div>`}
+function drawEntregas(){
+ const chips=document.getElementById('entChips'),box=document.getElementById('entCards');if(!box)return;
+ chips.innerHTML=ENT_FILTERS.map(([k,l])=>`<button type="button" class="fchip" aria-pressed="${entregaFilter===k}" data-click="setEntregaFilter" data-click-args="${ARGS(k)}">${l}</button>`).join('');
+ const all=closedLeads(),list=all.filter(l=>entregaFilter==='all'||(entregaFilter==='done')===entProgress(l).complete);
+ box.innerHTML=list.length?list.map(entregaCardHtml).join(''):`<div class="site-empty">${all.length?'Nenhuma entrega neste filtro.':'Nenhum cliente fechado ainda. Quando um cliente passar para “Fechado”, ele aparece aqui.'}</div>`;
+}
+function setEntregaFilter(key){if(!ENT_FILTERS.some(f=>f[0]===key))return;entregaFilter=key;drawEntregas()}
+function entRedraw(leadId,focusItem){
+ const old=[...document.querySelectorAll('[data-ent-card]')].find(c=>c.dataset.entCard===String(leadId)),lead=S.sales.find(x=>String(x.id)===String(leadId));if(!old||!lead)return;
+ const t=document.createElement('template');t.innerHTML=entregaCardHtml(lead);const card=t.content.firstElementChild;old.replaceWith(card);
+ if(focusItem)[...card.querySelectorAll('[data-ent-item]')].find(i=>i.dataset.entItem===focusItem)?.focus({preventScroll:true});
+}
+function entregaSetPlan(id,plano){
+ const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead||!(plano===''||Object.hasOwn(window.promisaDelivery.DELIVERY_PLANS,plano)))return;
+ entEnsure(lead).plano=plano;save();entregaOpen.delete(String(id));entRedraw(id);
+}
+function entregaToggle(id,itemId){
+ const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead||!window.promisaDelivery.deliveryItems(lead.entrega?.plano).some(i=>i.id===itemId))return;
+ const e=entEnsure(lead);if(Object.hasOwn(e.feitos,itemId))delete e.feitos[itemId];else e.feitos[itemId]=today();
+ save();entRedraw(id,itemId);
+}
+function entregaObs(id,value){const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;const v=String(value).slice(0,2000);if(!lead.entrega&&!v)return;entEnsure(lead).obs=v;save()}
+function openEntregas(id){
+ entregaFilter=id?'all':'open';go('entregas');
+ if(!id)return;const card=[...document.querySelectorAll('[data-ent-card]')].find(c=>c.dataset.entCard===String(id));
+ if(card){card.scrollIntoView({block:'start'});card.focus({preventScroll:true})}
+}
+document.addEventListener('toggle',ev=>{const d=ev.target;if(!(d instanceof HTMLDetailsElement)||!d.dataset.entLead)return;const k=d.dataset.entLead;let set=entregaOpen.get(k);if(!set){set=new Set();entregaOpen.set(k,set);d.parentElement.querySelectorAll('details[data-ent-group][open]').forEach(x=>set.add(x.dataset.entGroup))}d.open?set.add(d.dataset.entGroup):set.delete(d.dataset.entGroup)},true);
 function clientSiteToast(message){const el=document.createElement('div');el.textContent=message;el.style.cssText='position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:9px 15px;border-radius:20px;z-index:20;max-width:90vw';document.body.appendChild(el);setTimeout(()=>el.remove(),3500)}
 function clientSiteSlugify(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,48).replace(/-+$/g,'')}
 function uniqueClientSiteSlug(value,used){const base=clientSiteSlugify(value)||'site';let slug=base,n=2;while(used.has(slug))slug=`${base}-${n++}`;used.add(slug);return slug}
@@ -643,7 +694,7 @@ async function boundedDecompress(bytes,limit){const reader=new Blob([bytes]).str
 const previewResources=new Map();
 function releasePreview(url){for(const resource of previewResources.get(url)||[])URL.revokeObjectURL(resource);previewResources.delete(url);URL.revokeObjectURL(url)}
 async function safePreviewDocument(url){const doc=new DOMParser().parseFromString(await(await fetch(url)).text(),'text/html');doc.querySelectorAll('script,iframe,object,embed,base,meta[http-equiv],link').forEach(el=>{if(el.tagName==='LINK'&&el.rel==='stylesheet'&&el.href.startsWith('blob:'))return;el.remove()});for(const el of doc.querySelectorAll('*'))for(const attr of [...el.attributes])if(attr.name.startsWith('on'))el.removeAttribute(attr.name);const policy=document.createElement('meta');policy.httpEquiv='Content-Security-Policy';policy.content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline' blob:; font-src blob: data:; script-src 'none'; connect-src 'none'; form-action 'none'; frame-src 'none'";doc.head.prepend(policy);return '<!doctype html>'+doc.documentElement.outerHTML}
-const panelActions={openPlanPrompts,openFeatured,publishFeatured,briefingPrepare,briefingView,briefingRevoke,briefingCopyLink,sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,attachSite,pay,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
+const panelActions={openEntregas,setEntregaFilter,entregaSetPlan,entregaToggle,entregaObs,openPlanPrompts,openFeatured,publishFeatured,briefingPrepare,briefingView,briefingRevoke,briefingCopyLink,sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,attachSite,pay,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
  attachProjectZipClear:attachProjectZip,importClientFolderClear:importClientFolder,importClientHtmlClear:importClientHtml,importClientZipClear:importClientZip,runGeneralBackupClear:runGeneralBackup,
  sheetDo(name,...args){if(name==='sheetDo'||!Object.hasOwn(panelActions,name))return;closeSheet();return panelActions[name](...args)},
  pset2Calc(...args){pset2(...args);upCalc()},pickFile(id){document.getElementById(id).click()}};

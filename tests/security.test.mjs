@@ -83,3 +83,14 @@ test('demoMessage é uma configuração de texto com limite de 2000 caracteres',
   assert.throws(() => validateSetting('demoMessage', 'x'.repeat(2001)), /inválido/);
   assert.throws(() => validateSetting('demoMessage', 5), /inválido/);
 });
+
+test('entrega (checklist de clientes fechados) is validated', () => {
+  const lead = entrega => ({ id: 'l1', client: 'Cliente', ...(entrega === undefined ? {} : { entrega }) });
+  validateEntry('sales:l1', lead());
+  validateEntry('sales:l1', lead({ plano: 'premium', feitos: { aceite: '2026-11-08', 'dominio-compra': '2026-11-09T10:00:00.000Z' }, obs: 'ok' }));
+  validateEntry('sales:l1', lead({ plano: '', feitos: {}, obs: '' }));
+  for (const bad of [null, [], 'x', { plano: 'ouro' }, { plano: 5 }, { feitos: [] }, { feitos: { 'Bad Key': 'x' } }, { feitos: { aceite: 1 } },
+    { feitos: { aceite: 'x'.repeat(41) } }, { feitos: Object.fromEntries(Array.from({ length: 101 }, (_, i) => ['k' + i, 'x'])) }, { obs: 'x'.repeat(2001) }, { obs: 3 }]) {
+    assert.throws(() => validateEntry('sales:l1', lead(bad)), undefined, JSON.stringify(bad).slice(0, 60));
+  }
+});
