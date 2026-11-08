@@ -62,14 +62,22 @@
    const x = Math.max(0, Math.min(1, (pointerX - rect.left) / rect.width));
    const y = Math.max(0, Math.min(1, (pointerY - rect.top) / rect.height));
    art.classList.add('pointer-active');
-   art.style.setProperty('--rx', ((.5 - y) * 7).toFixed(2) + 'deg');
-   art.style.setProperty('--ry', ((x - .5) * 10).toFixed(2) + 'deg');
+   art.style.setProperty('--rx', ((.5 - y) * 14).toFixed(2) + 'deg');
+   art.style.setProperty('--ry', ((x - .5) * 20).toFixed(2) + 'deg');
    art.style.setProperty('--gx', (x * 100).toFixed(1) + '%');
    art.style.setProperty('--gy', (y * 100).toFixed(1) + '%');
    artFrame = 0;
   });
  }, { passive: true });
  art.addEventListener('pointerleave', resetArt);
+ // Toque ou clique: o P gira em 3D com um pulinho e solta uma onda de luz.
+ art.addEventListener('pointerdown', () => {
+  if (reduced.matches) return;
+  art.classList.remove('is-popping');
+  void art.offsetWidth;
+  art.classList.add('is-popping');
+ });
+ art.addEventListener('animationend', event => { if (event.animationName === 'mark-pop') art.classList.remove('is-popping'); });
  let spotFrame = 0;
  $$('.spotlight').forEach(card => card.addEventListener('pointermove', event => {
   if (!fine.matches || reduced.matches || event.pointerType === 'touch' || spotFrame) return;
