@@ -9,7 +9,7 @@ export const siteKey = id => 'sites:' + encodeURIComponent(String(id));
 export const siteFilesKey = id => 'sitefiles:' + encodeURIComponent(String(id));
 export const siteIdOf = key => decodeURIComponent(key.slice(key.indexOf(':') + 1));
 export const isSiteKey = key => typeof key === 'string' && (key.startsWith('sites:') || key.startsWith('sitefiles:'));
-const pairOf = key => key.startsWith('sitefiles:') ? 'sites:' + key.slice(10) : 'sitefiles:' + key.slice(6);
+export const pairOf = key => key.startsWith('sitefiles:') ? 'sites:' + key.slice(10) : 'sitefiles:' + key.slice(6);
 
 export function canSplit(site) { return Boolean(site) && typeof site === 'object' && Array.isArray(site.files); }
 
@@ -162,4 +162,38 @@ export async function resolveSiteDownloads(incoming, records, getLocal, fetchFil
     out.set(sKey, mergeSite(meta, files));
   }
   return out;
+}
+
+// Hash do registro antigo (site inteiro num só registro), igual ao que versões anteriores enviavam.
+export async function legacySiteHash(site) {
+  return digest(JSON.stringify({ version: 1, value: await encodeValue(site) }));
+}
+
+// Migração: aparelhos que sincronizaram antes da separação guardam como base o hash do registro antigo
+// (sites:<id> inteiro) e nada para sitefiles:<id>. Se o site deste aparelho continua igual a essa base,
+// ele não foi editado aqui: informa isso ao planejamento para que mudanças feitas online sejam baixadas
+// (e não tratadas como conflito, o que poderia levar a escolher a versão antiga e perder trabalho).
+// Devolve cópias de baseline/baselinePlain só para o planejamento; nada é gravado.
+// memo (Map hash dos dados -> hash antigo) evita recalcular a cada verificação.
+export async function legacyBaselineHints(local, baseline, baselinePlain, remote, memo = new Map(), hashOf = legacySiteHash) {
+  const base = { ...baseline }, plain = { ...(baselinePlain || {}) };
+  for (const [key, entry] of Object.entries(local)) {
+    if (!key.startsWith('sites:') || !entry?.site) continue;
+    const fKey = pairOf(key), files = local[fKey];
+    if (!files || !Object.hasOwn(baseline, key) || !baseline[key] || Object.hasOwn(baseline, fKey)) continue;
+    let legacy = memo.get(entry.hash);
+    if (!legacy) { legacy = await hashOf(entry.site); memo.set(entry.hash, legacy); }
+    if (legacy !== baseline[key]) continue; // editado neste aparelho desde a última sincronização
+    plain[key] = entry.plainHash;
+    if (remote?.[fKey]) base[fKey] = files.hash;
+  }
+  return { baseline: base, baselinePlain: plain };
+}
+
+// Enquanto um registro do site é baixado, não envia o registro irmão no mesmo ciclo: o envio usaria a
+// versão antiga deste aparelho junto da nova baixada. O próximo ciclo envia o par já consistente.
+export function deferSitePairs(plan) {
+  const downloads = new Set(plan.downloads);
+  const operations = plan.operations.filter(op => !(isSiteKey(op.key) && downloads.has(pairOf(op.key))));
+  return { ...plan, operations, deferred: plan.operations.length - operations.length };
 }

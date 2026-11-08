@@ -3,7 +3,7 @@ import { uploadRecord } from './cloud-transfer.js';
 import { planSync, persistKeysSafely, encodeValue, decodeValue, digest } from './cloud-core.js';
 import { createKeyring, unlockKeyring, rewrapKeyring, seal, open, isEncryptedKey } from './vault.js';
 import { saveKeys, loadKeys } from './vault-keys.js';
-import { buildSiteEntries, canSplit, resolveSiteDownloads, withSitePairs, conflictLabels, batchOperations, siteFilesKey } from './site-split.js';
+import { buildSiteEntries, canSplit, resolveSiteDownloads, withSitePairs, conflictLabels, batchOperations, siteFilesKey, legacyBaselineHints, deferSitePairs } from './site-split.js';
 
 const adapter = window.promisaAdapter;
 const collections = ['sales', 'exp', 'projects'];
@@ -18,7 +18,7 @@ const uploaded = new Map();
 // Cofre: keyring = chave embrulhada guardada online; keys = chaves deste aparelho (null = travado).
 let keyring = null, keyringLoaded = false, keys = null;
 const sealed = new Map();
-const filesMemo = new Map();
+const filesMemo = new Map(), legacyMemo = new Map();
 const VAULT_ENABLE_UI = false;
 const encryptButton = document.getElementById('cloud-encrypt');
 const unlockButton = document.getElementById('cloud-unlock');
@@ -222,7 +222,9 @@ async function sync(force = false) {
     }
     const local = await capture();
     if (generation !== started) { schedule(); return; }
-    const plan = planSync(local, baseline, manifest.records, baselinePlain);
+    const hints = await legacyBaselineHints(local, baseline, baselinePlain, manifest.records, legacyMemo);
+    if (generation !== started) { schedule(); return; }
+    const plan = deferSitePairs(planSync(local, hints.baseline, manifest.records, hints.baselinePlain));
     if (plan.conflicts.length) {
       currentConflicts = withSitePairs(plan.conflicts);
       if (conflictButton) conflictButton.hidden = false;
@@ -277,9 +279,11 @@ async function sync(force = false) {
     }
     downloadedPlain.clear();
     saveBaseline();
-    dirty = false;
     completedOnce = true;
     uploaded.clear();
+    // Registro de site adiado (o irmão acabou de ser baixado): envia no próximo ciclo.
+    if (plan.deferred) { dirty = true; schedule(); return; }
+    dirty = false;
     message(savedMessage(), 'saved');
   } catch (error) {
     if (error.code === 'LOCKED') showLocked();

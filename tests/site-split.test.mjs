@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { planSync, decodeValue, digest } from '../src/cloud-core.js';
-import { buildSiteEntries, splitSite, mergeSite, resolveSiteDownloads, batchOperations, withSitePairs, conflictLabels, filesFingerprint } from '../src/site-split.js';
+import { buildSiteEntries, splitSite, mergeSite, resolveSiteDownloads, batchOperations, withSitePairs, conflictLabels, filesFingerprint, legacySiteHash, legacyBaselineHints, deferSitePairs } from '../src/site-split.js';
 import { validateEntry } from '../src/data-validation.js';
-import { validateStoredRecord, validKey } from '../lib/cloud-store.js';
+import { validateStoredRecord, validKey, verifyObject, checkSitePairs } from '../lib/cloud-store.js';
 import { pickSiteRecord } from '../lib/site-cache.js';
 import { isEncryptedKey } from '../src/vault.js';
 
@@ -200,4 +200,71 @@ test('split e merge são inversos', () => {
   const s = site({ sourceZip: { name: 'a.zip', blob: new Blob(['x']) } });
   const { meta, filesPart } = splitSite(s);
   assert.deepEqual(mergeSite({ ...meta, filesHash: 'x' }, filesPart), s);
+});
+
+// Aparelho que sincronizou antes da separação: baseline = hash do registro antigo completo.
+async function legacyDevice(localSite, baseSite = localSite) {
+  const pair = await buildSiteEntries(localSite, new Map());
+  const old = await legacySiteHash(baseSite);
+  return { pair, old, local: { 'sites:s1': pair.meta, 'sitefiles:s1': pair.files }, baseline: { 'sites:s1': old }, plain: { 'sites:s1': old } };
+}
+const plan = async (dev, remote) => {
+  const hints = await legacyBaselineHints(dev.local, dev.baseline, dev.plain, remote);
+  return deferSitePairs(planSync(dev.local, hints.baseline, remote, hints.baselinePlain));
+};
+
+test('migração: aparelho antigo sem edição baixa a mudança feita online (sem conflito)', async () => {
+  const dev = await legacyDevice(site());
+  const remote = await remoteOf(site({ status: 'Entregue' }));
+  const p = await plan(dev, remote.records);
+  assert.deepEqual(p.conflicts, []);
+  assert.deepEqual(p.downloads, ['sites:s1']);
+  assert.deepEqual(p.operations, []);
+  const out = await resolveSiteDownloads(new Map([['sites:s1', remote.store['sites:s1']]]), remote.records, () => ({ site: site(), filesHash: dev.pair.files.hash }), fetcher({}));
+  assert.equal(out.get('sites:s1').status, 'Entregue');
+  // arquivos mudados online também são baixados, sem conflito
+  const changed = site(); changed.files[0].data = '<html>novo';
+  const r2 = await remoteOf(changed);
+  const p2 = await plan(dev, r2.records);
+  assert.deepEqual(p2.conflicts, []); assert.deepEqual(p2.downloads.sort(), ['sitefiles:s1', 'sites:s1']);
+  // site apagado online: remove localmente, sem conflito
+  const p3 = await plan(dev, { 'sites:s1': { hash: null }, 'sitefiles:s1': { hash: null } });
+  assert.deepEqual(p3.conflicts, []); assert.deepEqual(p3.downloads.sort(), ['sitefiles:s1', 'sites:s1']);
+});
+
+test('migração: remoto antigo intacto envia os dois; edição local real continua sendo conflito', async () => {
+  const dev = await legacyDevice(site());
+  const p = await plan(dev, { 'sites:s1': { hash: dev.old } });
+  assert.deepEqual(p.conflicts, []);
+  assert.deepEqual(p.operations.map(o => o.key).sort(), ['sitefiles:s1', 'sites:s1']);
+  assert.equal(p.operations.find(o => o.key === 'sites:s1').baseHash, dev.old);
+  const edited = await legacyDevice(site({ status: 'Editado aqui' }), site());
+  const remote = await remoteOf(site({ status: 'Entregue' }));
+  const c = await plan(edited, remote.records);
+  assert.deepEqual(c.conflicts, ['sites:s1']);
+});
+
+test('migração: remoto antigo alterado por versão antiga baixa os dados e adia o envio dos arquivos velhos', async () => {
+  const dev = await legacyDevice(site());
+  const p = await plan(dev, { 'sites:s1': { hash: 'd'.repeat(64) } });
+  assert.deepEqual(p.conflicts, []);
+  assert.deepEqual(p.downloads, ['sites:s1']);
+  assert.deepEqual(p.operations, []);
+  assert.equal(p.deferred, 1);
+});
+
+test('servidor recusa dados de site sem os arquivos correspondentes', async () => {
+  const pair = await buildSiteEntries(site(), new Map());
+  const text = pair.meta.text;
+  const read = async () => ({ stream: new Blob([text]).stream(), blob: { size: text.length, contentType: 'application/json', url: 'https://t.private.blob.vercel-storage.com/o.json' } });
+  const info = await verifyObject({ key: 'sites:s1', path: 'o.json', hash: pair.meta.hash }, read);
+  assert.equal(info.filesHash, pair.files.hash);
+  const hashes = new Map([['sites:s1', info.filesHash]]);
+  checkSitePairs({ 'sites:s1': { hash: pair.meta.hash }, 'sitefiles:s1': { hash: pair.files.hash } }, hashes);
+  assert.throws(() => checkSitePairs({ 'sites:s1': { hash: pair.meta.hash } }, hashes), e => e.status === 409);
+  assert.throws(() => checkSitePairs({ 'sites:s1': { hash: pair.meta.hash }, 'sitefiles:s1': { hash: 'e'.repeat(64) } }, hashes), e => e.status === 409);
+  // registro antigo completo não exige par
+  const legacyText = JSON.stringify({ version: 1, value: JSON.parse(JSON.stringify(site())) });
+  const r2 = async () => ({ stream: new Blob([legacyText]).stream(), blob: { size: legacyText.length, contentType: 'application/json', url: 'https://t.private.blob.vercel-storage.com/o.json' } });
+  assert.equal((await verifyObject({ key: 'sites:s1', path: 'o.json', hash: await digest(legacyText) }, r2)).filesHash, null);
 });
