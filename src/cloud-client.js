@@ -15,6 +15,7 @@ const uploaded = new Map();
 // Cofre: keyring = chave embrulhada guardada online; keys = chaves deste aparelho (null = travado).
 let keyring = null, keyringLoaded = false, keys = null;
 const sealed = new Map();
+const VAULT_ENABLE_UI = false;
 const encryptButton = document.getElementById('cloud-encrypt');
 const unlockButton = document.getElementById('cloud-unlock');
 const status = document.getElementById('cloud-status');
@@ -46,7 +47,8 @@ async function request(action, body) {
 }
 const savedMessage = () => 'Salvo online · ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + (keys ? ' · 🔒 protegido' : '');
 function vaultButtons() {
-  if (encryptButton) encryptButton.hidden = !(storageReady && keyringLoaded && !keyring);
+  // Ativação liberada só depois das correções de migração (revisão: H1/H2).
+  if (encryptButton) encryptButton.hidden = !(VAULT_ENABLE_UI && storageReady && keyringLoaded && !keyring);
   if (unlockButton) unlockButton.hidden = !(keyringLoaded && keyring && !keys);
 }
 async function loadVault(reload = false) {
