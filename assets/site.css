@@ -298,7 +298,7 @@ body::before{content:'';position:fixed;inset:0 0 auto;height:96px;z-index:55;poi
 .privacy-copy h1+p{font-size:.88rem;color:#a99dbb;margin-bottom:34px;padding-bottom:28px;border-bottom:1px solid var(--line)}
 .privacy-copy h2{font-size:clamp(1.15rem,2.2vw,1.45rem);letter-spacing:-.03em;margin:38px 0 12px;color:var(--text)}
 .privacy-copy p{line-height:1.85;font-size:.98rem;margin-bottom:14px}
-.privacy-copy p a,.privacy-copy p .text-link{display:inline;min-height:0;color:var(--pale);font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.privacy-copy p a,.privacy-copy li a,.privacy-copy p .text-link{display:inline;min-height:0;color:var(--pale);font-weight:700;text-decoration:underline;text-underline-offset:3px}
 .privacy-copy p a:hover{color:#fff}
 
 /* 404 */
@@ -313,3 +313,10 @@ body::before{content:'';position:fixed;inset:0 0 auto;height:96px;z-index:55;poi
 .notfound-actions .text-link{justify-content:center}
 .notfound-actions .text-link:hover{color:#fff}
 @media(max-width:700px){.privacy-copy{width:calc(100% - 40px)}}
+
+.privacy-copy .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 0 18px;border:1px solid var(--line);border-radius:14px;max-width:100%}
+.privacy-copy table{border-collapse:collapse;width:100%;min-width:620px;font-size:.88rem;line-height:1.55}
+.privacy-copy th,.privacy-copy td{text-align:left;vertical-align:top;padding:10px 12px;border-bottom:1px solid var(--line)}
+.privacy-copy th{color:var(--text);font-weight:700;background:#ffffff08}
+.privacy-copy tr:last-child td{border-bottom:0}
+.privacy-copy ul{margin:0 0 14px 20px;line-height:1.8;font-size:.98rem}
