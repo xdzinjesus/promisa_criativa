@@ -156,13 +156,15 @@ Use a identidade visual definida (cores, fontes e logo) — se ainda não houver
 2. sobre.html: história em linha do tempo animada, missão/valores, equipe, diferenciais.
 3. servicos.html: serviços detalhados, cada um com benefícios, como funciona e FAQ.
 4. catalogo.html: CATÁLOGO COM PEDIDO PELO WHATSAPP — produtos em array JS (nome, categoria, preço opcional, foto, descrição, variações); filtros, busca, carrinho lateral (adicionar, quantidade, remover, total), salvo no localStorage; botão "Enviar pedido pelo WhatsApp" que monta a mensagem com itens, quantidades e observações.
-5. agendamento.html: AGENDAMENTO ONLINE via WhatsApp — o visitante escolhe serviço, data (calendário próprio em JS bloqueando domingos/feriados configuráveis e datas passadas), horário (grade de horários configurável em um objeto JS) e informa nome/telefone; ao confirmar, abre o WhatsApp com a solicitação organizada. Deixe claro que o horário será confirmado pela empresa.
-6. depoimentos.html: depoimentos em cards e carrossel acessível, com espaço para avaliações do Google (texto de exemplo marcado para substituição) e botão "Avalie-nos no Google".
-7. promocoes.html: página de campanha com contagem regressiva configurável, oferta em destaque, condições e CTA — pensada para ser usada em anúncios e no Instagram.
-8. galeria.html: galeria com filtros e lightbox acessível.
-9. contato.html: formulário de orçamento que abre o WhatsApp, mapa, horários, redes, e e-mail profissional (contato@DOMINIO).
-10. privacidade.html: política curta (sem coleta de dados; contato via WhatsApp; sem cookies de rastreamento).
+5. depoimentos.html: depoimentos em cards e carrossel acessível, com espaço para avaliações do Google (texto de exemplo marcado para substituição) e botão "Avalie-nos no Google".
+6. promocoes.html: página de campanha com contagem regressiva configurável, oferta em destaque, condições e CTA — pensada para ser usada em anúncios e no Instagram.
+7. galeria.html: galeria com filtros e lightbox acessível.
+8. contato.html: formulário de orçamento que abre o WhatsApp, mapa, horários, redes, e e-mail profissional (contato@DOMINIO).
+9. privacidade.html: política curta (sem coleta de dados; contato via WhatsApp; sem cookies de rastreamento).
 Além disso: 404.html personalizada, sitemap.xml e robots.txt.
+
+## CONTEÚDO EDITÁVEL (para a área administrativa)
+Guarde todo o conteúdo que o cliente pode querer mudar (textos das seções, serviços, produtos do catálogo com preços e fotos, depoimentos, promoções, horários e contatos) em arquivos JSON separados na pasta content/ (ex.: content/servicos.json, content/catalogo.json, content/depoimentos.json, content/promocoes.json, content/empresa.json), carregados pelo JavaScript das páginas, com o mesmo conteúdo também presente no HTML como fallback para SEO. Assim a área administrativa poderá editar esses arquivos sem mexer no código.
 
 ## ANIMAÇÕES PREMIUM
 Transições de entrada encadeadas (stagger) ao rolar, cabeçalho que muda ao rolar, contadores animados, hover magnético nos botões principais, cursor normal (não substituir o cursor), brilho sutil em gradiente no fundo; tudo com transform/opacity, 60 fps no celular, e desligado com prefers-reduced-motion.
@@ -174,7 +176,7 @@ ${TECH}
 
 ${QUALITY}
 
-${OUTPUT_MULTI('index.html, sobre.html, servicos.html, catalogo.html, agendamento.html, depoimentos.html, promocoes.html, galeria.html, contato.html, privacidade.html, 404.html, sitemap.xml, robots.txt')}`
+${OUTPUT_MULTI('index.html, sobre.html, servicos.html, catalogo.html, depoimentos.html, promocoes.html, galeria.html, contato.html, privacidade.html, 404.html, sitemap.xml, robots.txt')}`
     },
     {
       title: '3) Cartão de visita digital + QR Code',
