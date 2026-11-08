@@ -13,10 +13,12 @@
     "node": "22.x"
   },
   "dependencies": {
+    "@simplewebauthn/server": "14.1.0",
     "@vercel/blob": "^2.8.2"
   },
   "devDependencies": {
     "@playwright/test": "1.58.2",
+    "@simplewebauthn/browser": "14.0.0",
     "esbuild": "^0.28.2"
   },
   "overrides": {
