@@ -27,6 +27,9 @@ PLANEJAR → DISTRIBUIR → IMPLEMENTAR → TESTAR → REVISAR → HANDOFF → C
 - `ui-ux-pro-max`: interfaces, design system, acessibilidade e responsividade.
 - REA (MCP `rea` e skill `rea:reverse-engineer-anything`): apenas em alvos que o usuário possui ou tem autorização para analisar.
 
+## Discord
+- Antes de mexer em qualquer coisa do Discord (`api/discord.js`, `lib/discord*.js`, `src/discord-panel.js`), leia `docs/DISCORD.md`.
+
 ## Segurança do projeto
 - Preserve dados, configurações e funcionalidades existentes. Nunca exclua dados nem altere credenciais ou `.env*` sem autorização.
 - Não instale ferramentas nem execute scripts externos sem verificar a origem.
