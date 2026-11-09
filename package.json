@@ -19,7 +19,7 @@
     "@vercel/functions": "3.10.2"
   },
   "devDependencies": {
-    "@playwright/test": "1.58.2",
+    "@playwright/test": "1.65.0",
     "@simplewebauthn/browser": "14.0.0",
     "esbuild": "^0.28.2"
   },
