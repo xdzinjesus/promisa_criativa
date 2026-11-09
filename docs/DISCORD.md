@@ -29,6 +29,7 @@ Um app do Discord com *Interactions Endpoint URL* manda **todas** as interaçõe
 - `lib/discord-commands.js`: comandos `/` (`COMMANDS` e `plan()`) e os botões, seletores e formulários da central (`custom_id` com prefixo `pc:`, tratados em `planComponent()`).
 - `lib/discord-data.js`: leitura dos dados (manifest, sites, clientes) com limite de leituras.
 - `lib/discord-releases.js`: histórico de atualizações publicado no canal `📜・historico`. **A cada PR aprovado, acrescente uma entrada.**
+- `lib/instagram-report.js` (textos do Instagram no dashboard, no resumo e na semana) e `lib/instagram-*.js` (API, histórico, atualização): leia `docs/INSTAGRAM.md`. O cron do resumo atualiza o Instagram antes de montar o resumo (no máximo 40 s, e mesmo sem Discord configurado); se demorar ou falhar, o resumo sai do mesmo jeito.
 - `lib/visitor.js`: aparelho, navegador e cidade aproximada de quem abre uma demonstração. **Nunca** usar nem guardar o IP.
 - `src/discord-panel.js`: diálogo "💬 Discord" no painel (Criar canais, mensagem de teste, atualizar dashboard).
 - `tests/discord.test.mjs` e `tests/visitor.test.mjs`: testes com `fetch` simulado, sem chamar o Discord de verdade.
@@ -47,14 +48,14 @@ Sem elas, tudo vira "não faz nada" em silêncio.
 ## Canais atuais
 
 - 📊 **PAINEL**:
-  - `📊・dashboard`: só leitura; uma mensagem editada no lugar.
-  - `☀️・resumo-do-dia`: só leitura.
+  - `📊・dashboard`: só leitura; uma mensagem editada no lugar. Quando `INSTAGRAM_TOKEN` está configurado, ganha o quadro **📈 Instagram** (seguidores, meta, clientes do mês, último post).
+  - `☀️・resumo-do-dia`: só leitura. Ganha a linha do Instagram e, na segunda-feira, o "📈 Semana no Instagram".
 - 💼 **CLIENTES**: `🆕・novos-clientes`, `👀・demonstracoes`, `🩺・diagnosticos`.
 - 🌐 **SITES**:
   - `🏗️・sites-em-criacao`: do robô do Codex ou do Promisa Code; o robô Promisa não posta aqui.
   - `🚀・sites-no-ar`.
 - ⚙️ **SISTEMA**:
-  - `🚨・alertas`.
+  - `🚨・alertas` (inclui: acesso ao Instagram expirou, Instagram sem atualizar há 2 dias).
   - `🎛️・central`: botões.
   - `🧠・claude-code`: mensagem fixada com o guia para ligar o Claude Code e o Codex em qualquer máquina (`docs/LIGAR-AGENTE.md`). O robô só posta a mensagem fixada; a conversa é com o robô do PC.
   - `📜・historico`: só leitura.
