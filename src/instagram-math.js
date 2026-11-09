@@ -53,7 +53,8 @@ export function projectFollowers({ daily, goal, today, window = 14 }) {
   const inside = list.filter(item => item.date >= limit);
   const first = inside[0];
   const daysLeft = daysBetween(today, deadline);
-  const needed = daysLeft > 0 ? base.remaining / daysLeft : null;
+  // Prazo hoje conta como 1 dia restante; prazo vencido não tem ritmo necessário.
+  const needed = daysLeft >= 0 ? base.remaining / Math.max(1, daysLeft) : null;
   if (!first || first === last) return { ...base, status: 'nodata', daysLeft, perDayNeeded: needed };
   const perDayActual = (last.followers - first.followers) / Math.max(1, daysBetween(first.date, last.date));
   let etaDate = null;
@@ -71,7 +72,7 @@ export function projectionText(p) {
   if (p.status === 'nodata') return 'Ainda não há dias suficientes para calcular o ritmo. Volte amanhã.';
   const needed = p.perDayNeeded === null ? null : formatPerDay(p.perDayNeeded);
   const doing = formatPerDay(p.perDayActual);
-  if (p.daysLeft <= 0) return `O prazo (${formatDayLong(p.deadline)}) já passou e faltam ${formatInt(p.remaining)} seguidores. Defina um novo prazo.`;
+  if (p.daysLeft < 0) return `O prazo (${formatDayLong(p.deadline)}) já passou e faltam ${formatInt(p.remaining)} seguidores. Defina um novo prazo.`;
   if (p.etaDate) {
     const eta = p.etaDate <= p.deadline ? `No ritmo atual você chega a ${formatInt(p.target)} em ${formatDayShort(p.etaDate)}` : `No ritmo atual você chega a ${formatInt(p.target)} só em ${formatDayLong(p.etaDate)} (depois do prazo)`;
     return `${eta} — precisa de ${needed}/dia, está fazendo ${doing}/dia.`;

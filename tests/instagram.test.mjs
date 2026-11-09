@@ -7,7 +7,7 @@ import { createInstagramService, mergeSync, mergeFailure } from '../lib/instagra
 import { createInstagramHandler, cleanGoals, cleanCount } from '../lib/instagram-handler.js';
 import { buildInstagramEmbed, buildInstagramSummaryField, buildWeeklyEmbed, isMonday } from '../lib/instagram-report.js';
 import { createEvents, buildDashboard, buildSummary } from '../lib/discord-events.js';
-import { createDiscordHandler } from '../lib/discord-handler.js';
+import { createDiscordHandler, boundedInstagramCron } from '../lib/discord-handler.js';
 import { buildPayload } from '../lib/discord.js';
 import { validateRecord, validateState } from '../src/data-validation.js';
 import { projectFollowers, projectionText, followersDelta, clientsProgress, countInstagramLeads, leadMonth, dayKey, ORIGENS } from '../src/instagram-math.js';
@@ -611,4 +611,79 @@ test('validação: origem aceita só os valores combinados (cadastros antigos se
 test('dayKey usa o fuso de São Paulo', () => {
   assert.equal(dayKey(Date.UTC(2026, 10, 9, 2, 59)), '2026-11-08');
   assert.equal(dayKey(Date.UTC(2026, 10, 9, 3, 0)), '2026-11-09');
+});
+
+// ---------- revisão: regras conferidas na documentação oficial e casos de borda ----------
+test('API: versão atual da Graph API do Instagram (v27.0) e renovação sem versão no caminho', async () => {
+  assert.equal(API_VERSION, 'v27.0');
+  const fake = fakeInstagram();
+  const client = createInstagramClient({ fetch: fake.fetch });
+  await client.me(TOKEN);
+  await client.refresh(TOKEN);
+  assert.equal(new URL(fake.calls[0].url).origin, 'https://graph.instagram.com');
+  assert.equal(fake.calls[0].path, '/v27.0/me');
+  assert.equal(fake.calls[1].path, '/refresh_access_token');
+  assert.equal(fake.calls[1].params.grant_type, 'ig_refresh_token');
+});
+
+test('insights: erro do post inteiro (não de métrica) não marca métricas como recusadas e para cedo', async () => {
+  const calls = [];
+  const fetch = async url => {
+    const u = new URL(url); calls.push(u.searchParams.get('metric'));
+    return { status: 400, ok: false, json: async () => ({ error: { message: '(#10) Media Posted Before Business Account Conversion', code: 10 } }) };
+  };
+  const skip = new Set();
+  const out = await createInstagramClient({ fetch }).insights(TOKEN, 'old', { skip, prefix: 'IMAGE:' });
+  assert.deepEqual(out, {});
+  assert.equal(skip.size, 0, 'outros posts do mesmo tipo continuam pedindo as métricas');
+  assert.equal(calls.length, 2, 'pedido completo + 1 tentativa, depois desiste');
+});
+
+test('insights: stop() interrompe as tentativas uma a uma quando o tempo acaba', async () => {
+  const fake = fakeInstagram({ failInsights: (id, metrics) => metrics.length > 1 });
+  const out = await createInstagramClient({ fetch: fake.fetch }).insights(TOKEN, 'm1', { stop: () => true });
+  assert.deepEqual(out, {});
+  assert.equal(fake.calls.length, 1);
+});
+
+test('cron: Instagram demorado ou com erro não segura o resumo do Discord; roda mesmo sem Discord configurado', async () => {
+  assert.equal(await boundedInstagramCron({ instagramCron: () => new Promise(() => {}) }, 20), undefined);
+  assert.equal(await boundedInstagramCron({ instagramCron: async () => { throw new Error('x'); } }, 1000), undefined);
+  assert.equal(await boundedInstagramCron({ instagramCron: () => { throw new Error('sync'); } }, 1000), undefined);
+  assert.equal(await boundedInstagramCron({}, 1000), undefined);
+  const history = { daily: [] };
+  assert.equal(await boundedInstagramCron({ instagramCron: async () => history }, 1000), history);
+
+  let ran = 0, notified = 0;
+  const discord = { configured: () => false, notify: async () => { notified++; return true; } };
+  const events = { instagramCron: async () => { ran++; return null; }, summary: async () => ({ title: 'x' }), cronFailed: async () => {} };
+  const handler = createDiscordHandler({ discord, commands: {}, events, authorized: async () => false, sameOrigin: () => true, env: { CRON_SECRET: 'c'.repeat(40) }, log: quietLog() });
+  const req = Readable.from([]); Object.assign(req, { method: 'GET', headers: { authorization: 'Bearer ' + 'c'.repeat(40) }, query: { cron: 'summary' }, url: '/api/discord?cron=summary' });
+  const res = await call(handler, req);
+  assert.equal(res.statusCode, 200);
+  assert.equal(ran, 1, 'o histórico diário de seguidores não depende do Discord');
+  assert.equal(notified, 0);
+
+  // Instagram travado: o resumo sai mesmo assim
+  const notes = [];
+  const slow = { instagramCron: () => new Promise(() => {}), readData: async opts => ({ ...opts }), summary: async shared => ({ title: 'resumo', shared }), cronFailed: async () => {} };
+  const okDiscord = { configured: () => true, notify: async (kind, message) => { notes.push(message); return true; } };
+  const h2 = createDiscordHandler({ discord: okDiscord, commands: {}, events: slow, authorized: async () => false, sameOrigin: () => true, env: { CRON_SECRET: 'c'.repeat(40) }, log: quietLog(), instagramCronMs: 20 });
+  const req2 = Readable.from([]); Object.assign(req2, { method: 'GET', headers: { authorization: 'Bearer ' + 'c'.repeat(40) }, query: { cron: 'summary' }, url: '/api/discord?cron=summary' });
+  const res2 = await call(h2, req2);
+  assert.equal(res2.statusCode, 200);
+  assert.equal(notes[0].title, 'resumo');
+  assert.equal(notes[0].shared.instagram, undefined, 'sem histórico pronto: o resumo relê do Blob');
+});
+
+test('meta: prazo hoje ainda conta (1 dia), prazo vencido não', () => {
+  const today = '2026-11-09';
+  const daily = series('2026-10-27', ...Array.from({ length: 14 }, (_, i) => 1000 + i * 10));
+  const p = projectFollowers({ daily, goal: { target: 1200, deadline: today }, today });
+  assert.equal(p.daysLeft, 0);
+  assert.equal(p.perDayNeeded, p.remaining);
+  assert.doesNotMatch(projectionText(p), /já passou/);
+  const late = projectFollowers({ daily, goal: { target: 1200, deadline: '2026-11-08' }, today });
+  assert.equal(late.perDayNeeded, null);
+  assert.match(projectionText(late), /já passou/);
 });

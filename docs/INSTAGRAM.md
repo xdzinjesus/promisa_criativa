@@ -11,18 +11,23 @@ Seu Instagram já é **Profissional** e **não** está ligado a uma página do F
 ## Passo 1 – Criar o aplicativo na Meta
 1. Abra https://developers.facebook.com/apps e entre.
 2. Se pedir, aceite os termos de desenvolvedor e confirme seu cadastro.
-3. Toque em **Criar app** (*Create app*).
-4. Nome: `Promisa Painel`. Escolha o tipo **Business** (Empresa) e conclua.
+3. Toque em **Criar app** (*Create app*), no canto de cima à direita.
+4. Nome: `Promisa Painel` e seu e-mail de contato.
+5. Em **Caso de uso** (*Use case*), escolha **Outro** (*Other*) e toque em **Avançar** (*Next*).
+6. Em **Tipo de app** (*App type*), escolha **Empresa** (*Business*) e toque em **Avançar**. (Só app do tipo Empresa pode usar o Instagram.)
+7. Ele pode pedir para "conectar um negócio" (*Connect a business*): pode pular agora. Isso só é exigido para publicar o app para o público, e aqui ele fica só para você.
 
 ## Passo 2 – Ligar o produto Instagram
-1. Dentro do app, no menu da esquerda, toque em **Adicionar produto** e escolha **Instagram**.
-2. Toque em **API setup with Instagram login** (Configuração da API com login do Instagram).
+1. No painel do app, role a lista de produtos até **Instagram** e toque em **Configurar** (*Set up*).
+2. A opção **API setup with Instagram login** (Configuração da API com login do Instagram) entra sozinha no menu da esquerda, em **Instagram**. É ela que usamos (não escolha a opção "with Facebook login").
 
 ## Passo 3 – Adicionar sua conta e gerar o token
-1. Na mesma tela, em **Generate access tokens**, toque em **Add account** e entre com o Instagram da Promisa. Se o Instagram pedir, aceite ser "testador": abra o aplicativo do Instagram, vá em **Configurações > Apps e sites** (ou o aviso que chegou) e aceite o convite.
-2. Volte para a tela do app e toque em **Generate token** ao lado da sua conta.
-3. Confirme as permissões (leitura de perfil, mídia e métricas).
-4. **Copie o token** que aparece (é um texto bem longo). Não mande para ninguém e não cole em conversas.
+1. No menu da esquerda, toque em **Instagram > API setup with Instagram login**.
+2. Na parte **Generate access tokens** (Gerar tokens de acesso), toque em **Add account** (Adicionar conta) e entre com o Instagram da Promisa. A conta precisa ser **Profissional** (Empresa ou Criador de conteúdo) e **pública**.
+3. Se o Instagram mostrar um convite de "testador" (*tester*), aceite: no Instagram, vá em **Configurações > Permissões do site/Apps e sites > Convites de testador** e toque em **Aceitar**. As contas com acesso ficam em **App Roles > Roles** (Funções do app). Como o app fica em modo de desenvolvimento e só usa a sua própria conta, **não precisa** passar pela análise da Meta (*App Review*).
+4. Toque em **Generate token** (Gerar token) ao lado da sua conta e faça login no Instagram se pedir.
+5. Confirme as permissões. As duas que o painel usa são `instagram_business_basic` (perfil, seguidores e posts) e `instagram_business_manage_insights` (alcance, visualizações, salvamentos e compartilhamentos). Pode deixar as outras desmarcadas, se a tela permitir.
+6. **Copie o token** que aparece (é um texto bem longo). Ele vale **60 dias**. Não mande para ninguém e não cole em conversas.
 
 ## Passo 4 – Colocar o token na Vercel
 1. Abra https://vercel.com/alexandremachadofabris-3928s-projects/promisa_criativa/settings/environment-variables
@@ -40,7 +45,7 @@ Seu Instagram já é **Profissional** e **não** está ligado a uma página do F
 
 ## Depois disso é automático
 - Todo dia de manhã (cron das 11:05 UTC) o sistema atualiza os números, o resumo do dia e o dashboard do Discord. Toda segunda-feira o canal `☀️・resumo-do-dia` ganha o "📈 Semana no Instagram".
-- O token **se renova sozinho** (vale 60 dias; o sistema troca por um novo quando passa de ~45 dias e guarda o novo em local privado). Você não precisa fazer nada.
+- O token **se renova sozinho**: ele vale 60 dias; a Meta só deixa renovar depois de 24 horas de vida e antes de vencer. O sistema troca por um novo na primeira rotina depois de 24 h e, a partir daí, sempre que passa de ~45 dias, e guarda o novo em local privado. Você não precisa fazer nada, desde que a rotina diária rode pelo menos uma vez a cada 60 dias.
 - Se um dia o token vencer, o Discord (`🚨・alertas`) avisa: "🔑 O acesso ao Instagram expirou". Aí é só repetir os passos 3 e 4 (gerar de novo e trocar o valor na Vercel; o token novo vale no próximo deploy).
 - Se a atualização falhar por 2 dias seguidos, também aparece um aviso em `🚨・alertas`.
 
@@ -49,7 +54,7 @@ Seu Instagram já é **Profissional** e **não** está ligado a uma página do F
 - O que vai para o Discord e para a página de metas são só números (seguidores, curtidas, quantidade de clientes). Nenhum dado pessoal de cliente sai do painel.
 
 ## Para quem for mexer no código
-- API usada (Instagram API with Instagram Login, `https://graph.instagram.com`, versão em `lib/instagram.js`): `GET /me`, `GET /me/media`, `GET /{media-id}/insights`, `GET /refresh_access_token`. Não consegui abrir a documentação oficial da Meta no ambiente de desenvolvimento (a página só carrega com JavaScript), então nomes de campos e métricas seguem o que eu conheço dela; o código é defensivo (métrica recusada vira uma tentativa menor e é lembrada).
+- API usada (Instagram API with Instagram Login, `https://graph.instagram.com`, versão `v27.0` em `lib/instagram.js`): `GET /me?fields=user_id,username,followers_count,follows_count,media_count`, `GET /me/media?fields=id,caption,media_type,media_product_type,permalink,timestamp,like_count,comments_count,thumbnail_url&limit=25`, `GET /{media-id}/insights?metric=reach,views,saved,shares,total_interactions` e `GET /refresh_access_token?grant_type=ig_refresh_token` (sem versão no caminho). Conferido na documentação oficial da Meta (nov/2026): as 5 métricas valem para posts (FEED, inclui carrossel) e Reels; `impressions`, `plays` e `video_views` estão descontinuadas e não são usadas. Posts dentro de um carrossel não têm métricas; dados podem atrasar até 48 h. Métrica recusada (erro 100) vira pedido de uma por vez e é lembrada por tipo de post; erro do post inteiro só deixa aquele post sem métricas.
 - Dados: `promisa/instagram/v1/history.json` e `promisa/instagram/v1/token.json` (Blob privado).
 - Rota do painel: `POST /api/instagram` com `status`, `sync`, `goals`, `clients-count`.
 - Arquivos: `lib/instagram.js`, `lib/instagram-store.js`, `lib/instagram-sync.js`, `lib/instagram-handler.js`, `lib/instagram-report.js`, `src/instagram-math.js`, `src/instagram-panel.js`, `api/instagram.js`, `tests/instagram.test.mjs`.

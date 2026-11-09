@@ -29,7 +29,7 @@ Um app do Discord com *Interactions Endpoint URL* manda **todas** as interaçõe
 - `lib/discord-commands.js`: comandos `/` (`COMMANDS` e `plan()`) e os botões, seletores e formulários da central (`custom_id` com prefixo `pc:`, tratados em `planComponent()`).
 - `lib/discord-data.js`: leitura dos dados (manifest, sites, clientes) com limite de leituras.
 - `lib/discord-releases.js`: histórico de atualizações publicado no canal `📜・historico`. **A cada PR aprovado, acrescente uma entrada.**
-- `lib/instagram-report.js` (textos do Instagram no dashboard, no resumo e na semana) e `lib/instagram-*.js` (API, histórico, atualização): leia `docs/INSTAGRAM.md`. O cron do resumo atualiza o Instagram antes de montar o resumo.
+- `lib/instagram-report.js` (textos do Instagram no dashboard, no resumo e na semana) e `lib/instagram-*.js` (API, histórico, atualização): leia `docs/INSTAGRAM.md`. O cron do resumo atualiza o Instagram antes de montar o resumo (no máximo 40 s, e mesmo sem Discord configurado); se demorar ou falhar, o resumo sai do mesmo jeito.
 - `lib/visitor.js`: aparelho, navegador e cidade aproximada de quem abre uma demonstração. **Nunca** usar nem guardar o IP.
 - `src/discord-panel.js`: diálogo "💬 Discord" no painel (Criar canais, mensagem de teste, atualizar dashboard).
 - `tests/discord.test.mjs` e `tests/visitor.test.mjs`: testes com `fetch` simulado, sem chamar o Discord de verdade.
