@@ -213,6 +213,9 @@
     "api/diagnostico.js": {
       "maxDuration": 60
     },
+    "api/publish.js": {
+      "maxDuration": 60
+    },
     "api/featured.js": {
       "maxDuration": 15
     }
