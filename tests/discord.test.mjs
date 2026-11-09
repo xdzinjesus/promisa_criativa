@@ -237,12 +237,16 @@ test('setup: boas-vindas aparecem uma vez só (e são fixadas); sem permissão d
   const first = await w.discord.setupChannels();
   assert.equal(first.ok, true);
   assert.ok(w.state.channels.some(c => c.name === '📊・dashboard'), 'criado sem travar');
-  const isWelcome = p => String(p.body.embeds?.[0]?.title).startsWith('👋');
+  const isWelcome = p => /^(👋|🧠 Como ligar)/.test(String(p.body.embeds?.[0]?.title));
   const welcomes = w.state.posts.filter(isWelcome).length;
   assert.equal(welcomes, SETUP_CHANNELS.length);
   assert.equal(w.state.pins.length, welcomes + 1, 'boas-vindas + painel da central');
   assert.match(w.state.posts.find(p => p.body.embeds[0].title.includes('Central')).body.embeds[0].description, /\/diagnostico/);
   assert.ok(w.state.posts.some(p => /avisos do GitHub/.test(p.body.embeds[0].description)));
+  const guide = w.state.posts.find(p => String(p.body.embeds?.[0]?.title).startsWith('🧠 Como ligar'));
+  assert.ok(guide, 'guia do canal claude-code');
+  assert.ok(guide.body.components?.[0]?.components?.some(c => c.style === 5 && /LIGAR-AGENTE\.md$/.test(c.url)), 'botão para o guia completo');
+  assert.ok(!/token\s*[:=]\s*\S{20,}/i.test(guide.body.embeds[0].description));
   assert.ok(w.state.posts.some(p => /histórico de tudo que já foi feito no sistema/.test(p.body.embeds[0].description)));
   const total = w.state.posts.length;
   w.discord.resetChannels();

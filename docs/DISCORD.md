@@ -56,6 +56,7 @@ Sem elas, tudo vira "não faz nada" em silêncio.
 - ⚙️ **SISTEMA**:
   - `🚨・alertas`.
   - `🎛️・central`: botões.
+  - `🧠・claude-code`: mensagem fixada com o guia para ligar o Claude Code e o Codex em qualquer máquina (`docs/LIGAR-AGENTE.md`). O robô só posta a mensagem fixada; a conversa é com o robô do PC.
   - `📜・historico`: só leitura.
   - `💻・github`: webhook do GitHub; o robô não posta aqui.
 
