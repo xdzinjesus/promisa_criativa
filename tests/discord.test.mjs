@@ -588,3 +588,66 @@ test('segredos: token do bot, token da interação e chave pública nunca aparec
   assert.ok(logs.length > 0, 'houve registro de erro');
   for (const secret of [BOT, ITOKEN, PUBLIC_HEX, 'discord.com/api']) assert.ok(!text.includes(secret), 'vazou: ' + secret.slice(0, 10));
 });
+
+// ---------- runtime da Vercel ----------
+// Reproduz o @vercel/node (serverless-functions/helpers): lê o fluxo antes do handler, repõe uma cópia em
+// req.read/req.on e cria req.body já interpretado. `for await` não vê a cópia; JSON.stringify(req.body) muda os bytes.
+async function vercelLikeRequest(rawText, headers) {
+  const { PassThrough } = await import('node:stream');
+  const req = Readable.from([Buffer.from(rawText)]);
+  for await (const chunk of req) void chunk; // o runtime consome o fluxo
+  const copy = new PassThrough();
+  const on = copy.on.bind(copy), originalOn = req.on.bind(req);
+  req.read = copy.read.bind(copy);
+  req.on = req.addListener = (name, cb) => (name === 'data' || name === 'end' ? on(name, cb) : originalOn(name, cb));
+  copy.write(Buffer.from(rawText)); copy.end();
+  Object.defineProperty(req, 'body', { get: () => JSON.parse(rawText) });
+  return Object.assign(req, { method: 'POST', headers, url: '/api/discord' });
+}
+
+test('rota na Vercel: assinatura conferida nos bytes originais mesmo com o fluxo já lido pelo runtime', async () => {
+  const w = commandWorld();
+  const raw = '{"type": 1, "nota": "café \\u00e9"}'; // espaços e escapes: JSON.stringify(req.body) daria outros bytes
+  assert.notEqual(JSON.stringify(JSON.parse(raw)), raw);
+  const { signature, timestamp } = signed(raw);
+  const req = await vercelLikeRequest(raw, { 'x-signature-ed25519': signature, 'x-signature-timestamp': timestamp, 'content-type': 'application/json' });
+  assert.equal(req.readableEnded, true);
+  const res = await call(w.handler, req);
+  assert.equal(res.statusCode, 200, res.body);
+  assert.deepEqual(res.json, { type: 1 });
+  // Corpo trocado pelo objeto interpretado nunca passa na assinatura.
+  const forged = Readable.from([]);
+  for await (const chunk of forged) void chunk;
+  Object.assign(forged, { method: 'POST', url: '/api/discord', body: JSON.parse(raw), headers: { 'x-signature-ed25519': signature, 'x-signature-timestamp': timestamp, 'content-type': 'application/json' } });
+  assert.equal((await call(w.handler, forged)).statusCode, 401);
+});
+
+test('rota: a mesma interação (mesmo id) só roda uma vez; waitUntil recebe o trabalho antes da resposta', async () => {
+  const w = commandWorld();
+  const order = [];
+  const res = response();
+  const end = res.end.bind(res);
+  res.end = text => { order.push('end'); end(text); };
+  const pending = [];
+  const handler = createDiscordHandler({ discord: w.discord, commands: { plan: () => ({ work: async () => ({ content: 'ok' }) }) }, events: {}, waitUntil: p => { order.push('waitUntil'); pending.push(p); }, authorized: async () => false, sameOrigin: () => true, log: { error() {} } });
+  const payload = slash('resumo', [], { id: '123456789' });
+  await handler(interactionRequest(payload), res);
+  await Promise.all(pending);
+  assert.deepEqual(order, ['waitUntil', 'end']);
+  assert.equal(w.state.patches.length, 1);
+  const again = await call(handler, interactionRequest(payload));
+  assert.match(again.json.data.content, /já foi recebido/);
+  assert.equal(again.json.data.flags, 64);
+  await Promise.all(pending);
+  assert.equal(w.state.patches.length, 1, 'repetição não executa de novo');
+});
+
+test('rota: waitUntil que falha não derruba a resposta nem gera rejeição solta', async () => {
+  const w = commandWorld();
+  const handler = createDiscordHandler({ discord: w.discord, commands: { plan: () => ({ work: async () => { throw new Error('x'); } }) }, events: {}, waitUntil: () => { throw new TypeError('sem contexto'); }, authorized: async () => false, sameOrigin: () => true, log: { error() {} } });
+  const res = await call(handler, interactionRequest(slash('resumo')));
+  assert.deepEqual(res.json, { type: 5, data: { flags: 64 } });
+  await new Promise(resolve => setImmediate(resolve));
+  await new Promise(resolve => setTimeout(resolve, 10));
+  assert.match(w.lastPatch().content, /Não consegui concluir/);
+});

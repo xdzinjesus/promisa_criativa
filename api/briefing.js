@@ -1,3 +1,4 @@
+import { waitUntil } from '@vercel/functions';
 import { createBriefingStore } from '../lib/briefing-store.js';
 import { createBriefingHandler } from '../lib/briefing-handler.js';
 import { events } from '../lib/discord-events.js';
@@ -13,5 +14,6 @@ export default createBriefingHandler({
   sameOrigin,
   find: token => store.find(token),
   submit: (token, answers) => store.submit(token, answers),
-  onSubmitted: answers => events.briefingSubmitted(answers)
+  // Aviso em segundo plano (waitUntil): o cliente não espera o Discord. Nunca lança (events.* já se protege).
+  onSubmitted: answers => { waitUntil(events.briefingSubmitted(answers)); }
 });
