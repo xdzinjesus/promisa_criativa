@@ -127,9 +127,10 @@ test('publicar: cria projeto, envia só o que falta, registra hashes e cria a pu
   assert.equal(result.url, 'https://promisa-chico-moveis-ab12.pages.dev');
   assert.equal(result.deploymentId, 'dep-1');
   const paths = fake.log.map(e => `${e.method} ${e.path}`);
-  assert.deepEqual(paths.slice(0, 2), [`POST /accounts/${ACCOUNT}/pages/projects`, `GET /accounts/${ACCOUNT}/pages/projects/promisa-chico-moveis-ab12/upload-token`]);
-  assert.equal(fake.log[0].auth, `Bearer ${TOKEN}`);
-  assert.equal(fake.log[0].body.production_branch, 'main');
+  // Igual ao wrangler: consulta o projeto, cria se não existe (8000007) e pede a chave de envio.
+  assert.deepEqual(paths.slice(0, 3), [`GET /accounts/${ACCOUNT}/pages/projects/promisa-chico-moveis-ab12`, `POST /accounts/${ACCOUNT}/pages/projects`, `GET /accounts/${ACCOUNT}/pages/projects/promisa-chico-moveis-ab12/upload-token`]);
+  assert.equal(fake.log[1].auth, `Bearer ${TOKEN}`);
+  assert.deepEqual(fake.log[1].body, { name: 'promisa-chico-moveis-ab12', production_branch: 'main' });
   const check = fake.log.find(e => e.path === '/pages/assets/check-missing');
   assert.equal(check.auth, 'Bearer JWT-ABC');
   assert.equal(check.body.hashes.length, 3); // as duas imagens iguais contam uma vez
@@ -191,6 +192,25 @@ test('erros da Cloudflare viram mensagens amigáveis, sem a chave', async () => 
   assert.equal(configured({ CLOUDFLARE_API_TOKEN: 'x', CLOUDFLARE_ACCOUNT_ID: ACCOUNT }), true);
 });
 
+test('publicar: ignora os mesmos arquivos que o wrangler, repete envios que falharam e não para se o registro de hashes falhar', async () => {
+  let failedUpload = false;
+  const fake = fakeCloudflare({ failAt: e => (e.path === '/pages/assets/upload' && !failedUpload && (failedUpload = true)) || e.path === '/pages/assets/upsert-hashes' });
+  const result = await client(fake).deploy('proj-x', site([['index.html', '<p>x</p>'], ['_routes.json', '{}'], ['functions/api.js', 'x'], ['_worker.js', 'x'], ['.DS_Store', 'x'], ['node_modules/a/b.js', 'x'], ['_redirects', '/a /b 301']]));
+  assert.equal(result.deploymentId, 'dep-1');
+  assert.equal(fake.log.filter(e => e.path === '/pages/assets/upload').length, 2); // falhou uma vez e foi repetido
+  const deployment = fake.log.at(-1);
+  assert.deepEqual(Object.keys(JSON.parse(deployment.form.get('manifest'))), ['/index.html']);
+  assert.equal(await deployment.form.get('_redirects').text(), '/a /b 301');
+  assert.equal(deployment.form.get('_routes.json'), null);
+});
+
+test('publicar: respeita o prazo total da função (não passa de ~55 s somando as chamadas)', async () => {
+  const fake = fakeCloudflare();
+  const cf = createCloudflare({ token: TOKEN, accountId: ACCOUNT, fetch: fake.fetch, retryDelayMs: 0, budgetMs: 0 });
+  await assert.rejects(cf.deploy('proj-y', sample()), error => error instanceof CloudflareError && error.code === 'timeout');
+  assert.equal(fake.log.length, 0);
+});
+
 // ---------- Domínio na Cloudflare ----------
 test('ligar domínio: adiciona raiz e www ao projeto, cria a zona e os CNAME proxied', async () => {
   const fake = fakeCloudflare();
@@ -200,6 +220,8 @@ test('ligar domínio: adiciona raiz e www ao projeto, cria a zona e os CNAME pro
   assert.equal(info.zone.status, 'pending');
   assert.deepEqual(info.zone.nameServers, ['ada.ns.cloudflare.com', 'bob.ns.cloudflare.com']);
   const create = fake.log.find(e => e.method === 'POST' && e.path === '/zones');
+  assert.ok(fake.log.indexOf(create) < fake.log.findIndex(e => e.method === 'POST' && e.path.endsWith('/domains'))); // zona antes do domínio no projeto
+  assert.equal(fake.log.find(e => e.method === 'GET' && e.path === '/zones').query['account.id'], ACCOUNT);
   assert.deepEqual(create.body, { name: 'chicomoveis.com.br', account: { id: ACCOUNT }, type: 'full' });
   const cnames = fake.state.records.filter(r => r.type === 'CNAME');
   assert.deepEqual(cnames.map(r => [r.name, r.content, r.proxied]), [['chicomoveis.com.br', 'proj-a.pages.dev', true], ['www.chicomoveis.com.br', 'proj-a.pages.dev', true]]);
