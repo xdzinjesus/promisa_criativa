@@ -15,7 +15,8 @@
   "dependencies": {
     "@noble/hashes": "2.4.0",
     "@simplewebauthn/server": "14.1.0",
-    "@vercel/blob": "^2.8.2"
+    "@vercel/blob": "^2.8.2",
+    "@vercel/functions": "3.10.2"
   },
   "devDependencies": {
     "@playwright/test": "1.58.2",
