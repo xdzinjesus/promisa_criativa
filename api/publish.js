@@ -2,6 +2,7 @@ import { createPublishStore } from '../lib/publish-store.js';
 import { createPublishHandler } from '../lib/publish-handler.js';
 import { createCloudflare, configured } from '../lib/cloudflare-pages.js';
 import { readSiteInfo } from '../lib/site-cache.js';
+import { events } from '../lib/discord-events.js';
 import { settings, authorized, sameOrigin } from './access.js';
 
 // Publicar pode levar até ~1 minuto (envio dos arquivos para a Cloudflare): maxDuration 60 em vercel.json.
@@ -14,5 +15,7 @@ export default createPublishHandler({
   cloudflare: () => configured() ? createCloudflare({ token: process.env.CLOUDFLARE_API_TOKEN, accountId: process.env.CLOUDFLARE_ACCOUNT_ID }) : null,
   readSiteInfo,
   authorized: async req => { const admin = settings(); return Boolean(admin) && Boolean(await authorized(req, admin)); },
-  sameOrigin
+  sameOrigin,
+  onPublished: info => events.sitePublished(info),
+  onFailed: info => events.publishFailed(info)
 });

@@ -218,6 +218,9 @@
     },
     "api/featured.js": {
       "maxDuration": 15
+    },
+    "api/discord.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -282,6 +285,10 @@
     {
       "path": "/api/maintenance",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/discord?cron=summary",
+      "schedule": "5 11 * * *"
     }
   ]
 }

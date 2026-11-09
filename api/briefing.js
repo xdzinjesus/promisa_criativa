@@ -1,5 +1,6 @@
 import { createBriefingStore } from '../lib/briefing-store.js';
 import { createBriefingHandler } from '../lib/briefing-handler.js';
+import { events } from '../lib/discord-events.js';
 import { sameOrigin } from './access.js';
 
 // Proteção da cota do Vercel Blob (ver lib/briefing-store.js): códigos assinados com validade,
@@ -11,5 +12,6 @@ export default createBriefingHandler({
   configured: () => Boolean(process.env.BLOB_READ_WRITE_TOKEN),
   sameOrigin,
   find: token => store.find(token),
-  submit: (token, answers) => store.submit(token, answers)
+  submit: (token, answers) => store.submit(token, answers),
+  onSubmitted: answers => events.briefingSubmitted(answers)
 });
