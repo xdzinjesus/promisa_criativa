@@ -221,6 +221,9 @@
     },
     "api/discord.js": {
       "maxDuration": 60
+    },
+    "api/instagram.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
