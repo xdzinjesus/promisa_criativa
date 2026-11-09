@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { generateKeyPairSync, sign } from 'node:crypto';
 import { Readable } from 'node:stream';
-import { createDiscord, verifyInteraction, CHANNELS, COMMANDS } from '../lib/discord.js';
+import { createDiscord, verifyInteraction, CHANNELS, SETUP_CHANNELS, CHANNEL_NAMES, COMMANDS, LAYOUT, slugOf, buildEmbed, buildPayload, linkRow, progressBar, inviteUrl, BOT_PERMISSIONS } from '../lib/discord.js';
 import { createDiscordHandler } from '../lib/discord-handler.js';
 import { createCommands } from '../lib/discord-commands.js';
-import { createEvents, buildSummary } from '../lib/discord-events.js';
+import { createEvents, buildSummary, buildDashboard } from '../lib/discord-events.js';
 import { createData, createdAtFromId, normalize } from '../lib/discord-data.js';
 import { createBriefingHandler } from '../lib/briefing-handler.js';
 import { createDemoHandler } from '../lib/demo-site.js';
@@ -24,7 +24,7 @@ const signed = (body, at = NOW) => {
 
 // ---------- Discord falso ----------
 function fakeDiscord({ channels = [], failChannels = false } = {}) {
-  const state = { channels: channels.map((c, i) => ({ id: 'c' + i, ...c })), posts: [], patches: [], created: [], calls: [], commands: null, nextId: 100 };
+  const state = { channels: channels.map((c, i) => ({ id: 'c' + i, ...c })), posts: [], patches: [], created: [], calls: [], commands: null, nextId: 100, messages: {}, channelPatches: [], edits: [], pins: [], noHistory: false, denyOverwrites: false };
   const fetch = async (url, init = {}) => {
     const path = url.replace('https://discord.com/api/v10', '');
     const method = init.method || 'GET';
@@ -33,10 +33,33 @@ function fakeDiscord({ channels = [], failChannels = false } = {}) {
     const reply = (status, data) => ({ status, ok: status >= 200 && status < 300, json: async () => data });
     if (method === 'GET' && path === '/guilds/G1/channels') return failChannels ? reply(500, {}) : reply(200, state.channels);
     if (method === 'POST' && path === '/guilds/G1/channels') {
+      if (body.permission_overwrites && state.denyOverwrites) return reply(403, {});
       const made = { id: 'n' + state.nextId++, ...body }; state.channels.push(made); state.created.push(body); return reply(201, made);
     }
-    const message = /^\/channels\/([^/]+)\/messages$/.exec(path);
-    if (method === 'POST' && message) { state.posts.push({ channelId: message[1], body }); return reply(200, { id: 'm1' }); }
+    const bare = path.split('?')[0];
+    const message = /^\/channels\/([^/]+)\/messages$/.exec(bare);
+    if (method === 'GET' && message) return state.noHistory ? reply(403, {}) : reply(200, [...(state.messages[message[1]] || [])].reverse());
+    if (method === 'POST' && message) {
+      const id = 'm' + state.nextId++;
+      state.posts.push({ channelId: message[1], body, id });
+      (state.messages[message[1]] ||= []).push({ id, author: { bot: true }, embeds: body.embeds || [] });
+      return reply(200, { id });
+    }
+    const edit = /^\/channels\/([^/]+)\/messages\/([^/]+)$/.exec(bare);
+    if (method === 'PATCH' && edit) {
+      const found = (state.messages[edit[1]] || []).find(m => m.id === edit[2]);
+      if (!found) return reply(404, {});
+      found.embeds = body.embeds; state.edits.push({ channelId: edit[1], id: edit[2], body }); return reply(200, found);
+    }
+    const pin = /^\/channels\/([^/]+)\/pins\/([^/]+)$/.exec(bare);
+    if (method === 'PUT' && pin) { state.pins.push(pin[2]); return reply(204, null); }
+    const chan = /^\/channels\/([^/]+)$/.exec(bare);
+    if (method === 'PATCH' && chan) {
+      if (body.permission_overwrites && state.denyOverwrites) return reply(403, {});
+      const found = state.channels.find(c => c.id === chan[1]);
+      if (!found) return reply(404, {});
+      Object.assign(found, body); state.channelPatches.push({ id: chan[1], body }); return reply(200, found);
+    }
     if (method === 'PUT' && path === '/applications/APP1/guilds/G1/commands') { state.commands = body; return reply(200, body); }
     if (method === 'GET' && path === '/applications/APP1/guilds/G1/commands') return reply(200, state.commands || []);
     if (method === 'PATCH' && path.startsWith('/webhooks/APP1/')) { state.patches.push({ path, body }); return reply(200, {}); }
@@ -44,8 +67,8 @@ function fakeDiscord({ channels = [], failChannels = false } = {}) {
   };
   return { state, fetch };
 }
-const allChannels = () => [{ type: 4, name: 'PROMISA' }, ...CHANNELS.map(name => ({ type: 0, name }))];
-const channelId = (state, name) => state.channels.find(c => c.name === name)?.id;
+const allChannels = () => [...LAYOUT.map(c => ({ type: 4, name: c.name, id: 'cat-' + c.slug })), ...LAYOUT.flatMap(c => c.channels.map(slug => ({ type: 0, name: CHANNEL_NAMES[slug], parent_id: 'cat-' + c.slug })))];
+const channelId = (state, name) => state.channels.find(c => c.type === 0 && slugOf(c.name) === name)?.id;
 const make = (opts = {}, env = ENV) => {
   const fake = fakeDiscord(opts);
   const logs = [];
@@ -166,35 +189,78 @@ test('notify: respeita 429 (retry_after) uma única vez e tem limite de 2,5 s', 
 });
 
 // ---------- canais e comandos registrados ----------
-test('setup: cria a categoria e só os canais que faltam; repetir não cria nada', async () => {
-  const w = make({ channels: [{ type: 0, name: 'alertas' }, { type: 0, name: 'diagnosticos' }] });
+test('slug: nomes antigos e novos (com emoji e ・) valem o mesmo canal', async () => {
+  assert.equal(slugOf('novos-clientes'), 'novos-clientes');
+  assert.equal(slugOf('🆕・novos-clientes'), 'novos-clientes');
+  assert.equal(slugOf('☀️・resumo-do-dia'), 'resumo-do-dia');
+  const w = make({ channels: [{ type: 0, name: 'alertas' }, { type: 0, name: '🩺・diagnosticos' }] });
+  assert.equal(await w.discord.notify('alertas', { title: 'a' }), true);
+  assert.equal(await w.discord.notify('diagnosticos', { title: 'b' }), true);
+  assert.equal(w.state.posts[0].channelId, 'c0');
+  assert.equal(w.state.posts[1].channelId, 'c1');
+});
+
+test('setup: cria categorias e canais, move/renomeia os antigos, não apaga nada e repetir não cria nada', async () => {
+  const w = make({ channels: [{ type: 4, name: 'PROMISA', id: 'old' }, { type: 0, name: 'alertas', parent_id: 'old' }, { type: 0, name: 'diagnosticos', parent_id: 'old' }, { type: 0, name: 'geral' }] });
   const result = await w.discord.setupChannels();
   assert.equal(result.ok, true);
-  assert.equal(result.categoryCreated, true);
-  assert.deepEqual(result.created.sort(), CHANNELS.filter(name => !['alertas', 'diagnosticos'].includes(name)).sort());
-  assert.equal(w.state.created.filter(c => c.type === 4).length, 1);
-  const category = w.state.channels.find(c => c.type === 4);
-  assert.ok(w.state.created.filter(c => c.type === 0).every(c => c.parent_id === category.id));
-  assert.equal(w.state.created.length, 1 + 4);
+  assert.deepEqual(result.categoriesCreated, LAYOUT.map(c => c.name));
+  assert.deepEqual(result.created.sort(), SETUP_CHANNELS.filter(name => !['alertas', 'diagnosticos'].includes(name)).sort());
+  assert.deepEqual(result.moved.sort(), ['alertas', 'diagnosticos']);
+  assert.equal(result.legacyCategoryEmpty, true);
+  assert.equal(w.state.created.filter(c => c.type === 4).length, 4);
+  const cat = name => w.state.channels.find(c => c.type === 4 && c.name === name).id;
+  assert.equal(w.state.channels.find(c => c.name === '🚨・alertas').parent_id, cat('⚙️ SISTEMA'));
+  assert.equal(w.state.channels.find(c => c.name === '🩺・diagnosticos').parent_id, cat('💼 CLIENTES'));
+  assert.ok(w.state.channels.some(c => c.name === '💻・github'));
+  assert.ok(w.state.channels.some(c => c.name === 'geral') && w.state.channels.some(c => c.name === 'PROMISA'), 'nada apagado');
+  assert.ok(w.state.calls.every(c => c.method !== 'DELETE'));
+  const dashboard = w.state.created.find(c => c.name === '📊・dashboard');
+  assert.equal(dashboard.permission_overwrites.find(o => o.id === 'G1').deny, '2048');
+  assert.equal(dashboard.permission_overwrites.find(o => o.id === 'APP1').type, 1);
+  const before = w.state.calls.length;
+  w.discord.resetChannels();
   const again = await w.discord.setupChannels();
-  assert.deepEqual(again.created, []);
-  assert.equal(w.state.created.length, 5);
+  assert.deepEqual(again.created, []); assert.deepEqual(again.moved, []);
+  const writes = w.state.calls.slice(before).filter(c => c.method !== 'GET' && !/\/(messages|pins)/.test(c.path));
+  assert.deepEqual(writes, [], 'segunda rodada não cria nem altera canais');
   const existing = make({ channels: allChannels() });
   assert.deepEqual((await existing.discord.setupChannels()).created, []);
   assert.equal(existing.state.created.length, 0);
 });
 
-test('setup sem permissão devolve erro claro e register envia os 7 comandos', async () => {
+test('setup: boas-vindas aparecem uma vez só (e são fixadas); sem permissão de travar, o canal é criado mesmo assim', async () => {
+  const w = make({ channels: allChannels() });
+  w.state.channels = w.state.channels.filter(c => !/github|dashboard/.test(c.name));
+  w.state.denyOverwrites = true;
+  const first = await w.discord.setupChannels();
+  assert.equal(first.ok, true);
+  assert.ok(w.state.channels.some(c => c.name === '📊・dashboard'), 'criado sem travar');
+  const welcomes = w.state.posts.length;
+  assert.equal(welcomes, SETUP_CHANNELS.length);
+  assert.equal(w.state.pins.length, welcomes);
+  assert.match(w.state.posts.find(p => p.body.embeds[0].title.includes('Comandos')).body.embeds[0].description, /\/diagnostico/);
+  assert.ok(w.state.posts.some(p => /avisos do GitHub/.test(p.body.embeds[0].description)));
+  w.discord.resetChannels();
+  await w.discord.setupChannels();
+  assert.equal(w.state.posts.length, welcomes, 'não duplica');
+  const blind = make({ channels: allChannels() }); blind.state.noHistory = true;
+  await blind.discord.setupChannels();
+  assert.equal(blind.state.posts.length, 0, 'sem histórico não arrisca duplicar');
+});
+
+test('setup sem permissão devolve erro claro e register envia os 8 comandos', async () => {
   const denied = createDiscord({ fetch: async (url, init = {}) => init.method === 'POST' ? { status: 403, ok: false, json: async () => ({}) } : { status: 200, ok: true, json: async () => [] }, env: ENV, log: { error() {} } });
   assert.equal((await denied.setupChannels()).error, 'forbidden');
   const w = make();
   const registered = await w.discord.registerCommands();
   assert.equal(registered.ok, true);
-  assert.deepEqual(w.state.commands.map(c => c.name).sort(), ['ajuda', 'cliente', 'configurar', 'demo', 'diagnostico', 'publicar', 'resumo']);
+  assert.deepEqual(w.state.commands.map(c => c.name).sort(), ['ajuda', 'cliente', 'configurar', 'dashboard', 'demo', 'diagnostico', 'publicar', 'resumo']);
   assert.equal(COMMANDS.find(c => c.name === 'demo').options[1].max_value, 30);
   const status = await make({ channels: allChannels() }).discord.status();
-  assert.deepEqual(status.channelsFound.sort(), [...CHANNELS].sort());
+  assert.deepEqual(status.channelsFound.sort(), [...SETUP_CHANNELS].sort());
   assert.equal(status.commandsRegistered, false);
+  assert.equal(status.appId, 'APP1'); assert.equal(status.permissions, 93200);
 });
 
 // ---------- dados (cadastros criptografados) ----------
@@ -319,10 +385,12 @@ test('/diagnostico: analisa, guarda, responde com nota e link e avisa #diagnosti
   await w.run('diagnostico', [{ name: 'url', value: 'www.padaria.com.br' }]);
   assert.equal(w.diagCreated.length, 1);
   const reply = w.lastPatch().embeds[0];
-  assert.match(reply.title, /padaria\.com\.br: nota 7,2\/10/);
+  assert.match(reply.title, /padaria\.com\.br: nota 🟢 7,2\/10/);
   assert.match(reply.description, /https:\/\/www\.promisa\.online\/diagnostico\/R{22}/);
   const post = w.state.posts.find(p => p.channelId === channelId(w.state, 'diagnosticos'));
-  assert.match(post.body.embeds[0].title, /Diagnóstico de padaria\.com\.br: nota 7,2\/10/);
+  assert.match(post.body.embeds[0].title, /Diagnóstico de padaria\.com\.br/);
+  assert.equal(post.body.embeds[0].fields[0].value, '🟢 7,2/10');
+  assert.equal(post.body.components[0].components[0].label, 'Ver diagnóstico');
   await w.run('diagnostico', [{ name: 'url', value: 'bad' }]);
   assert.match(w.lastPatch().content, /não parece correto/);
 });
@@ -404,9 +472,10 @@ test('/configurar cria canais que faltam, registra comandos e responde', async (
   const res = await call(handler, interactionRequest(slash('configurar')));
   assert.equal(res.json.type, 5);
   await Promise.all(pending);
-  assert.equal(w.state.created.filter(c => c.type === 0).length, 5);
+  assert.equal(w.state.created.filter(c => c.type === 0).length, 8);
   assert.match(w.state.patches[0].body.content, /Criei os canais/);
-  assert.match(w.state.patches[0].body.content, /Comandos atualizados \(7\)/);
+  assert.match(w.state.patches[0].body.content, /Reorganizei/);
+  assert.match(w.state.patches[0].body.content, /Comandos atualizados \(8\)/);
 });
 
 test('trabalho que falha vira mensagem amigável (nunca fica "pensando" para sempre)', async () => {
@@ -428,7 +497,7 @@ test('painel: exige sessão, mesma origem e JSON; status/setup/register/test fun
   assert.equal((await panel('apagar-tudo')).statusCode, 400);
   const status = await panel('status');
   assert.equal(status.json.configured, true);
-  assert.deepEqual(status.json.channelsFound.sort(), [...CHANNELS].sort());
+  assert.deepEqual(status.json.channelsFound.sort(), [...SETUP_CHANNELS].sort());
   assert.equal((await panel('register')).json.ok, true);
   assert.equal((await panel('setup')).json.ok, true);
   const test = await panel('test');
@@ -513,7 +582,7 @@ test('demonstração: avisa só ao abrir a página principal (não arquivos), um
   assert.equal(w.state.posts.length, 1);
   assert.match(w.state.posts[0].body.embeds[0].title, /Alguém abriu a demonstração de Site da Ana/);
   assert.equal(w.state.posts[0].channelId, channelId(w.state, 'demonstracoes'));
-  assert.doesNotMatch(JSON.stringify(w.state.posts[0].body), new RegExp(TOKEN));
+  assert.equal(w.state.posts[0].body.components[0].components[0].url, `https://www.promisa.online/demo/${TOKEN}`);
   await view('');
   assert.equal(w.state.posts.length, 1, 'dedupe de 30 min');
   w.clock.now += 31 * 60_000;

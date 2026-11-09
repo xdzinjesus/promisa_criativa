@@ -20,29 +20,34 @@ if (openButton) {
     head.append(el('h2', '💬 Discord', { id: 'discord-title' }), el('button', '✕', { type: 'button', className: 'sheet-x', ariaLabel: 'Fechar' }));
     head.lastChild.addEventListener('click', () => dialog.close());
     const body = el('div', null, { className: 'sheet-body' });
-    const create = el('button', 'Criar canais', { type: 'button', className: 'passkey-btn', id: 'discord-setup' });
+    const create = el('button', 'Organizar canais', { type: 'button', className: 'passkey-btn', id: 'discord-setup' });
     const test = el('button', 'Enviar mensagem de teste', { type: 'button', className: 'passkey-btn sec', id: 'discord-test' });
+    const dash = el('button', 'Atualizar dashboard', { type: 'button', className: 'passkey-btn sec', id: 'discord-dashboard' });
     body.append(
       el('p', 'O Discord recebe avisos de novos briefings, demonstrações abertas, diagnósticos, sites publicados e alertas, e responde aos comandos / do dono.'),
       el('p', '', { id: 'discord-state', role: 'status' }),
       el('ul', null, { id: 'discord-channels', className: 'passkey-list' }),
       el('div', null, { className: 'sheet-grid' }),
-      el('p', '', { id: 'discord-msg', role: 'status' })
+      el('p', '', { id: 'discord-msg', role: 'status' }),
+      el('p', '', { id: 'discord-legacy', role: 'status' }),
+      el('p', 'Atualizar permissões do robô: abra o link abaixo e escolha o servidor (o robô precisa ver canais, enviar mensagens, gerenciar canais e mensagens, incorporar links e ler o histórico).'),
+      el('p', null, { id: 'discord-invite' })
     );
-    body.querySelector('.sheet-grid').append(create, test);
+    body.querySelector('.sheet-grid').append(create, dash, test);
     dialog.append(head, body);
     document.body.append(dialog);
     create.addEventListener('click', async () => {
       busy(true); message('');
       try {
         const result = await api('setup');
-        const made = result.channels?.created?.length || 0;
-        if (result.ok) message(made ? `Pronto! Criei ${made} canal(is) e atualizei os comandos.` : 'Tudo certo: os canais já existem. Comandos atualizados.');
+        const made = result.channels?.created?.length || 0, moved = result.channels?.moved?.length || 0;
+        if (result.channels?.legacyCategoryEmpty) legacyHint(true);
+        if (result.ok) message(made || moved ? `Pronto! Criei ${made} e reorganizei ${moved} canal(is) e atualizei os comandos.` : 'Tudo certo: os canais já estão organizados. Comandos atualizados.');
         else {
           const ch = result.channels || {}, code = Number(ch.status) || 0;
           const why = ch.error === 'forbidden' ? 'O robô não tem permissão para criar canais. Dê a ele "Gerenciar canais" no servidor.'
             : code === 401 ? 'O token do robô está errado. Confira DISCORD_BOT_TOKEN na Vercel (sem espaços) e faça um novo deploy.'
-            : code === 403 ? 'O robô não está no servidor ou não enxerga os canais. Adicione o robô ao servidor pelo link de convite.'
+            : code === 403 ? 'O robô não está no servidor ou falta permissão. Use o link de "Atualizar permissões do robô" abaixo.'
             : code === 404 ? 'O ID do servidor está errado. Confira DISCORD_GUILD_ID na Vercel.'
             : code === 0 ? 'Não consegui falar com o Discord. Confira o token na Vercel e tente de novo.'
             : 'Não consegui criar todos os canais (código ' + code + '). Tente de novo.';
@@ -50,6 +55,12 @@ if (openButton) {
         }
       } catch (cause) { message(cause.message === 'Failed to fetch' ? 'Sem conexão. Tente novamente.' : cause.message, true); }
       finally { busy(false); refresh(); }
+    });
+    dash.addEventListener('click', async () => {
+      busy(true); message('');
+      try { const result = await api('dashboard'); message(result.ok ? 'Dashboard atualizado! Veja o canal #dashboard.' : 'Não consegui atualizar. Organize os canais e confira a permissão "Ler histórico de mensagens".', !result.ok); }
+      catch (cause) { message(cause.message === 'Failed to fetch' ? 'Sem conexão. Tente novamente.' : cause.message, true); }
+      finally { busy(false); }
     });
     test.addEventListener('click', async () => {
       busy(true); message('');
@@ -59,11 +70,21 @@ if (openButton) {
     });
   }
 
+  const legacyHint = on => { dialog.querySelector('#discord-legacy').textContent = on ? 'A categoria antiga "PROMISA" ficou vazia: pode apagá-la no Discord (clique com o botão direito nela > Excluir categoria).' : ''; };
+  function invite(status) {
+    const box = dialog.querySelector('#discord-invite');
+    box.replaceChildren();
+    if (!status.appId) return;
+    const url = `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(status.appId)}&permissions=${Number(status.permissions) || 93200}&scope=bot+applications.commands`;
+    box.append(el('a', url, { href: url, target: '_blank', rel: 'noopener noreferrer' }));
+  }
+
   async function refresh() {
     const state = dialog.querySelector('#discord-state'), list = dialog.querySelector('#discord-channels');
     state.textContent = 'Verificando…'; list.replaceChildren();
     try {
       const status = await api('status');
+      invite(status); legacyHint(Boolean(status.legacyCategoryEmpty));
       if (!status.configured) { state.textContent = 'Ainda não configurado: faltam as chaves DISCORD_* na Vercel. Enquanto isso, nada é enviado.'; return; }
       state.textContent = `Ligado. Comandos: ${status.commandsRegistered ? 'registrados' : status.interactionsConfigured ? 'ainda não registrados (use "Criar canais")' : 'faltam DISCORD_APP_ID, DISCORD_PUBLIC_KEY ou DISCORD_OWNER_ID'}.`;
       for (const name of status.channelsFound || []) list.append(el('li', `✅ #${name}`));
