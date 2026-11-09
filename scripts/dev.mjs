@@ -6,6 +6,7 @@ import cloudHandler from '../api/cloud.js';
 import demoHandler from '../api/demo.js';
 import featuredHandler from '../api/featured.js';
 import briefingHandler from '../api/briefing.js';
+import diagnosticoHandler from '../api/diagnostico.js';
 
 const root = resolve('public');
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
@@ -18,6 +19,9 @@ const server = http.createServer(async (req, res) => {
     const project = /^\/projeto\/([^/]+)(?:\/(.*))?$/.exec(url.pathname);
     if (project) { let path = project[2] || ''; try { path = decodeURIComponent(path); } catch { path = ''; } req.query = { mode: 'site', id: project[1], path }; return await featuredHandler(req, res); }
     if (url.pathname === '/api/featured') { req.query = {}; return await featuredHandler(req, res); }
+    const diagnostico = /^\/diagnostico\/([^/]+)\/?$/.exec(url.pathname);
+    if (diagnostico) { req.query = { token: diagnostico[1] }; return await diagnosticoHandler(req, res); }
+    if (url.pathname === '/api/diagnostico') { req.query = Object.fromEntries(url.searchParams); return await diagnosticoHandler(req, res); }
     if (url.pathname === '/api/briefing') { req.query = Object.fromEntries(url.searchParams); return await briefingHandler(req, res); }
     if (/^\/briefing\/[^/]+\/?$/.test(url.pathname)) url.pathname = '/briefing.html';
     const route = config.rewrites.find(item => item.source === url.pathname);

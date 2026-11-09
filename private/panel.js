@@ -218,6 +218,7 @@ function openClientSheet(id,focus){
  ${stage==='Fechado'?`<section><button type="button" class="sec wide" data-click="sheetDo" data-click-args="${ARGS('openEntregas',lead.id)}">📦 Ver entregas</button></section>`:''}
  <section id="sheetSiteSec"><h3>Site</h3>${siteBlocks}${attach}</section>
  <section><h3>Demonstração</h3><p class="cline">${sites.length||lead.demoSentAt?demoStatusHtml(lead):'<span class="lead-muted">Anexe um site para poder enviar.</span>'}</p><div class="sheet-grid">${ready?`<button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('sendDemoOne',lead.id)}">📤 Enviar demonstração</button>`:''}<button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('toggleDemoSent',lead.id)}">${lead.demoSentAt?'Desmarcar envio':'Marcar como enviada'}</button></div></section>
+ ${diagnosticoSheetHtml(lead)}
  ${briefingSheetHtml(lead)}
  <section><h3>🤖 PROMPTS DE IA</h3><div class="sheet-grid three">${['essencial','profissional','premium'].map(pl=>`<button type="button" class="sec" data-click="openPlanPrompts" data-click-args="${ARGS(lead.id,pl)}">${{essencial:'Essencial',profissional:'Profissional',premium:'Premium'}[pl]}</button>`).join('')}</div></section>
  <section><h3>Privacidade (LGPD)</h3><div class="sheet-grid"><button type="button" class="sec" data-click="exportLeadData" data-click-args="${ARGS(lead.id)}">Exportar dados</button><button type="button" class="del" data-click="sheetDo" data-click-args="${ARGS('deleteLeadData',lead.id)}">Excluir dados (LGPD)</button></div></section>
@@ -446,6 +447,54 @@ async function briefingPrepare(id){
   const copy=el('button','sec','Copiar link');copy.type='button';copy.addEventListener('click',()=>{if(lead.briefingToken!==data.token){lead.briefingToken=data.token;lead.briefingSentAt=new Date().toISOString();save()}briefingCopyLink(url)});
   box.replaceChildren(el('small','','Link pronto (vale 30 dias). Toque no botão verde do WhatsApp para enviar.'),link,copy);
  }catch(e){box.innerHTML=original;clientSiteToast(e.message||'Não foi possível criar o link.')}
+}
+// Diagnóstico grátis do site atual do lead: relatório público em /diagnostico/<código>.
+async function diagnosticoApi(body){const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),75000);try{const response=await fetch('/api/diagnostico',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body),signal:controller.signal});const data=await response.json().catch(()=>({}));if(response.status===401){location.assign('/acesso.html');throw new Error('Sessão encerrada.')}if(!response.ok)throw new Error(data.error||'Não foi possível concluir a operação.');return data}catch(e){if(e.name==='AbortError')throw new Error('A análise demorou demais. Tente de novo.');throw e}finally{clearTimeout(timer)}}
+function diagnosticoSheetHtml(lead){return `<section><h3>🩺 Diagnóstico do site</h3><p class="cline"><span class="lead-muted">Analisa o site atual do cliente e gera um link para enviar.</span></p><div class="sheet-grid"><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openDiagnostico',lead.id)}">🩺 Diagnóstico</button></div></section>`}
+function diagnosticoGrade(score){return String(Number(score||0).toFixed(1)).replace('.',',')+' / 10'}
+async function openDiagnostico(id){
+ const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
+ const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node};
+ const dialog=el('dialog','project-preview-dialog demo-links-dialog');dialog.setAttribute('aria-label','Diagnóstico do site');
+ const head=el('div','demo-links-head');head.append(el('h2','','Diagnóstico do site'),el('p','demo-links-site',lead.client||'Cliente'));
+ const info=el('p','demo-links-info','Cole o endereço do site atual do cliente. O sistema analisa de graça e cria uma página com o resultado, pronta para enviar no WhatsApp.');
+ const form=el('form','demo-links-form');
+ const urlLabel=el('label','','Endereço do site atual');const urlInput=el('input');urlInput.type='text';urlInput.placeholder='www.empresa.com.br';urlInput.autocomplete='off';urlInput.inputMode='url';urlInput.required=true;urlLabel.append(urlInput);
+ const demoLabel=el('label','','Mostrar demonstração do novo site');const demoSelect=el('select');const none=el('option','','Não mostrar');none.value='';demoSelect.append(none);demoLabel.append(demoSelect);
+ const analyze=el('button','','Analisar');analyze.type='submit';
+ const status=el('p','demo-help');status.setAttribute('role','status');
+ const result=el('div','diag-result');
+ form.append(urlLabel,demoLabel,analyze,status);
+ const prevTitle=el('h3','','Diagnósticos deste cliente'),prev=el('div','demo-links-list');
+ const close=el('button','sec demo-links-close','Fechar');close.type='button';close.addEventListener('click',()=>dialog.close());
+ dialog.append(head,info,form,result,prevTitle,prev,close);document.body.append(dialog);dialog.addEventListener('close',()=>dialog.remove());
+ const waMessage=url=>`${demoGreeting()}! Fiz uma análise gratuita do site de vocês: ${url}`;
+ const showLink=(url,extra)=>{
+  const row=el('div','demo-link-row');const input=el('input');input.readOnly=true;input.value=url;input.addEventListener('focus',()=>input.select());
+  const actions=el('div','demo-link-actions');
+  const copy=el('button','','Copiar link');copy.type='button';copy.addEventListener('click',()=>demoLinkCopy(url));
+  const phone=contactLink(lead.contact);
+  const wa=el('a','btn','Enviar no WhatsApp');wa.href=(phone||'https://wa.me/')+'?text='+encodeURIComponent(waMessage(url));wa.target='_blank';wa.rel='noopener noreferrer';
+  const open=el('button','sec','Abrir');open.type='button';open.addEventListener('click',()=>window.open(url,'_blank','noopener,noreferrer'));
+  actions.append(copy,wa,open);row.append(...(extra?[el('p','demo-link-meta',extra)]:[]),input,actions);return row;
+ };
+ const refreshPrev=async()=>{try{const data=await diagnosticoApi({action:'list',leadId:String(lead.id)});prev.replaceChildren();if(!data.items.length){prev.append(el('p','demo-links-empty','Nenhum diagnóstico ainda.'));return}
+  for(const item of data.items){const url=location.origin+'/diagnostico/'+item.token;const row=showLink(url,`${item.host} · nota ${diagnosticoGrade(item.score)} · ${demoLinkDate(item.createdAt)} · vale até ${demoLinkDate(item.expiresAt)}`);const del=el('button','sec danger','Apagar');del.type='button';del.addEventListener('click',async()=>{if(!confirm('Apagar este diagnóstico? O link deixa de funcionar em poucos minutos.'))return;del.disabled=true;try{await diagnosticoApi({action:'delete',token:item.token});clientSiteToast('Diagnóstico apagado.');await refreshPrev()}catch(e){del.disabled=false;clientSiteToast(e.message)}});row.querySelector('.demo-link-actions').append(del);prev.append(row)}}catch(e){prev.replaceChildren(el('p','demo-links-empty',e.message))}};
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();analyze.disabled=true;analyze.textContent='Analisando…';status.textContent='Analisando… pode levar até 1 minuto. Não feche esta janela.';result.replaceChildren();
+  try{
+   const data=await diagnosticoApi({action:'create',url:urlInput.value,leadId:String(lead.id),leadName:lead.client||'',demoUrl:demoSelect.value});
+   status.textContent='';
+   const counts=['bom','atencao','ruim'].map(k=>data.items.filter(x=>x.status===k).length);
+   result.append(el('h3','','Nota '+diagnosticoGrade(data.score)),el('p','demo-link-meta',`🟢 ${counts[0]} bons · 🟡 ${counts[1]} a melhorar · 🔴 ${counts[2]} com problema`),showLink(location.origin+'/diagnostico/'+data.token));
+   await refreshPrev();
+  }catch(e){status.textContent=e.message}
+  finally{analyze.disabled=false;analyze.textContent='Analisar'}
+ });
+ dialog.showModal();prev.append(el('p','demo-links-empty','Carregando…'));urlInput.focus();
+ refreshPrev();
+ // Demonstrações ativas do cliente (opcional no relatório).
+ (async()=>{try{for(const site of leadSites(lead.id)){const data=await demoLinksApi('share-list',{siteId:site.id});for(const share of (data.shares||[]).filter(x=>x.state==='active').sort((a,b)=>b.createdAt-a.createdAt)){const o=el('option','',`${site.name||'Site'} · vale até ${demoLinkDate(share.expiresAt)}`);o.value='/demo/'+share.token+'/';demoSelect.append(o)}}}catch{}})();
 }
 async function briefingView(id){
  const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
@@ -694,7 +743,7 @@ async function boundedDecompress(bytes,limit){const reader=new Blob([bytes]).str
 const previewResources=new Map();
 function releasePreview(url){for(const resource of previewResources.get(url)||[])URL.revokeObjectURL(resource);previewResources.delete(url);URL.revokeObjectURL(url)}
 async function safePreviewDocument(url){const doc=new DOMParser().parseFromString(await(await fetch(url)).text(),'text/html');doc.querySelectorAll('script,iframe,object,embed,base,meta[http-equiv],link').forEach(el=>{if(el.tagName==='LINK'&&el.rel==='stylesheet'&&el.href.startsWith('blob:'))return;el.remove()});for(const el of doc.querySelectorAll('*'))for(const attr of [...el.attributes])if(attr.name.startsWith('on'))el.removeAttribute(attr.name);const policy=document.createElement('meta');policy.httpEquiv='Content-Security-Policy';policy.content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline' blob:; font-src blob: data:; script-src 'none'; connect-src 'none'; form-action 'none'; frame-src 'none'";doc.head.prepend(policy);return '<!doctype html>'+doc.documentElement.outerHTML}
-const panelActions={openEntregas,setEntregaFilter,entregaSetPlan,entregaToggle,entregaObs,openPlanPrompts,openFeatured,publishFeatured,briefingPrepare,briefingView,briefingRevoke,briefingCopyLink,sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,attachSite,pay,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
+const panelActions={openDiagnostico,openEntregas,setEntregaFilter,entregaSetPlan,entregaToggle,entregaObs,openPlanPrompts,openFeatured,publishFeatured,briefingPrepare,briefingView,briefingRevoke,briefingCopyLink,sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,attachSite,pay,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
  attachProjectZipClear:attachProjectZip,importClientFolderClear:importClientFolder,importClientHtmlClear:importClientHtml,importClientZipClear:importClientZip,runGeneralBackupClear:runGeneralBackup,
  sheetDo(name,...args){if(name==='sheetDo'||!Object.hasOwn(panelActions,name))return;closeSheet();return panelActions[name](...args)},
  pset2Calc(...args){pset2(...args);upCalc()},pickFile(id){document.getElementById(id).click()}};
