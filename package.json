@@ -13,6 +13,7 @@
     "node": "22.x"
   },
   "dependencies": {
+    "@noble/hashes": "2.4.0",
     "@simplewebauthn/server": "14.1.0",
     "@vercel/blob": "^2.8.2"
   },
