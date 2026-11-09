@@ -38,7 +38,16 @@ if (openButton) {
         const result = await api('setup');
         const made = result.channels?.created?.length || 0;
         if (result.ok) message(made ? `Pronto! Criei ${made} canal(is) e atualizei os comandos.` : 'Tudo certo: os canais já existem. Comandos atualizados.');
-        else message(result.channels?.error === 'forbidden' ? 'O robô não tem permissão para criar canais. Dê a ele "Gerenciar canais" no servidor.' : 'Não consegui criar todos os canais. Tente de novo.', true);
+        else {
+          const ch = result.channels || {}, code = Number(ch.status) || 0;
+          const why = ch.error === 'forbidden' ? 'O robô não tem permissão para criar canais. Dê a ele "Gerenciar canais" no servidor.'
+            : code === 401 ? 'O token do robô está errado. Confira DISCORD_BOT_TOKEN na Vercel (sem espaços) e faça um novo deploy.'
+            : code === 403 ? 'O robô não está no servidor ou não enxerga os canais. Adicione o robô ao servidor pelo link de convite.'
+            : code === 404 ? 'O ID do servidor está errado. Confira DISCORD_GUILD_ID na Vercel.'
+            : code === 0 ? 'Não consegui falar com o Discord. Confira o token na Vercel e tente de novo.'
+            : 'Não consegui criar todos os canais (código ' + code + '). Tente de novo.';
+          message(why, true);
+        }
       } catch (cause) { message(cause.message === 'Failed to fetch' ? 'Sem conexão. Tente novamente.' : cause.message, true); }
       finally { busy(false); refresh(); }
     });
