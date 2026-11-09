@@ -10,6 +10,7 @@ import { createData, createdAtFromId, normalize } from '../lib/discord-data.js';
 import { createBriefingHandler } from '../lib/briefing-handler.js';
 import { createDemoHandler } from '../lib/demo-site.js';
 import { createPublishHandler, publishSite } from '../lib/publish-handler.js';
+import { RELEASES, KINDS, buildHistoryMessages, addRelease, release, postedFromFooters } from '../lib/discord-releases.js';
 
 const NOW = Date.UTC(2026, 10, 9, 12, 0, 0);
 const BOT = 'SECRET-BOT-TOKEN-abcdef123456';
@@ -42,14 +43,14 @@ function fakeDiscord({ channels = [], failChannels = false } = {}) {
     if (method === 'POST' && message) {
       const id = 'm' + state.nextId++;
       state.posts.push({ channelId: message[1], body, id });
-      (state.messages[message[1]] ||= []).push({ id, author: { bot: true }, embeds: body.embeds || [] });
+      (state.messages[message[1]] ||= []).push({ id, author: { bot: true }, embeds: body.embeds || [], components: body.components });
       return reply(200, { id });
     }
     const edit = /^\/channels\/([^/]+)\/messages\/([^/]+)$/.exec(bare);
     if (method === 'PATCH' && edit) {
       const found = (state.messages[edit[1]] || []).find(m => m.id === edit[2]);
       if (!found) return reply(404, {});
-      found.embeds = body.embeds; state.edits.push({ channelId: edit[1], id: edit[2], body }); return reply(200, found);
+      found.embeds = body.embeds; found.components = body.components; state.edits.push({ channelId: edit[1], id: edit[2], body }); return reply(200, found);
     }
     const pin = /^\/channels\/([^/]+)\/pins\/([^/]+)$/.exec(bare);
     if (method === 'PUT' && pin) { state.pins.push(pin[2]); return reply(204, null); }
@@ -236,14 +237,17 @@ test('setup: boas-vindas aparecem uma vez só (e são fixadas); sem permissão d
   const first = await w.discord.setupChannels();
   assert.equal(first.ok, true);
   assert.ok(w.state.channels.some(c => c.name === '📊・dashboard'), 'criado sem travar');
-  const welcomes = w.state.posts.length;
+  const isWelcome = p => String(p.body.embeds?.[0]?.title).startsWith('👋');
+  const welcomes = w.state.posts.filter(isWelcome).length;
   assert.equal(welcomes, SETUP_CHANNELS.length);
-  assert.equal(w.state.pins.length, welcomes);
-  assert.match(w.state.posts.find(p => p.body.embeds[0].title.includes('Comandos')).body.embeds[0].description, /\/diagnostico/);
+  assert.equal(w.state.pins.length, welcomes + 1, 'boas-vindas + painel da central');
+  assert.match(w.state.posts.find(p => p.body.embeds[0].title.includes('Central')).body.embeds[0].description, /\/diagnostico/);
   assert.ok(w.state.posts.some(p => /avisos do GitHub/.test(p.body.embeds[0].description)));
+  assert.ok(w.state.posts.some(p => /histórico de tudo que já foi feito no sistema/.test(p.body.embeds[0].description)));
+  const total = w.state.posts.length;
   w.discord.resetChannels();
   await w.discord.setupChannels();
-  assert.equal(w.state.posts.length, welcomes, 'não duplica');
+  assert.equal(w.state.posts.length, total, 'não duplica (nem histórico, nem painel)');
   const blind = make({ channels: allChannels() }); blind.state.noHistory = true;
   await blind.discord.setupChannels();
   assert.equal(blind.state.posts.length, 0, 'sem histórico não arrisca duplicar');
@@ -472,10 +476,12 @@ test('/configurar cria canais que faltam, registra comandos e responde', async (
   const res = await call(handler, interactionRequest(slash('configurar')));
   assert.equal(res.json.type, 5);
   await Promise.all(pending);
-  assert.equal(w.state.created.filter(c => c.type === 0).length, 8);
+  assert.equal(w.state.created.filter(c => c.type === 0).length, SETUP_CHANNELS.length - 1);
   assert.match(w.state.patches[0].body.content, /Criei os canais/);
   assert.match(w.state.patches[0].body.content, /Reorganizei/);
   assert.match(w.state.patches[0].body.content, /Comandos atualizados \(8\)/);
+  assert.match(w.state.patches[0].body.content, /22 atualizações no #historico/);
+  assert.match(w.state.patches[0].body.content, /Painel de botões criado no #central/);
 });
 
 test('trabalho que falha vira mensagem amigável (nunca fica "pensando" para sempre)', async () => {
@@ -852,4 +858,236 @@ test('/dashboard: só o dono; atualiza na hora; ação do painel também', async
   const panel = await call(w.handler, request({ headers: { cookie: 'ok', 'content-type': 'application/json' }, body: JSON.stringify({ action: 'dashboard' }) }));
   assert.equal(panel.json.ok, true);
   assert.equal(w.state.edits.length, 1, 'segunda vez edita');
+});
+
+// ---------- histórico de atualizações ----------
+const historyOf = w => w.state.posts.filter(p => p.channelId === channelId(w.state, 'historico'));
+const footersOf = posts => posts.flatMap(p => p.body.embeds.map(e => e.footer.text));
+
+test('histórico: agrupa por dia (Brasília), do mais antigo ao mais novo, dentro dos limites do Discord', () => {
+  const messages = buildHistoryMessages(RELEASES);
+  const embeds = messages.flatMap(m => m.embeds);
+  assert.deepEqual(embeds.map(e => /(\d\d\/\d\d)/.exec(e.title)[1]), ['07/11', '08/11', '08/11', '09/11']);
+  assert.match(embeds[2].title, /continuação/);
+  assert.equal(RELEASES.length, 22);
+  assert.deepEqual(embeds.flatMap(e => e.numbers), RELEASES.map(r => r.n), 'ordem e nenhuma faltando');
+  for (const m of messages) {
+    assert.ok(m.embeds.length <= 10);
+    assert.ok(m.embeds.reduce((sum, e) => sum + e.title.length + e.description.length + e.footer.length + 17, 0) <= 6000);
+    for (const e of m.embeds) assert.ok(e.description.length <= 4096 && e.footer.length <= 200);
+  }
+  assert.match(embeds[0].description, /\[#4\]\(https:\/\/github\.com\/xdzinjesus\/promisa_criativa\/pull\/4\)/);
+  assert.match(embeds[0].description, /^✨/);
+  assert.ok(RELEASES.every(r => r.why.length > 10 && KINDS[r.kind]));
+  const many = Array.from({ length: 300 }, (_, i) => ({ n: 1000 + i, at: new Date(Date.UTC(2026, 0, 1 + i, 15)).toISOString(), kind: 'novidade', t: 'T' + i, why: 'x'.repeat(200) }));
+  const split = buildHistoryMessages(many);
+  assert.ok(split.length > 1 && split.every(m => m.embeds.length <= 10));
+  const next = addRelease(RELEASES, release(26, '2026-11-10T12:00:00Z', 'correcao', 'Teste', 'Algo foi consertado.'), release(25, '2026-11-10T12:00:00Z', 'novidade', 'dup', 'dup'));
+  assert.equal(next.length, 23); assert.equal(next.at(-1).n, 26);
+  assert.deepEqual([...postedFromFooters(['histórico · #3 #10', 'Promisa · #7', 'histórico · início'])], [3, 10]);
+});
+
+test('setup: posta o histórico uma vez e depois só as novidades (sem duplicar)', async () => {
+  const w = make({ channels: allChannels() });
+  const first = await w.discord.setupChannels();
+  assert.equal(first.historyPosted, 22);
+  const posts = historyOf(w);
+  assert.equal(posts.filter(p => p.body.embeds[0].title === '📜 Histórico de atualizações da Promisa').length, 1);
+  assert.equal(posts.at(-1).body.embeds.at(-1).title.includes('09/11'), true);
+  const noted = footersOf(posts).join(' ').match(/#\d+/g).map(x => Number(x.slice(1)));
+  assert.deepEqual(noted, RELEASES.map(r => r.n));
+  assert.ok(w.state.calls.some(c => c.path.endsWith('/messages?limit=50')));
+  const count = posts.length;
+  w.discord.resetChannels();
+  const again = await w.discord.setupChannels();
+  assert.equal(again.historyPosted, 0);
+  assert.equal(historyOf(w).length, count);
+  const channel = channelId(w.state, 'historico');
+  for (const m of w.state.messages[channel]) for (const e of m.embeds) if (/#25/.test(e.footer.text)) e.footer = { text: 'histórico · apagado' };
+  w.discord.resetChannels();
+  assert.equal((await w.discord.setupChannels()).historyPosted, 1);
+  assert.equal(historyOf(w).length, count + 1);
+  assert.match(footersOf(historyOf(w).slice(-1)).join(), /histórico · #25/);
+  const blind = make({ channels: allChannels() }); blind.state.noHistory = true;
+  await blind.discord.setupChannels();
+  assert.equal(historyOf(blind).length, 0);
+});
+
+test('histórico: canal #historico é criado só leitura para @everyone, na categoria SISTEMA', async () => {
+  const w = make({ channels: allChannels().filter(c => !/historico/.test(c.name)) });
+  await w.discord.setupChannels();
+  const made = w.state.created.find(c => c.name === '📜・historico');
+  assert.equal(made.permission_overwrites.find(o => o.id === 'G1').deny, '2048');
+  assert.equal(made.parent_id, w.state.channels.find(c => c.type === 4 && c.name === '⚙️ SISTEMA').id);
+});
+
+// ---------- central (painel de botões) ----------
+test('setup: #comandos antigo é renomeado para #central (sem duplicar) e o painel é criado e depois editado', async () => {
+  const w = make({ channels: [{ type: 4, name: '⚙️ SISTEMA', id: 'cat-sistema' }, { type: 0, name: '🤖・comandos', parent_id: 'cat-sistema', id: 'cmd' }] });
+  const result = await w.discord.setupChannels();
+  assert.ok(result.moved.includes('central'));
+  assert.ok(!result.created.includes('central'));
+  assert.equal(w.state.channels.filter(c => slugOf(c.name) === 'central').length, 1);
+  assert.equal(w.state.channels.find(c => c.id === 'cmd').name, '🎛️・central');
+  assert.ok(!w.state.channels.some(c => slugOf(c.name) === 'comandos'));
+  const panels = w.state.posts.filter(p => p.channelId === 'cmd' && p.body.components?.length);
+  assert.equal(panels.length, 1);
+  const body = panels[0].body;
+  assert.equal(body.embeds[0].title, '🎛️ Central da Promisa — toque num botão');
+  assert.match(body.embeds[0].footer.text, /central · painel/);
+  assert.equal(body.components.length, 2);
+  assert.deepEqual(body.components.map(r => r.components.map(b => b.custom_id)), [['pc:diag', 'pc:demo', 'pc:pub'], ['pc:cli', 'pc:dash', 'pc:resumo']]);
+  assert.deepEqual(body.components.flatMap(r => r.components.map(b => b.label)), ['🩺 Novo diagnóstico', '🔗 Criar demonstração', '🚀 Publicar site', '👤 Ver cliente', '📊 Atualizar dashboard', '☀️ Resumo agora']);
+  assert.equal(result.centralCreated, true);
+  w.discord.resetChannels();
+  const again = await w.discord.setupChannels();
+  assert.equal(again.centralCreated, false);
+  assert.equal(w.state.posts.filter(p => p.channelId === 'cmd' && p.body.components?.length).length, 1, 'não duplica');
+  assert.ok(w.state.edits.some(e => e.channelId === 'cmd' && e.body.components?.length === 2), 'editou no lugar');
+  const old = make({ channels: [{ type: 0, name: 'comandos' }] });
+  assert.equal(await old.discord.notify('central', { title: 'oi' }), true);
+});
+
+// ---------- botões da central ----------
+const ownerComponent = (data, extra = {}, type = 3) => ({ type, id: 'I' + Math.random().toString(36).slice(2), token: ITOKEN, guild_id: 'G1', member: { user: { id: 'OWNER' } }, data, ...extra });
+function centralWorld({ sites = 30 } = {}) {
+  const w = commandWorld();
+  const records = {};
+  for (let i = 0; i < sites; i++) records['sites:S' + i] = { hash: 'h', path: 'p' + i, updatedAt: new Date(Date.UTC(2026, 10, 1, i)).toISOString() };
+  w.reads = [];
+  const data = createData({
+    readManifest: async () => ({ manifest: { version: 1, records } }),
+    get: async path => { w.reads.push(path); const n = path.slice(1); return { stream: new Response(JSON.stringify({ version: 1, value: n === '1' ? { id: 'S1', name: 'Site Padaria', leadId: 'L1' } : { id: 'S' + n, name: 'Site ' + n } })).body, blob: { size: 50 } }; },
+    token: () => 't', now: () => NOW
+  });
+  const events = createEvents({ discord: w.discord, data, shares: { all: async () => [] }, diagnosticos: { list: async () => [] }, publishedStore: { list: async () => ({}) }, now: () => NOW, base: () => 'https://www.promisa.online' });
+  const commands = createCommands({
+    discord: w.discord, data, events, shares: { all: async () => [], create: async (siteId, expiresAt) => { const share = { token: 'N'.repeat(22), siteKey: 'sites:' + siteId, createdAt: NOW, expiresAt }; w.createdShares.push(share); return share; } },
+    diagnosticos: { list: async () => [], create: async report => { const full = { token: 'R'.repeat(22), expiresAt: NOW + 86_400_000, ...report }; w.diagCreated.push(full); return full; } },
+    publishedStore: { list: async () => w.published, get: async id => w.published[id] || null, set: async (id, patch) => (w.published[id] = { ...(w.published[id] || {}), ...patch }) },
+    now: () => NOW, base: () => 'https://www.promisa.online',
+    analyze: async url => ({ siteUrl: 'https://padaria.com.br/', host: String(url).replace(/^www\./, ''), score: 7.2, items: [], psi: null, info: {} }),
+    cloudflare: () => ({ deploy: async project => { w.deployed.push(project); return { project, url: 'https://' + project + '.pages.dev', deploymentId: 'dep1', uploaded: 3, total: 5 }; } }),
+    readSiteInfo: async () => ({ site: { name: 'Site Padaria', files: [] }, filesHash: 'f'.repeat(64) }), publishSite
+  });
+  const pending = [];
+  w.handler = createDiscordHandler({ discord: w.discord, commands, events, waitUntil: p => pending.push(p), env: {}, log: { error() {} }, authorized: async () => false, sameOrigin: () => true });
+  w.press = async (payload, opts) => { const res = await call(w.handler, interactionRequest(payload, opts)); await Promise.all(pending.splice(0)); return res; };
+  return w;
+}
+
+test('botões: sem assinatura, de outra pessoa ou de outro servidor nada acontece', async () => {
+  const w = centralWorld();
+  const button = ownerComponent({ custom_id: 'pc:resumo', component_type: 2 });
+  const signedBody = JSON.stringify(button), { signature, timestamp } = signed(signedBody);
+  const altered = await call(w.handler, request({ headers: { 'x-signature-ed25519': signature, 'x-signature-timestamp': timestamp }, body: signedBody.replace('pc:resumo', 'pc:pub') }));
+  assert.equal(altered.statusCode, 401);
+  assert.equal((await call(w.handler, interactionRequest(ownerComponent({ custom_id: 'pc:resumo', component_type: 2 }), { at: NOW - 10 * 60_000 }))).statusCode, 401);
+  assert.equal((await call(w.handler, request({ headers: { 'x-signature-ed25519': 'a'.repeat(128), 'x-signature-timestamp': String(Math.floor(NOW / 1000)) }, body: JSON.stringify(button) }))).statusCode, 401);
+  for (const [custom_id, type] of [['pc:diag', 3], ['pc:pub', 3], ['pc:diagmodal', 5]]) {
+    const stranger = await w.press(ownerComponent({ custom_id, component_type: 2 }, { member: { user: { id: 'OUTRA' } } }, type));
+    assert.equal(stranger.json.type, 4); assert.equal(stranger.json.data.flags, 64);
+    assert.equal(stranger.json.data.content, '🔒 Só o dono pode usar.');
+  }
+  const select = await w.press(ownerComponent({ custom_id: 'pc:pub:sel', component_type: 3, values: ['S1'] }, { member: { user: { id: 'OUTRA' } } }));
+  assert.equal(select.json.data.content, '🔒 Só o dono pode usar.');
+  const wrong = await w.press(ownerComponent({ custom_id: 'pc:pub', component_type: 2 }, { guild_id: 'OUTRO' }));
+  assert.match(wrong.json.data.content, /só funciona no servidor/);
+  const modalWrong = await w.press(ownerComponent({ custom_id: 'pc:diagmodal', components: [] }, { guild_id: 'OUTRO' }, 5));
+  assert.match(modalWrong.json.data.content, /só funciona no servidor/);
+  assert.equal(w.state.patches.length, 0); assert.equal(w.deployed.length, 0); assert.equal(w.diagCreated.length, 0); assert.equal(w.reads.length, 0);
+  const id = 'repetida';
+  assert.equal((await w.press(ownerComponent({ custom_id: 'pc:diag', component_type: 2 }, { id }))).json.type, 9);
+  assert.match((await w.press(ownerComponent({ custom_id: 'pc:diag', component_type: 2 }, { id }))).json.data.content, /já foi recebido/);
+});
+
+test('pc:diag abre o formulário; ao enviar, roda o diagnóstico e responde só para o dono', async () => {
+  const w = centralWorld();
+  const modal = await w.press(ownerComponent({ custom_id: 'pc:diag', component_type: 2 }));
+  assert.equal(modal.json.type, 9);
+  assert.equal(modal.json.data.custom_id, 'pc:diagmodal');
+  const input = modal.json.data.components[0].components[0];
+  assert.deepEqual([input.type, input.style, input.required, input.max_length, input.label, input.placeholder], [4, 1, true, 300, 'Endereço do site', 'ex.: padaria.com.br']);
+  assert.equal(w.reads.length, 0, 'abrir o formulário não lê o Blob');
+  const submit = await w.press(ownerComponent({ custom_id: 'pc:diagmodal', components: [{ type: 1, components: [{ type: 4, custom_id: 'url', value: 'www.padaria.com.br' }] }] }, {}, 5));
+  assert.deepEqual(submit.json, { type: 5, data: { flags: 64 } });
+  assert.equal(w.diagCreated.length, 1);
+  assert.match(w.lastPatch().embeds[0].title, /Diagnóstico de padaria\.com\.br/);
+  assert.equal(w.lastPatch().components[0].components[0].label, 'Ver diagnóstico');
+  assert.ok(w.state.posts.some(p => p.channelId === channelId(w.state, 'diagnosticos')), 'aviso normal no canal');
+  const empty = await w.press(ownerComponent({ custom_id: 'pc:diagmodal', components: [] }, {}, 5));
+  assert.equal(empty.json.type, 5);
+  assert.match(w.lastPatch().content, /Informe o endereço/);
+  const unknown = await w.press(ownerComponent({ custom_id: 'pc:outro', components: [] }, {}, 5));
+  assert.match(unknown.json.data.content, /não é mais válido/);
+});
+
+test('pc:pub lista no máximo 25 sites (mais recentes primeiro) e escolher um publica', async () => {
+  const w = centralWorld({ sites: 30 });
+  const res = await w.press(ownerComponent({ custom_id: 'pc:pub', component_type: 2 }));
+  assert.deepEqual(res.json, { type: 5, data: { flags: 64 } });
+  assert.ok(w.reads.length <= 25, `leituras: ${w.reads.length}`);
+  const select = w.lastPatch().components[0].components[0];
+  assert.equal(select.type, 3); assert.equal(select.custom_id, 'pc:pub:sel');
+  assert.equal(select.options.length, 25);
+  assert.equal(select.options[0].value, 'S29', 'mais recente primeiro');
+  assert.ok(select.options.every(o => o.label && o.label.length <= 100 && o.value.length <= 100));
+  w.reads.length = 0;
+  const pick = await w.press(ownerComponent({ custom_id: 'pc:pub:sel', component_type: 3, values: ['S1'] }));
+  assert.deepEqual(pick.json, { type: 5, data: { flags: 64 } });
+  assert.equal(w.deployed.length, 1);
+  assert.match(w.lastPatch().embeds[0].description, /pages\.dev/);
+  assert.equal(w.published.S1.lastDeploymentId, 'dep1');
+  assert.ok(w.state.posts.some(p => p.channelId === channelId(w.state, 'sites-no-ar')), 'aviso normal no canal');
+  assert.ok(w.reads.length <= 2, `leituras ao escolher: ${w.reads.length}`);
+});
+
+test('botões demo e cliente: seletor de sites e resultado; lista vazia é tratada', async () => {
+  const w = centralWorld({ sites: 3 });
+  await w.press(ownerComponent({ custom_id: 'pc:demo', component_type: 2 }));
+  const demoSelect = w.lastPatch().components[0].components[0];
+  assert.equal(demoSelect.custom_id, 'pc:demo:sel'); assert.match(demoSelect.placeholder, /7 dias/);
+  await w.press(ownerComponent({ custom_id: 'pc:demo:sel', component_type: 3, values: ['S1'] }));
+  assert.equal(w.createdShares.length, 1);
+  assert.equal(w.createdShares[0].expiresAt, NOW + 7 * 86_400_000);
+  assert.match(w.lastPatch().embeds[0].description, /\/demo\/N{22}/);
+  await w.press(ownerComponent({ custom_id: 'pc:cli', component_type: 2 }));
+  assert.equal(w.lastPatch().components[0].components[0].custom_id, 'pc:cli:sel');
+  await w.press(ownerComponent({ custom_id: 'pc:cli:sel', component_type: 3, values: ['S1'] }));
+  assert.match(w.lastPatch().embeds[0].fields[0].name, /Site Padaria/);
+  const none = centralWorld({ sites: 0 });
+  await none.press(ownerComponent({ custom_id: 'pc:pub', component_type: 2 }));
+  assert.match(none.lastPatch().content, /Ainda não há sites/);
+});
+
+test('botões: ids reservados ou inválidos são recusados sem tocar em nada', async () => {
+  const w = centralWorld();
+  for (const value of ['__proto__', 'constructor', 'prototype', '../x', 'a b', '', 'x'.repeat(200)]) {
+    const res = await w.press(ownerComponent({ custom_id: 'pc:pub:sel', component_type: 3, values: [value] }));
+    assert.equal(res.json.type, 4, JSON.stringify(value));
+    assert.match(res.json.data.content, /Site inválido/);
+  }
+  for (const values of [[], ['S1', 'S2'], 'S1', [5]]) {
+    const res = await w.press(ownerComponent({ custom_id: 'pc:pub:sel', component_type: 3, values }));
+    assert.equal(res.json.type, 4);
+  }
+  const other = await w.press(ownerComponent({ custom_id: 'pc:xyz:sel', component_type: 3, values: ['S1'] }));
+  assert.match(other.json.data.content, /não é mais válido/);
+  assert.equal(w.deployed.length, 0); assert.equal(w.createdShares.length, 0); assert.equal(w.reads.length, 0);
+});
+
+test('botões dashboard e resumo respondem só para o dono', async () => {
+  const w = centralWorld();
+  const dash = await w.press(ownerComponent({ custom_id: 'pc:dash', component_type: 2 }));
+  assert.deepEqual(dash.json, { type: 5, data: { flags: 64 } });
+  assert.match(w.lastPatch().content, /Dashboard atualizado/);
+  assert.ok(w.state.posts.some(p => p.channelId === channelId(w.state, 'dashboard')));
+  await w.press(ownerComponent({ custom_id: 'pc:resumo', component_type: 2 }));
+  assert.match(w.lastPatch().embeds[0].title, /Resumo de/);
+});
+
+test('/ajuda aponta primeiro para os botões do #central', async () => {
+  const w = commandWorld();
+  const help = await w.run('ajuda');
+  assert.ok(help.json.data.content.indexOf('#central') < help.json.data.content.indexOf('/diagnostico'));
 });

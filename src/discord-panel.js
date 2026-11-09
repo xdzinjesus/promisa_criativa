@@ -24,7 +24,7 @@ if (openButton) {
     const test = el('button', 'Enviar mensagem de teste', { type: 'button', className: 'passkey-btn sec', id: 'discord-test' });
     const dash = el('button', 'Atualizar dashboard', { type: 'button', className: 'passkey-btn sec', id: 'discord-dashboard' });
     body.append(
-      el('p', 'O Discord recebe avisos de novos briefings, demonstrações abertas, diagnósticos, sites publicados e alertas, e responde aos comandos / do dono.'),
+      el('p', 'O Discord recebe avisos de novos briefings, demonstrações abertas, diagnósticos, sites publicados e alertas, e responde ao dono pelos botões do canal #central (e pelos comandos /). O canal #historico guarda tudo que já foi feito.'),
       el('p', '', { id: 'discord-state', role: 'status' }),
       el('ul', null, { id: 'discord-channels', className: 'passkey-list' }),
       el('div', null, { className: 'sheet-grid' }),
@@ -42,7 +42,8 @@ if (openButton) {
         const result = await api('setup');
         const made = result.channels?.created?.length || 0, moved = result.channels?.moved?.length || 0;
         if (result.channels?.legacyCategoryEmpty) legacyHint(true);
-        if (result.ok) message(made || moved ? `Pronto! Criei ${made} e reorganizei ${moved} canal(is) e atualizei os comandos.` : 'Tudo certo: os canais já estão organizados. Comandos atualizados.');
+        const extra = (result.channels?.historyPosted ? ` Postei ${result.channels.historyPosted} atualização(ões) no #historico.` : '') + (result.channels?.centralPosted ? ' O painel de botões do #central está pronto.' : '');
+        if (result.ok) message((made || moved ? `Pronto! Criei ${made} e reorganizei ${moved} canal(is) e atualizei os comandos.` : 'Tudo certo: os canais já estão organizados. Comandos atualizados.') + extra);
         else {
           const ch = result.channels || {}, code = Number(ch.status) || 0;
           const why = ch.error === 'forbidden' ? 'O robô não tem permissão para criar canais. Dê a ele "Gerenciar canais" no servidor.'
