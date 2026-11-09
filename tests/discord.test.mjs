@@ -385,11 +385,11 @@ test('/diagnostico: analisa, guarda, responde com nota e link e avisa #diagnosti
   await w.run('diagnostico', [{ name: 'url', value: 'www.padaria.com.br' }]);
   assert.equal(w.diagCreated.length, 1);
   const reply = w.lastPatch().embeds[0];
-  assert.match(reply.title, /padaria\.com\.br: nota 🟢 7,2\/10/);
+  assert.match(reply.title, /padaria\.com\.br: nota 🟡 7,2\/10/);
   assert.match(reply.description, /https:\/\/www\.promisa\.online\/diagnostico\/R{22}/);
   const post = w.state.posts.find(p => p.channelId === channelId(w.state, 'diagnosticos'));
   assert.match(post.body.embeds[0].title, /Diagnóstico de padaria\.com\.br/);
-  assert.equal(post.body.embeds[0].fields[0].value, '🟢 7,2/10');
+  assert.equal(post.body.embeds[0].fields[0].value, '🟡 7,2/10');
   assert.equal(post.body.components[0].components[0].label, 'Ver diagnóstico');
   await w.run('diagnostico', [{ name: 'url', value: 'bad' }]);
   assert.match(w.lastPatch().content, /não parece correto/);
@@ -522,8 +522,9 @@ test('cron do resumo: exige CRON_SECRET igual ao da manutenção e só então po
   assert.equal((await call(short, request({ method: 'GET', headers: { authorization: 'Bearer curto' }, query: { cron: 'summary' } }))).statusCode, 503);
   const ok = await get({ authorization: 'Bearer ' + 'c'.repeat(40) });
   assert.equal(ok.statusCode, 200);
-  assert.equal(w.state.posts.length, 1);
+  assert.equal(w.state.posts.length, 2, 'resumo + dashboard');
   assert.equal(w.state.posts[0].channelId, channelId(w.state, 'resumo-do-dia'));
+  assert.equal(w.state.posts[1].channelId, channelId(w.state, 'dashboard'));
   assert.equal((await call(w.handler, request({ method: 'GET', headers: { authorization: 'Bearer ' + 'c'.repeat(40) }, query: {} }))).statusCode, 404);
 });
 
@@ -719,4 +720,136 @@ test('rota: waitUntil que falha não derruba a resposta nem gera rejeição solt
   await new Promise(resolve => setImmediate(resolve));
   await new Promise(resolve => setTimeout(resolve, 10));
   assert.match(w.lastPatch().content, /Não consegui concluir/);
+});
+
+// ---------- dashboard ----------
+const sampleData = () => ({
+  manifest: { records: { ['sales:' + NOW.toString(36) + 'ab']: { hash: 'h' }, ['sales:' + (NOW - 30 * 86_400_000).toString(36) + 'ab']: { hash: 'h' } } },
+  shares: [{ token: 'a', siteKey: 'sites:s1', createdAt: NOW - 1000, expiresAt: NOW + 2 * 86_400_000 }, { token: 'b', siteKey: 'sites:s2', createdAt: NOW - 1000, expiresAt: NOW + 20 * 86_400_000 }],
+  diagnosticos: [{ token: 'T'.repeat(22), host: 'padaria.com.br', score: 7.4, createdAt: NOW - 1000 }, { token: 'U'.repeat(22), host: 'loja.com', score: 3, createdAt: NOW - 40 * 86_400_000 }],
+  published: { s1: { url: 'https://s1.pages.dev', domain: 'padaria.com.br', lastPublishedAt: NOW - 1000 } }
+});
+function dashWorld({ read = sampleData } = {}) {
+  const w = make({ channels: allChannels() });
+  let reads = 0;
+  const events = createEvents({
+    discord: w.discord, now: () => w.clock.now, base: () => 'https://www.promisa.online', waitUntil: p => (w.pending ||= []).push(p),
+    data: { manifest: async () => (reads++, read().manifest), siteName: async () => (reads++, 'Site S2') },
+    shares: { all: async () => (reads++, read().shares) }, diagnosticos: { list: async () => (reads++, read().diagnosticos) }, publishedStore: { list: async () => (reads++, read().published) }
+  });
+  w.events = events; w.reads = () => reads;
+  return w;
+}
+const dashPosts = w => w.state.posts.filter(p => p.channelId === channelId(w.state, 'dashboard'));
+
+test('dashboard: KPIs, listas e botões a partir de dados baratos; limites do Discord respeitados', () => {
+  const dash = buildDashboard({ ...sampleData(), names: { 'sites:s2': 'Site S2' }, at: NOW, base: 'https://www.promisa.online' });
+  const payload = buildPayload(dash, NOW);
+  const kpi = Object.fromEntries(payload.embeds[0].fields.map(f => [f.name, f.value]));
+  assert.equal(kpi['👥 Clientes'], '**2**'); assert.equal(kpi['🆕 Novos (7 dias)'], '**1**');
+  assert.equal(kpi['🌐 Sites no ar'], '**1**'); assert.equal(kpi['👀 Demos ativas'], '**2**'); assert.equal(kpi['🩺 Diagnósticos (30 dias)'], '**1**');
+  assert.match(payload.embeds[0].description, /<t:\d+:R>/);
+  const lists = Object.fromEntries(payload.embeds[1].fields.map(f => [f.name, f.value]));
+  assert.match(lists['🚀 Últimos sites publicados'], /\[padaria\.com\.br\]\(https:\/\/padaria\.com\.br\)/);
+  assert.match(lists['🩺 Últimos diagnósticos'], /🟡 \[padaria\.com\.br\].*7,4\/10/);
+  assert.match(lists['⏳ Demos que vencem em breve'], /Site.*faltam 2 dias/);
+  assert.doesNotMatch(lists['⏳ Demos que vencem em breve'], /Site S2/, 'só vence em 20 dias');
+  assert.match(payload.embeds.at(-1).footer.text, /dashboard · atualizado/);
+  assert.deepEqual(payload.components[0].components.map(c => [c.type, c.style, c.label]), [[2, 5, 'Abrir painel'], [2, 5, 'Abrir site da Promisa']]);
+  assert.ok(payload.components[0].components.every(c => c.url.startsWith('https://')));
+  assert.ok(buildDashboard({ manifest: null, shares: null, diagnosticos: null, published: null, at: NOW }).embeds[0].fields.every(f => /indisponível/.test(f.value)));
+});
+
+test('embeds: respeitam os limites do Discord e botões só aceitam https', () => {
+  const huge = 'x'.repeat(9000);
+  const embed = buildEmbed({ title: huge, description: huge, footer: huge, fields: Array.from({ length: 40 }, (_, i) => ({ name: huge, value: huge, inline: true })) }, NOW);
+  const total = embed.title.length + embed.description.length + embed.footer.text.length + embed.author.name.length + embed.fields.reduce((n, f) => n + f.name.length + f.value.length, 0);
+  assert.ok(embed.title.length <= 256 && embed.description.length <= 4096 && embed.fields.length <= 25 && total <= 6000);
+  assert.ok(embed.fields.every(f => f.name.length <= 256 && f.value.length <= 1024));
+  assert.equal(embed.author.name, 'Promisa · Central'); assert.match(embed.author.icon_url, /icon-192\.png$/); assert.equal(embed.footer.text.length <= 2048, true);
+  const many = buildPayload({ embeds: [{ title: 'a', description: huge }, { title: 'b', description: huge }, { title: 'c', description: huge }] }, NOW);
+  assert.ok(many.embeds.reduce((n, e) => n + e.title.length + e.description.length + e.footer.text.length + e.author.name.length, 0) <= 6000);
+  assert.deepEqual(linkRow([{ label: 'Abrir', url: 'https://a.test/x' }, { label: 'Ruim', url: 'javascript:alert(1)' }, { label: 'Http', url: 'http://a.test' }]), { type: 1, components: [{ type: 2, style: 5, label: 'Abrir', url: 'https://a.test/x' }] });
+  assert.equal(linkRow([{ label: 'x', url: 'http://a.test' }]), null);
+  assert.equal(progressBar(32), '▰▰▰▱▱▱▱▱▱▱ 32%');
+  assert.equal(inviteUrl('APP1'), 'https://discord.com/oauth2/authorize?client_id=APP1&permissions=93200&scope=bot+applications.commands');
+  assert.equal(BOT_PERMISSIONS, 1024 + 2048 + 16 + 16384 + 65536 + 8192);
+});
+
+test('dashboard: primeira vez cria e fixa; a segunda EDITA a mesma mensagem (inclusive em outra instância)', async () => {
+  const w = dashWorld();
+  assert.equal(await w.events.refreshDashboard({}), true);
+  assert.equal(dashPosts(w).length, 1);
+  assert.equal(w.state.pins.length, 1);
+  const id = dashPosts(w)[0].id;
+  assert.equal(await w.events.refreshDashboard({}), true);
+  assert.equal(dashPosts(w).length, 1, 'não cria outra');
+  assert.equal(w.state.edits.at(-1).id, id);
+  const other = createDiscord({ fetch: w.fetch, now: () => NOW, env: ENV, log: { error() {} }, sleep: async () => {} });
+  const events2 = createEvents({ discord: other, data: { manifest: async () => sampleData().manifest, siteName: async () => '' }, shares: { all: async () => [] }, diagnosticos: { list: async () => [] }, publishedStore: { list: async () => ({}) }, now: () => NOW });
+  await events2.refreshDashboard({});
+  assert.equal(dashPosts(w).length, 1, 'acha a mensagem pelo marcador no rodapé');
+  assert.equal(w.state.edits.length, 2);
+  assert.ok(w.reads() <= 8 * 2 + 4, 'poucas leituras do Blob');
+});
+
+test('dashboard: custo por atualização é de no máximo 7 leituras e sem "ler histórico" não cria mensagens soltas', async () => {
+  const w = dashWorld();
+  await w.events.refreshDashboard({});
+  assert.ok(w.reads() <= 7, 'leituras: ' + w.reads());
+  const blind = dashWorld(); blind.state.noHistory = true;
+  assert.equal(await blind.events.refreshDashboard({}), false);
+  assert.equal(dashPosts(blind).length, 0);
+});
+
+test('dashboard por evento: no máximo 1 a cada 60 min e 6 por dia (UTC); forçado (comando/cron) não conta', async () => {
+  const w = dashWorld();
+  assert.equal(w.events.dashboardSoon(), true);
+  assert.equal(w.events.dashboardSoon(), false, 'dentro de 60 min');
+  w.clock.now += 59 * 60_000;
+  assert.equal(w.events.dashboardSoon(), false);
+  await Promise.all(w.pending.splice(0));
+  assert.equal(dashPosts(w).length, 1);
+  let fired = 1;
+  for (let i = 0; i < 8; i++) { w.clock.now += 61 * 60_000; if (new Date(w.clock.now).getUTCDate() !== 9) break; if (w.events.dashboardSoon()) fired++; }
+  assert.ok(fired <= 6, 'teto diário: ' + fired);
+  const day = new Date(w.clock.now).toISOString().slice(0, 10);
+  assert.ok(day >= '2026-11-09');
+  w.clock.now = Date.UTC(2026, 10, 10, 1, 0, 0);
+  assert.equal(w.events.dashboardSoon(), true, 'novo dia UTC');
+  await Promise.all(w.pending.splice(0));
+  assert.equal(await w.events.refreshDashboard({}), true, 'forçado ignora o limite');
+});
+
+test('dashboard por evento: diagnóstico criado agenda a atualização por waitUntil, só uma vez por hora', async () => {
+  const w = dashWorld();
+  await w.events.diagnosticoCreated({ token: 'R'.repeat(22), host: 'a.com', score: 8.5, siteUrl: 'https://a.com/' });
+  await w.events.sitePublished({ action: 'publish', name: 'X', url: 'https://x.pages.dev' });
+  assert.equal(w.pending.length, 1);
+  await Promise.all(w.pending);
+  assert.equal(dashPosts(w).length, 1);
+  const post = w.state.posts.find(p => p.channelId === channelId(w.state, 'diagnosticos'));
+  assert.deepEqual(post.body.components[0].components.map(c => c.label), ['Ver diagnóstico', 'Abrir site']);
+});
+
+test('cron: resumo e dashboard usam UM conjunto de leituras (4 + nomes), sem ler duas vezes', async () => {
+  const w = dashWorld();
+  const handler = createDiscordHandler({ discord: w.discord, commands: {}, events: w.events, authorized: async () => false, sameOrigin: () => true, env: { CRON_SECRET: 'c'.repeat(40) }, log: { error() {} } });
+  const res = await call(handler, request({ method: 'GET', headers: { authorization: 'Bearer ' + 'c'.repeat(40) }, query: { cron: 'summary' } }));
+  assert.equal(res.json.dashboard, true);
+  assert.ok(w.reads() <= 5, 'leituras: ' + w.reads());
+  assert.equal(w.state.posts.length, 2);
+});
+
+test('/dashboard: só o dono; atualiza na hora; ação do painel também', async () => {
+  const w = commandWorld();
+  const res = await call(w.handler, interactionRequest(slash('dashboard', [], { member: { user: { id: 'INTRUSO' } } })));
+  assert.match(res.json.data.content, /Só o dono/);
+  assert.equal(w.state.posts.filter(p => p.channelId === channelId(w.state, 'dashboard')).length, 0);
+  await w.run('dashboard');
+  assert.match(w.lastPatch().content, /Dashboard atualizado/);
+  assert.equal(w.state.posts.filter(p => p.channelId === channelId(w.state, 'dashboard')).length, 1);
+  const panel = await call(w.handler, request({ headers: { cookie: 'ok', 'content-type': 'application/json' }, body: JSON.stringify({ action: 'dashboard' }) }));
+  assert.equal(panel.json.ok, true);
+  assert.equal(w.state.edits.length, 1, 'segunda vez edita');
 });
