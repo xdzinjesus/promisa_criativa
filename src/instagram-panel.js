@@ -166,7 +166,7 @@ function mount(root, { leads = () => [] } = {}) {
     }
     if (!h?.account) { root.append(el('p', 'Ainda não há dados. Toque em "Atualizar agora" para buscar.', { className: 'sub' })); return; }
 
-    if (h.lastError) root.append(Object.assign(el('p', `⚠️ A última atualização falhou: ${h.lastError.message}`, { className: 'sub' }), { style: 'color:var(--amb)' }));
+    if (h.lastError) root.append(Object.assign(el('p', `⚠️ A última atualização falhou: ${h.lastError.message}${h.lastError.detail ? ' — Detalhe: ' + h.lastError.detail : ''}`, { className: 'sub' }), { style: 'color:var(--amb)' }));
 
     // cartões
     const d7 = followersDelta(h.daily, today, 7), d30 = followersDelta(h.daily, today, 30);
