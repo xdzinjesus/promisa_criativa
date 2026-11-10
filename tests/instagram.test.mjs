@@ -737,3 +737,14 @@ test('falha na descoberta devolve detalhe sem token', async () => {
   const c = createInstagramClient({ fetch: fake });
   await assert.rejects(c.me('EA' + 'q'.repeat(60)), e => e.detail && !/EAAzzz/.test(e.detail));
 });
+
+test('INSTAGRAM_ACCOUNT_ID: token do Facebook vai direto na conta informada', async () => {
+  const { createInstagramClient } = await import('../lib/instagram.js');
+  const paths = [];
+  const fake = async url => { const u = new URL(url); paths.push(u.host + u.pathname);
+    if (u.pathname.endsWith('/17841400000001')) return { ok: true, status: 200, json: async () => ({ id: '17841400000001', username: 'promisa', followers_count: 9, follows_count: 1, media_count: 2 }) };
+    return { ok: false, status: 400, json: async () => ({ error: { code: 100, message: 'x' } }) }; };
+  const c = createInstagramClient({ fetch: fake, accountId: '17841400000001' });
+  assert.equal((await c.me('EA' + 'z'.repeat(60))).followers, 9);
+  assert.deepEqual(paths, ['graph.facebook.com/v27.0/17841400000001']);
+});
