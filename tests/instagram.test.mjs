@@ -708,11 +708,32 @@ test('token do Facebook (login unificado): usa graph.facebook.com, acha a conta 
   assert.equal(me.followers, 1200);
   const media = await client.media(token);
   assert.equal(media.length, 1);
-  assert.ok(calls.every(c => c.startsWith('graph.facebook.com')));
+  assert.ok(calls.slice(1).every(c => c.startsWith('graph.facebook.com')), 'depois da 1ª tentativa no Instagram, tudo vai para o Facebook');
   let refreshed = false;
   const manager = createTokenManager({ client: { refresh: async () => { refreshed = true; } }, store: { readToken: async () => null, writeToken: async () => {} }, env: { INSTAGRAM_TOKEN: token } });
   const ensured = await manager.ensure();
   assert.equal(ensured.token, token); assert.equal(refreshed, false);
   const detail = safeDetail({ code: 190, message: 'Invalid OAuth access token - Cannot parse access_token EAAabcdefghijklmnopqrstuvwxyz0123 https://x.y/z' });
   assert.ok(!/EAAabc/.test(detail) && !/https:/.test(detail) && /190/.test(detail));
+});
+
+test('token "EA..." do login unificado que funciona em graph.instagram.com fica no Instagram', async () => {
+  const { createInstagramClient } = await import('../lib/instagram.js');
+  const hosts = [];
+  const fake = async url => { const u = new URL(url); hosts.push(u.host);
+    const json = b => ({ ok: true, status: 200, json: async () => b });
+    if (u.pathname.endsWith('/me/media')) return json({ data: [] });
+    if (u.pathname.endsWith('/me')) return json({ user_id: '1', username: 'promisa', followers_count: 50, follows_count: 1, media_count: 3 });
+    return { ok: false, status: 400, json: async () => ({ error: { code: 100, message: 'x' } }) }; };
+  const c = createInstagramClient({ fetch: fake });
+  const token = 'EA' + 'y'.repeat(60);
+  assert.equal((await c.me(token)).followers, 50);
+  await c.media(token);
+  assert.ok(hosts.every(h => h === 'graph.instagram.com'));
+});
+test('falha na descoberta devolve detalhe sem token', async () => {
+  const { createInstagramClient } = await import('../lib/instagram.js');
+  const fake = async () => ({ ok: false, status: 400, json: async () => ({ error: { code: 100, message: 'Unsupported get request EAAzzzzzzzzzzzzzzzzzzzzzzzzzzzzz' } }) });
+  const c = createInstagramClient({ fetch: fake });
+  await assert.rejects(c.me('EA' + 'q'.repeat(60)), e => e.detail && !/EAAzzz/.test(e.detail));
 });
