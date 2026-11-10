@@ -18,9 +18,9 @@ migrateLeadStages();
 const TABS=[['dash',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,'Início'],['clients',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M17 5a3.5 3.5 0 0 1 0 7M21.5 20c0-2.8-1.8-4.8-4-5.6"/></svg>`,'Clientes'],['mySites',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>`,'Meus sites'],['entregas',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5zM3 7.5l9 4.5 9-4.5M12 12v9"/></svg>`,'Entregas'],['plano',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/></svg>`,'Plano'],['notes',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H4v18h16V3h-4M8 3v3h8V3zM8 11h8M8 15h8"/></svg>`,'Anotações'],['projects',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h7l2 2h9v11H3z"/><path d="M3 11h18"/></svg>`,'Projetos'],['backup',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg>`,'Backup'],['prompts2',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>`,'Prompts de IA'],['instagram',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 8-9M15 6h5v5"/></svg>`,'Instagram']];
 const MORE_ICON=`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>`;
 const TAB_ALIAS={vendas:'clients',sites:'clients'},tabKey=t=>TAB_ALIAS[t]||t;
-const CLIENT_FILTERS=[['all','Todos'],['Novo','Novos'],['Em contato','Em contato'],['Proposta enviada','Proposta'],['Fechado','Fechados'],['Perdido','Perdidos'],['pending','Demonstração pendente'],['briefing','Formulário respondido']];
+const CLIENT_SEG=[['active','Ativos'],['Fechado','Fechados'],['Perdido','Perdidos'],['all','Todos']],CLIENT_MORE=[['Novo','Novos'],['Em contato','Em contato'],['Proposta enviada','Proposta'],['pending','Demonstração pendente'],['briefing','Formulário respondido']],CLIENT_FILTERS=[...CLIENT_SEG,...CLIENT_MORE];
 const STAGE_CLASS={Novo:'st-new','Em contato':'st-contact','Proposta enviada':'st-prop',Fechado:'st-won',Perdido:'st-lost'};
-let tab=(()=>{const q=tabKey(new URLSearchParams(location.search).get('tab'));return TABS.some(t=>t[0]===q)?q:'dash'})(),activeSiteType='cliente',clientFilter='all',clientQuery='',clientsLoaded=false,pendingSiteLeadId='';
+let tab=(()=>{const q=tabKey(new URLSearchParams(location.search).get('tab'));return TABS.some(t=>t[0]===q)?q:'dash'})(),activeSiteType='cliente',clientFilter='active',clientNeedsAction=false,clientView=(()=>{try{return localStorage.getItem('painel_clientes_view')==='board'?'board':'list'}catch{return 'list'}})(),clientQuery='',clientsLoaded=false,pendingSiteLeadId='';
 
 
 const $=s=>document.querySelector(s);
@@ -124,61 +124,96 @@ let clientSitesByLead=new Map(),clientOrphans=[],clientsRun=0;
 const leadSites=id=>clientSitesByLead.get(String(id))||[];
 const ARGS=(...a)=>esc(JSON.stringify(a));
 const siteBytes=site=>clientSiteSize((site.files||[]).reduce((n,f)=>n+(f.size||0),0));
-function clientMatches(lead){
+function clientActionFor(lead){
+ const C=window.promisaClients;if(!C||!clientsLoaded)return null;
+ const stage=normalizeLeadStage(lead.stage),site=leadSites(lead.id)[0],ent=stage==='Fechado'&&lead.entrega?.plano&&window.promisaDelivery?entProgress(lead):null;
+ return C.nextClientAction(lead,{stage,siteId:site?.id||'',demoReady:demoLeadReady(lead),entrega:ent,now:Date.now()});
+}
+const clientMoney=v=>window.promisaClients?window.promisaClients.formatBRL(v):R(v);
+const clientBoardOn=()=>clientView==='board'&&!!window.matchMedia?.('(min-width:1024px)').matches;
+function clientMatches(lead,action,board){
  const stage=normalizeLeadStage(lead.stage);
- if(clientFilter==='pending'){if(!demoLeadReady(lead)||lead.demoSentAt)return false}
- else if(clientFilter==='briefing'){if(!briefingAnswered(lead))return false}
- else if(clientFilter!=='all'&&stage!==clientFilter)return false;
+ if(clientNeedsAction&&!window.promisaClients?.needsAction(action))return false;
+ if(!board){
+  if(clientFilter==='pending'){if(!demoLeadReady(lead)||lead.demoSentAt)return false}
+  else if(clientFilter==='briefing'){if(!briefingAnswered(lead))return false}
+  else if(clientFilter==='active'){if(stage==='Fechado'||stage==='Perdido')return false}
+  else if(clientFilter!=='all'&&stage!==clientFilter)return false;
+ }
  const q=clientQuery.trim().toLocaleLowerCase('pt-BR');if(!q)return true;
  if(((lead.client||'')+' '+(lead.contact||'')).toLocaleLowerCase('pt-BR').includes(q))return true;
  const digits=q.replace(/\D/g,'');return !!digits&&String(lead.contact||'').replace(/\D/g,'').includes(digits);
 }
-function clientCardHtml(s){
- const stage=normalizeLeadStage(s.stage),site=leadSites(s.id)[0],link=contactLink(s.contact),ready=demoLeadReady(s);
- const phone=link?`<a class="contact-link" href="${esc(link)}" target="_blank" rel="noopener">${esc(s.contact)}</a>`:'<span class="lead-muted">Sem telefone</span>';
- const siteLine=site?`<span>🌐 Site anexado <small>(${esc(site.name)})</small></span>${publishBadgeHtml(site.id)}`:'<span class="lead-muted">Sem site</span>';
- const demoLine=s.demoSentAt?demoStatusHtml(s):site?'<span class="demo-badge is-pending">⏳ Demonstração não enviada</span>':'';
- const entP=stage==='Fechado'&&s.entrega?.plano?entProgress(s):null,entLine=entP&&entP.total?`<div class="cline"><span>📦 Entregas: ${entP.done}/${entP.total}</span></div>`:'';
+function clientNextHtml(a){
+ if(!a)return '<span class="cnext-none"></span>';
+ if(a.href)return `<a class="cnext" href="${esc(a.href)}" target="_blank" rel="noopener">${esc(a.label)}</a>`;
+ return `<button type="button" class="cnext" data-next="${esc(a.key)}" data-click="${esc(a.click)}" data-click-args="${esc(JSON.stringify(a.args))}">${esc(a.label)}</button>`;
+}
+function clientCardHtml(s,action,board){
+ const C=window.promisaClients,stage=normalizeLeadStage(s.stage),site=leadSites(s.id)[0],link=contactLink(s.contact);
+ const phone=link?`<a class="contact-link" href="${esc(link)}" target="_blank" rel="noopener" aria-label="Abrir WhatsApp de ${esc(s.client)}">💬 ${esc(C?C.formatPhoneBR(s.contact):s.contact)}</a>`:'<span class="lead-muted">Sem telefone</span>';
+ const meta=[s.service?esc(s.service):'',(+s.value||0)>0?esc(clientMoney(s.value)):''].filter(Boolean).join(' · ');
+ const entP=stage==='Fechado'&&s.entrega?.plano&&window.promisaDelivery?entProgress(s):null;
+ const st=[site?`<span>🌐 ${esc(site.name)}</span>`:'',s.demoSentAt?demoStatusHtml(s):site?'<span class="demo-badge is-pending">⏳ Demonstração não enviada</span>':'',briefingBadgeHtml(s),entP&&entP.total?`<span>📦 Entregas ${entP.done}/${entP.total}</span>`:'',site?publishBadgeHtml(site.id):''].filter(Boolean).join('');
  const pay=stage==='Fechado'?`<span class="chip ${s.paid?'st-won':'st-warn'}">${s.paid?'Pago':'A receber'}</span>`:'';
- let acts;
- if(site&&ready&&!s.demoSentAt)acts=`<button type="button" data-click="sendDemoOne" data-click-args="${ARGS(s.id)}">📤 Enviar demonstração</button><button type="button" class="sec" data-click="openClientSite" data-click-args="${ARGS(site.id)}">👁 Ver site</button>`;
- else if(site)acts=`<button type="button" class="sec" data-click="openClientSite" data-click-args="${ARGS(site.id)}">👁 Ver site</button>`;
- else acts=`<button type="button" data-click="openClientSheet" data-click-args="${ARGS(s.id,'site')}">＋ Anexar site</button>`;
- return `<article class="ccard"><div class="ccard-top"><b class="cname">${esc(s.client)}</b><span class="chips"><span class="chip ${STAGE_CLASS[stage]||''}">${esc(stage)}</span>${pay}</span></div><div class="cline">${phone}</div><div class="cline cstat">${siteLine}${demoLine}${briefingBadgeHtml(s)}</div>${entLine}<div class="cacts">${acts}<button type="button" class="sec more" aria-label="Mais opções de ${esc(s.client)}" data-click="openClientSheet" data-click-args="${ARGS(s.id)}">⋯</button></div></article>`;
+ return `<article class="ccard${board?' kcard':''}" data-lead-id="${esc(s.id)}"${board?' draggable="true"':''}><div class="ccard-top"><b class="cname">${esc(s.client)}</b><span class="chips">${board?'':`<span class="chip dot ${STAGE_CLASS[stage]||''}">${esc(stage)}</span>`}${pay}</span></div>${meta?`<div class="cline cmeta">${meta}</div>`:''}<div class="cline">${phone}</div>${st?`<div class="cline cstat">${st}</div>`:''}<div class="cacts">${clientNextHtml(action)}<button type="button" class="sec more" aria-label="Ficha de ${esc(s.client)}" data-click="openClientSheet" data-click-args="${ARGS(s.id)}">⋯</button></div></article>`;
 }
 function clients(){
  activeSiteType='cliente';ensurePublished();
  return `<div class="page-head"><div><h1>Clientes</h1><p class="sub" id="clientCount" role="status">&nbsp;</p></div><button type="button" id="clientFormBtn" aria-expanded="false" aria-controls="clientForm" data-click="toggleClientForm" data-click-args="[]">＋ Novo cliente</button></div>
- <div id="clientForm" class="card cform" hidden><div class="cform-grid"><label class="sf"><span>Nome *</span><input id="sc" placeholder="Nome da empresa ou cliente" autocomplete="off"></label><label class="sf"><span>WhatsApp / telefone</span><input id="scontact" type="tel" inputmode="tel" placeholder="Com DDD"></label><label class="sf"><span>Serviço</span><input id="ss" placeholder="Ex.: site completo"></label><label class="sf"><span>Valor (R$)</span><input id="sv" type="number" inputmode="decimal" min="0" placeholder="0"></label><label class="sf"><span>Etapa</span><select id="st">${STAGES.map((stage,i)=>`<option ${i===0?'selected':''}>${stage}</option>`).join('')}</select></label><label class="sf"><span>Como conheceu a Promisa?</span><select id="sorigem">${ORIGENS.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('')}</select></label></div><button type="button" class="wide" data-click="addSale" data-click-args="[]">Salvar cliente</button></div>
+ <div id="clientForm" class="card cform" hidden><div class="cform-grid"><label class="sf"><span>Nome *</span><input id="sc" placeholder="Nome da empresa ou cliente" autocomplete="off"></label><label class="sf"><span>WhatsApp</span><input id="scontact" type="tel" inputmode="tel" placeholder="Com DDD"></label></div><button type="button" class="cform-more" id="clientMoreBtn" aria-expanded="false" aria-controls="clientMore" data-click="toggleClientMore" data-click-args="[]">＋ Mais detalhes</button><div id="clientMore" class="cform-grid" hidden><label class="sf"><span>Serviço</span><input id="ss" placeholder="Ex.: site completo"></label><label class="sf"><span>Valor (R$)</span><input id="sv" type="number" inputmode="decimal" min="0" placeholder="0"></label><label class="sf"><span>Etapa</span><select id="st">${STAGES.map((stage,i)=>`<option ${i===0?'selected':''}>${stage}</option>`).join('')}</select></label><label class="sf"><span>Como conheceu a Promisa?</span><select id="sorigem">${ORIGENS.map(o=>`<option value="${o[0]}">${o[1]}</option>`).join('')}</select></label></div><button type="button" class="wide" data-click="addSale" data-click-args="[]">Salvar cliente</button></div>
+ <div id="clientSummary" class="csum"></div>
  <input id="clientSearch" type="search" class="csearch" placeholder="Buscar por nome ou telefone" aria-label="Buscar cliente por nome ou telefone" autocomplete="off" value="${esc(clientQuery)}" data-input="setClientQuery" data-input-args="[]" data-input-value="value">
- <div id="clientChips" class="fchips" role="group" aria-label="Filtrar clientes"></div>
+ <div id="clientChips" class="cfilters"></div>
  <div id="clientBulk" class="demo-bulk"></div>
  <div id="clientCards" class="clients-grid" aria-live="polite"></div>
- <section class="orphans" aria-labelledby="orphanTitle"><div class="page-head"><h2 id="orphanTitle">Sites sem cliente <span id="orphanCount"></span></h2><details class="menu"><summary>＋ Anexar site</summary><div class="menu-panel"><button type="button" class="sec" data-click="attachSite" data-click-args='["","clientHtmlInput"]'>Arquivo HTML</button><button type="button" class="sec" data-click="attachSite" data-click-args='["","clientZipInput"]'>Arquivo ZIP</button><button type="button" class="sec" data-click="attachSite" data-click-args='["","clientFolderInput"]'>Pasta completa</button></div></details></div><div id="clientSiteList"></div></section>
+ <section class="orphans" id="orphanSec" aria-label="Sites sem cliente"><div class="page-head"><h2 id="orphanTitle" hidden>Sites sem cliente <span id="orphanCount"></span></h2><details class="menu menu-quiet"><summary>＋ Anexar site sem cliente</summary><div class="menu-panel"><button type="button" class="sec" data-click="attachSite" data-click-args='["","clientHtmlInput"]'>Arquivo HTML</button><button type="button" class="sec" data-click="attachSite" data-click-args='["","clientZipInput"]'>Arquivo ZIP</button><button type="button" class="sec" data-click="attachSite" data-click-args='["","clientFolderInput"]'>Pasta completa</button></div></details></div><div id="clientSiteList"></div></section>
  <input id="clientHtmlInput" type="file" accept=".html,.htm,text/html" multiple hidden data-change="importClientHtmlClear" data-change-args="[]" data-change-value="files"><input id="clientFolderInput" type="file" webkitdirectory directory multiple hidden data-change="importClientFolderClear" data-change-args="[]" data-change-value="files"><input id="clientZipInput" type="file" accept=".zip,application/zip,application/x-zip-compressed" multiple hidden data-change="importClientZipClear" data-change-args="[]" data-change-value="files">`;
+}
+function clientSummaryHtml(t,loaded){
+ return `<div class="ctile"><small>💰 Em negociação</small><b>${esc(clientMoney(t.negotiation))}</b></div><div class="ctile"><small>🧾 A receber</small><b>${esc(clientMoney(t.receivable))}</b></div><button type="button" class="ctile ctile-btn" id="clientNeedTile" aria-pressed="${clientNeedsAction}" data-click="toggleClientNeedsAction" data-click-args="[]"${loaded?'':' disabled'}><small>⚡ Precisam de ação</small><b>${loaded?t.needAction:'…'}</b></button>`;
+}
+function clientFilterBarHtml(board){
+ const act=`<button type="button" class="fchip" id="clientNeedChip" aria-pressed="${clientNeedsAction}" data-click="toggleClientNeedsAction" data-click-args="[]">⚡ Precisa de ação</button>`;
+ const view=`<div class="cview" role="group" aria-label="Modo de exibição">${[['list','Lista'],['board','Quadro']].map(([k,l])=>`<button type="button" class="fchip" aria-pressed="${(k==='board')===board}" data-click="setClientView" data-click-args="${ARGS(k)}">${l}</button>`).join('')}</div>`;
+ if(board)return `<div class="crow">${act}${view}</div>`;
+ const seg=`<div class="cseg" role="group" aria-label="Filtrar clientes por situação">${CLIENT_SEG.map(([k,l])=>`<button type="button" aria-pressed="${clientFilter===k}" data-click="setClientFilter" data-click-args="${ARGS(k)}">${l}</button>`).join('')}</div>`;
+ const on=CLIENT_MORE.find(f=>f[0]===clientFilter);
+ const more=`<details class="menu fmore"><summary class="fchip${on?' on':''}">${on?'Filtro: '+esc(on[1]):'Mais filtros'} ▾</summary><div class="menu-panel">${CLIENT_MORE.map(([k,l])=>`<button type="button" class="sec" aria-pressed="${clientFilter===k}" data-click="setClientFilter" data-click-args="${ARGS(on&&on[0]===k?'active':k)}">${on&&on[0]===k?'✓ ':''}${l}</button>`).join('')}</div></details>`;
+ return seg+`<div class="crow">${act}${more}${view}</div>`;
+}
+function clientBoardHtml(list,actions){
+ const by=new Map(STAGES.map(st=>[st,[]]));for(const l of list)by.get(normalizeLeadStage(l.stage)).push(l);
+ const col=st=>{const items=by.get(st);return `<div class="khead"><span class="chip dot ${STAGE_CLASS[st]||''}">${esc(st)}</span><small>${items.length} · ${esc(clientMoney(sum(items)))}</small></div><div class="kdrop">${items.map(l=>clientCardHtml(l,actions.get(l),true)).join('')||'<p class="kempty">Arraste um cliente para cá.</p>'}</div>`};
+ return STAGES.filter(st=>st!=='Perdido').map(st=>`<section class="kcol" data-stage="${esc(st)}" aria-label="${esc(st)}">${col(st)}</section>`).join('')+`<details class="kcol klost" data-stage="Perdido"><summary>Perdidos (${by.get('Perdido').length})</summary>${col('Perdido')}</details>`;
 }
 function drawClientsList(){
  const box=document.getElementById('clientCards');if(!box)return;
- const chips=document.getElementById('clientChips'),bulk=document.getElementById('clientBulk'),count=document.getElementById('clientCount');
- if(chips)chips.innerHTML=CLIENT_FILTERS.map(([key,label])=>`<button type="button" class="fchip" aria-pressed="${clientFilter===key}" data-click="setClientFilter" data-click-args="${ARGS(key)}">${label}</button>`).join('');
- const total=(S.sales||[]).length;
+ const chips=document.getElementById('clientChips'),bulk=document.getElementById('clientBulk'),count=document.getElementById('clientCount'),summary=document.getElementById('clientSummary'),C=window.promisaClients;
+ const board=clientBoardOn(),total=(S.sales||[]).length;
+ if(chips)chips.innerHTML=clientFilterBarHtml(board);
+ box.className=board?'kboard':'clients-grid';
+ const actions=new Map();if(clientsLoaded)for(const l of S.sales)actions.set(l,clientActionFor(l));
+ if(summary)summary.innerHTML=C?clientSummaryHtml(C.clientSummary(S.sales,l=>normalizeLeadStage(l.stage),l=>actions.get(l)),clientsLoaded):'';
  if(!clientsLoaded){
   if(count)count.textContent=total+(total===1?' cliente':' clientes');
-  if(bulk)bulk.innerHTML='<button type="button" disabled>📤 Enviar demonstração para pendentes…</button>';
-  box.innerHTML=total?'<div class="ccard sk" aria-hidden="true"><i></i><i></i><i></i></div>'.repeat(Math.min(total,3)):'';
-  if(!total)box.innerHTML='<div class="site-empty">Nenhum cliente ainda. Toque em “＋ Novo cliente” para começar.</div>';
+  if(bulk)bulk.innerHTML='';
+  box.className='clients-grid';
+  box.innerHTML=total?'<div class="ccard sk" aria-hidden="true"><i></i><i></i><i></i></div>'.repeat(Math.min(total,3)):'<div class="site-empty">Nenhum cliente ainda. Toque em “＋ Novo cliente” para começar.</div>';
   return;
  }
- const list=S.sales.filter(clientMatches),n=demoPendingLeads().length;
+ const list=S.sales.filter(l=>clientMatches(l,actions.get(l),board)),n=demoPendingLeads().length;
  if(count)count.textContent=list.length===total?total+(total===1?' cliente':' clientes'):list.length+' de '+total+' clientes';
- if(bulk)bulk.innerHTML=`<button type="button" data-click="sendDemoPending" data-click-args="[]"${n?'':' disabled'}>📤 Enviar demonstração para pendentes (${n})</button>${n?'':'<small class="lead-muted">Para enviar, o cliente precisa de telefone e de um site anexado, e ainda não ter recebido.</small>'}`;
- box.innerHTML=list.length?list.map(clientCardHtml).join(''):`<div class="site-empty">${total?'Nenhum cliente neste filtro.':'Nenhum cliente ainda. Toque em “＋ Novo cliente” para começar.'}</div>`;
+ if(bulk)bulk.innerHTML=n?`<button type="button" class="sec" data-click="sendDemoPending" data-click-args="[]">📤 Enviar demonstração para pendentes (${n})</button>`:'';
+ if(board){box.innerHTML=clientBoardHtml(list,actions);return}
+ box.innerHTML=list.length?list.map(l=>clientCardHtml(l,actions.get(l))).join(''):`<div class="site-empty">${total?'Nenhum cliente neste filtro.':'Nenhum cliente ainda. Toque em “＋ Novo cliente” para começar.'}</div>`;
 }
 function drawOrphans(){
  const box=document.getElementById('clientSiteList');if(!box)return;
- const h=document.getElementById('orphanCount');if(h)h.textContent=clientsLoaded&&clientOrphans.length?'('+clientOrphans.length+')':'';
- if(!clientsLoaded){box.innerHTML='<div class="site-empty">Carregando…</div>';return}
- box.innerHTML=clientOrphans.length?clientOrphans.map(s=>`<div class="orow"><div class="oname"><b>${esc(s.name)}</b><small>${(s.files||[]).length} arquivo(s) · ${siteBytes(s)}</small></div><div class="oacts"><button type="button" class="sec" data-click="openClientSite" data-click-args="${ARGS(s.id)}">Ver</button><button type="button" class="sec more" aria-label="Mais opções de ${esc(s.name)}" data-click="openSiteSheet" data-click-args="${ARGS(s.id)}">⋯</button></div></div>`).join(''):'<div class="site-empty">Nenhum site sem cliente. Sites anexados por aqui ficam nesta lista até serem ligados a um cliente.</div>';
+ const has=clientsLoaded&&clientOrphans.length>0,h=document.getElementById('orphanCount'),title=document.getElementById('orphanTitle');
+ if(title)title.hidden=!has;if(h)h.textContent=has?'('+clientOrphans.length+')':'';
+ document.getElementById('orphanSec')?.classList.toggle('is-empty',!has);
+ box.innerHTML=has?clientOrphans.map(s=>`<div class="orow"><div class="oname"><b>${esc(s.name)}</b><small>${(s.files||[]).length} arquivo(s) · ${siteBytes(s)}</small></div><div class="oacts"><button type="button" class="sec" data-click="openClientSite" data-click-args="${ARGS(s.id)}">Ver</button><button type="button" class="sec more" aria-label="Mais opções de ${esc(s.name)}" data-click="openSiteSheet" data-click-args="${ARGS(s.id)}">⋯</button></div></div>`).join(''):'';
 }
 async function drawClients(){
  drawClientsList();drawOrphans();
@@ -200,9 +235,18 @@ async function drawClients(){
  }
 }
 function setClientQuery(value){clientQuery=String(value||'');drawClientsList()}
-function setClientFilter(key){clientFilter=key;drawClientsList()}
-function goClients(filter){clientFilter=filter||'all';clientQuery='';go('clients')}
+function setClientFilter(key){if(!CLIENT_FILTERS.some(f=>f[0]===key))return;clientFilter=key;drawClientsList()}
+function goClients(filter){clientFilter=CLIENT_FILTERS.some(f=>f[0]===filter)?filter:'active';clientNeedsAction=false;clientQuery='';go('clients')}
+function toggleClientNeedsAction(){clientNeedsAction=!clientNeedsAction;drawClientsList()}
+function setClientView(view){clientView=view==='board'?'board':'list';try{localStorage.setItem('painel_clientes_view',clientView)}catch{}drawClientsList()}
 function toggleClientForm(){const form=document.getElementById('clientForm'),btn=document.getElementById('clientFormBtn');if(!form)return;form.hidden=!form.hidden;btn?.setAttribute('aria-expanded',String(!form.hidden));if(!form.hidden)document.getElementById('sc')?.focus()}
+function toggleClientMore(){const box=document.getElementById('clientMore'),btn=document.getElementById('clientMoreBtn');if(!box)return;box.hidden=!box.hidden;if(btn){btn.setAttribute('aria-expanded',String(!box.hidden));btn.textContent=box.hidden?'＋ Mais detalhes':'－ Menos detalhes'}if(!box.hidden)document.getElementById('ss')?.focus()}
+function moveLeadStage(id,stage){const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead||!STAGES.includes(stage)||normalizeLeadStage(lead.stage)===stage)return;sheetSet(lead.id,'stage',stage);drawClientsList()}
+document.addEventListener('dragstart',e=>{const card=e.target instanceof Element&&e.target.closest('.kcard[data-lead-id]');if(!card||!e.dataTransfer)return;e.dataTransfer.setData('text/plain',card.dataset.leadId);e.dataTransfer.effectAllowed='move';card.classList.add('dragging')});
+document.addEventListener('dragend',e=>{if(e.target instanceof Element)e.target.closest('.kcard')?.classList.remove('dragging');document.querySelectorAll('.kcol.over').forEach(x=>x.classList.remove('over'))});
+document.addEventListener('dragover',e=>{const col=e.target instanceof Element&&e.target.closest('.kcol[data-stage]');if(!col)return;e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='move';col.classList.add('over')});
+document.addEventListener('dragleave',e=>{const col=e.target instanceof Element&&e.target.closest('.kcol[data-stage]');if(col&&!col.contains(e.relatedTarget))col.classList.remove('over')});
+document.addEventListener('drop',e=>{const col=e.target instanceof Element&&e.target.closest('.kcol[data-stage]');if(!col)return;e.preventDefault();col.classList.remove('over');const id=e.dataTransfer?.getData('text/plain');if(id)moveLeadStage(id,col.dataset.stage)});
 function closeSheet(){document.querySelectorAll('dialog.sheet').forEach(d=>{if(d.open)d.close()})}
 function showSheet(title,body){
  closeSheet();
@@ -212,23 +256,50 @@ function showSheet(title,body){
  d.addEventListener('close',()=>{d.remove();drawClientsList()});
  document.body.append(d);d.showModal();return d;
 }
+const SHEET_TABS=[['resumo','Resumo'],['site','Site e demo'],['briefing','Briefing'],['entregas','Entregas']];
+const SHEET_TAB_ALIAS={dados:'resumo',resumo:'resumo',site:'site',demo:'site',diagnostico:'site',briefing:'briefing',entregas:'entregas'};
+function clientTimelineHtml(lead,stage){
+ const ev=[],bi=briefingInfo(lead);
+ if(lead.date)ev.push(['📅','Cadastro: '+leadDate(lead.date)]);
+ if(lead.demoSentAt)ev.push(['📤','Demonstração enviada em '+esc(demoShortDate(lead.demoSentAt))]);
+ if(bi?.state==='answered')ev.push(['📋','Formulário respondido em '+esc(demoShortDate(bi.item.answeredAt))]);
+ else if(bi?.state==='open')ev.push(['📋','Formulário enviado, aguardando resposta']);
+ if(stage==='Fechado')ev.push(['🤝','Negócio fechado']);
+ if(stage==='Perdido')ev.push(['✖','Marcado como perdido']);
+ if(lead.paid)ev.push(['💰','Pagamento recebido']);
+ if(stage==='Fechado'&&lead.entrega?.plano&&window.promisaDelivery&&entProgress(lead).complete)ev.push(['📦','Entregas concluídas']);
+ return ev.length?`<section><h3>Linha do tempo</h3><ol class="tline">${ev.map(([i,t])=>`<li><span aria-hidden="true">${i}</span><span>${t}</span></li>`).join('')}</ol></section>`:'';
+}
+function sheetTab(key){
+ const d=[...document.querySelectorAll('dialog.sheet[open]')].pop();if(!d)return;
+ const tabs=[...d.querySelectorAll('[role="tab"]')];if(!tabs.some(t=>t.dataset.tab===key))return;
+ for(const t of tabs){const on=t.dataset.tab===key;t.setAttribute('aria-selected',String(on));t.tabIndex=on?0:-1;const p=d.querySelector('#'+t.getAttribute('aria-controls'));if(p)p.hidden=!on}
+ d.querySelector('.sheet-body')?.scrollTo?.(0,0);
+}
+document.addEventListener('keydown',e=>{const t=e.target instanceof Element&&e.target.closest('.stabs [role="tab"]');if(!t||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;const all=[...t.parentElement.querySelectorAll('[role="tab"]')],i=all.indexOf(t);const next=e.key==='Home'?all[0]:e.key==='End'?all[all.length-1]:all[(i+(e.key==='ArrowRight'?1:-1)+all.length)%all.length];e.preventDefault();sheetTab(next.dataset.tab);next.focus()});
 function openClientSheet(id,focus){
  const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
  const stage=normalizeLeadStage(lead.stage),sites=leadSites(lead.id),ready=demoLeadReady(lead);
  const field=(label,key,type,val,ev,extra='')=>`<label class="sf"><span>${label}</span><input type="${type}" ${extra} value="${esc(val)}" data-${ev}="sheetSet" data-${ev}-args="${ARGS(lead.id,key)}" data-${ev}-value="value"></label>`;
  const siteBlocks=sites.map(site=>`<div class="sheet-site"><p class="sheet-site-name"><b>🌐 ${esc(site.name)}</b><small>${(site.files||[]).length} arquivo(s) · ${siteBytes(site)}</small>${site.featured?.on?'<span class="demo-badge is-sent">⭐ Em destaque</span>':''}${publishBadgeHtml(site.id)}</p><div class="sheet-grid"><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openClientSite',site.id)}">👁 Ver site</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openDemoLinks',site.id)}">🔗 Link de demonstração</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openFeatured',site.id)}">⭐ Destaque no site</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openPublish',site.id)}">🌐 Publicar site</button><button type="button" class="sec" data-click="downloadClientSiteZip" data-click-args="${ARGS(site.id)}">⬇ Baixar arquivos</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('renameClientSite',site.id)}">✏ Renomear</button></div><label class="sf"><span>Andamento</span><select data-change="saveClientSiteStatus" data-change-args="${ARGS(site.id)}" data-change-value="value">${siteStatuses(site).map(x=>`<option ${x===site.status?'selected':''}>${esc(x)}</option>`).join('')}</select></label><button type="button" class="del" data-click="sheetDo" data-click-args="${ARGS('deleteClientSite',site.id)}">Remover site</button></div>`).join('');
  const attach=`<p class="sheet-label">${sites.length?'Substituir ou anexar outro site':'Anexar site'}</p><div class="sheet-grid three"><button type="button" class="sec" data-click="attachSite" data-click-args="${ARGS(lead.id,'clientHtmlInput')}">HTML</button><button type="button" class="sec" data-click="attachSite" data-click-args="${ARGS(lead.id,'clientZipInput')}">ZIP</button><button type="button" class="sec" data-click="attachSite" data-click-args="${ARGS(lead.id,'clientFolderInput')}">Pasta</button></div>`;
- const body=`<section><h3>Dados</h3><div class="sheet-fields">${field('Nome','client','text',lead.client,'input')}${field('Telefone / WhatsApp','contact','tel',lead.contact||'','input','inputmode="tel"')}${field('Serviço','service','text',lead.service||'','input')}${field('Valor (R$)','value','number',lead.value||0,'input','inputmode="decimal" min="0"')}${field('Data','date','date',lead.date||'','change')}<label class="sf"><span>Etapa</span><select data-change="sheetSet" data-change-args="${ARGS(lead.id,'stage')}" data-change-value="value">${STAGES.map(x=>`<option ${x===stage?'selected':''}>${x}</option>`).join('')}</select></label><label class="sf"><span>Como conheceu a Promisa?</span><select data-change="sheetSet" data-change-args="${ARGS(lead.id,'origem')}" data-change-value="value">${ORIGENS.map(o=>`<option value="${o[0]}" ${o[0]===(lead.origem||'')?'selected':''}>${o[1]}</option>`).join('')}</select></label></div><button type="button" class="sec wide" id="sheetPaid" aria-pressed="${!!lead.paid}" data-click="sheetTogglePaid" data-click-args="${ARGS(lead.id)}">${lead.paid?'✅ Pago · desfazer':'Marcar como pago'}</button></section>
- ${stage==='Fechado'?`<section><button type="button" class="sec wide" data-click="sheetDo" data-click-args="${ARGS('openEntregas',lead.id)}">📦 Ver entregas</button></section>`:''}
- <section id="sheetSiteSec"><h3>Site</h3>${siteBlocks}${attach}</section>
+ const showEnt=stage==='Fechado'||!!lead.entrega,entP=showEnt&&lead.entrega?.plano&&window.promisaDelivery?entProgress(lead):null;
+ const panels={
+  resumo:`<section><h3>Dados</h3><div class="sheet-fields">${field('Nome','client','text',lead.client,'input')}${field('Telefone / WhatsApp','contact','tel',lead.contact||'','input','inputmode="tel"')}${field('Serviço','service','text',lead.service||'','input')}${field('Valor (R$)','value','number',lead.value||0,'input','inputmode="decimal" min="0"')}${field('Data','date','date',lead.date||'','change')}<label class="sf"><span>Etapa</span><select data-change="sheetSet" data-change-args="${ARGS(lead.id,'stage')}" data-change-value="value">${STAGES.map(x=>`<option ${x===stage?'selected':''}>${x}</option>`).join('')}</select></label><label class="sf"><span>Como conheceu a Promisa?</span><select data-change="sheetSet" data-change-args="${ARGS(lead.id,'origem')}" data-change-value="value">${ORIGENS.map(o=>`<option value="${o[0]}" ${o[0]===(lead.origem||'')?'selected':''}>${o[1]}</option>`).join('')}</select></label></div><button type="button" class="sec wide" id="sheetPaid" aria-pressed="${!!lead.paid}" data-click="sheetTogglePaid" data-click-args="${ARGS(lead.id)}">${lead.paid?'✅ Pago · desfazer':'Marcar como pago'}</button></section>
+ ${clientTimelineHtml(lead,stage)}
+ <details class="smore"><summary>Mais opções</summary><p class="sheet-label">Privacidade (LGPD)</p><div class="sheet-grid"><button type="button" class="sec" data-click="exportLeadData" data-click-args="${ARGS(lead.id)}">Exportar dados</button><button type="button" class="del" data-click="sheetDo" data-click-args="${ARGS('deleteLeadData',lead.id)}">Excluir dados (LGPD)</button></div><button type="button" class="del wide" data-click="sheetDo" data-click-args="${ARGS('delSale',lead.id)}">Excluir cliente</button></details>`,
+  site:`<section id="sheetSiteSec"><h3>Site</h3>${siteBlocks}${attach}</section>
  <section><h3>Demonstração</h3><p class="cline">${sites.length||lead.demoSentAt?demoStatusHtml(lead):'<span class="lead-muted">Anexe um site para poder enviar.</span>'}</p><div class="sheet-grid">${ready?`<button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('sendDemoOne',lead.id)}">📤 Enviar demonstração</button>`:''}<button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('toggleDemoSent',lead.id)}">${lead.demoSentAt?'Desmarcar envio':'Marcar como enviada'}</button></div></section>
  ${diagnosticoSheetHtml(lead)}
- ${briefingSheetHtml(lead)}
- <section><h3>🤖 PROMPTS DE IA</h3><div class="sheet-grid three">${['essencial','profissional','premium'].map(pl=>`<button type="button" class="sec" data-click="openPlanPrompts" data-click-args="${ARGS(lead.id,pl)}">${{essencial:'Essencial',profissional:'Profissional',premium:'Premium'}[pl]}</button>`).join('')}</div></section>
- <section><h3>Privacidade (LGPD)</h3><div class="sheet-grid"><button type="button" class="sec" data-click="exportLeadData" data-click-args="${ARGS(lead.id)}">Exportar dados</button><button type="button" class="del" data-click="sheetDo" data-click-args="${ARGS('deleteLeadData',lead.id)}">Excluir dados (LGPD)</button></div></section>
- <section><button type="button" class="del wide" data-click="sheetDo" data-click-args="${ARGS('delSale',lead.id)}">Excluir cliente</button></section>`;
+ <section><h3>🤖 Prompts de IA</h3><div class="sheet-grid three">${['essencial','profissional','premium'].map(pl=>`<button type="button" class="sec" data-click="openPlanPrompts" data-click-args="${ARGS(lead.id,pl)}">${{essencial:'Essencial',profissional:'Profissional',premium:'Premium'}[pl]}</button>`).join('')}</div></section>`,
+  briefing:briefingSheetHtml(lead),
+  entregas:`<section><h3>Entregas</h3><p class="cline">${entP&&entP.total?`<span>📦 ${entP.done} de ${entP.total} feitas · ${entP.pct}%</span>`:'<span class="lead-muted">Escolha o plano na página de entregas para ver o que falta.</span>'}</p><button type="button" class="sec wide" data-click="sheetDo" data-click-args="${ARGS('openEntregas',lead.id)}">📦 Ver entregas</button></section>`
+ };
+ const tabs=SHEET_TABS.filter(([k])=>k!=='entregas'||showEnt);
+ let want=SHEET_TAB_ALIAS[focus]||'resumo';if(!tabs.some(([k])=>k===want))want='resumo';
+ const body=`<div class="stabs" role="tablist" aria-label="Partes da ficha">${tabs.map(([k,l])=>`<button type="button" role="tab" id="stab-${k}" data-tab="${k}" aria-controls="spanel-${k}" aria-selected="${k===want}" tabindex="${k===want?0:-1}" data-click="sheetTab" data-click-args="${ARGS(k)}">${l}</button>`).join('')}</div>${tabs.map(([k])=>`<div class="spanel" role="tabpanel" id="spanel-${k}" aria-labelledby="stab-${k}"${k===want?'':' hidden'}>${panels[k]}</div>`).join('')}`;
  const d=showSheet(lead.client,body);
- if(focus==='site')d.querySelector('#sheetSiteSec')?.scrollIntoView({block:'start'});
+ if(focus==='dados')d.querySelector('#spanel-resumo input[type="tel"]')?.focus();
 }
 function openSiteSheet(id){
  const site=clientSiteRows.find(x=>String(x.id)===String(id));if(!site)return;
@@ -823,7 +894,7 @@ async function boundedDecompress(bytes,limit){const reader=new Blob([bytes]).str
 const previewResources=new Map();
 function releasePreview(url){for(const resource of previewResources.get(url)||[])URL.revokeObjectURL(resource);previewResources.delete(url);URL.revokeObjectURL(url)}
 async function safePreviewDocument(url){const doc=new DOMParser().parseFromString(await(await fetch(url)).text(),'text/html');doc.querySelectorAll('script,iframe,object,embed,base,meta[http-equiv],link').forEach(el=>{if(el.tagName==='LINK'&&el.rel==='stylesheet'&&el.href.startsWith('blob:'))return;el.remove()});for(const el of doc.querySelectorAll('*'))for(const attr of [...el.attributes])if(attr.name.startsWith('on'))el.removeAttribute(attr.name);const policy=document.createElement('meta');policy.httpEquiv='Content-Security-Policy';policy.content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline' blob:; font-src blob: data:; script-src 'none'; connect-src 'none'; form-action 'none'; frame-src 'none'";doc.head.prepend(policy);return '<!doctype html>'+doc.documentElement.outerHTML}
-const panelActions={openPublish,openDiagnostico,openEntregas,setEntregaFilter,entregaSetPlan,entregaToggle,entregaObs,openPlanPrompts,openFeatured,publishFeatured,briefingPrepare,briefingView,briefingRevoke,briefingCopyLink,sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,attachSite,pay,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
+const panelActions={openPublish,openDiagnostico,openEntregas,setEntregaFilter,entregaSetPlan,entregaToggle,entregaObs,openPlanPrompts,openFeatured,publishFeatured,briefingPrepare,briefingView,briefingRevoke,briefingCopyLink,sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,sheetTab,toggleClientNeedsAction,setClientView,toggleClientMore,attachSite,pay,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
  attachProjectZipClear:attachProjectZip,importClientFolderClear:importClientFolder,importClientHtmlClear:importClientHtml,importClientZipClear:importClientZip,runGeneralBackupClear:runGeneralBackup,
  sheetDo(name,...args){if(name==='sheetDo'||!Object.hasOwn(panelActions,name))return;closeSheet();return panelActions[name](...args)},
  pset2Calc(...args){pset2(...args);upCalc()},pickFile(id){document.getElementById(id).click()}};

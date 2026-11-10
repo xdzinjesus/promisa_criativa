@@ -324,8 +324,64 @@ dialog.sheet::backdrop{background:#000b}
 #navMore button{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:12px!important;text-align:left;background:#1c1628!important;border:1px solid #ffffff1a!important;color:#f3f1f8!important;padding:12px 16px!important}
 #navMore button .em{margin:0!important;display:inline-flex;width:22px}
 #navMore button.on{border-color:#9c6aff!important;background:#2a1f45!important}
+/* Clientes: resumo, filtros, cartão compacto, quadro e ficha em abas */
+.csum{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.ctile{flex:1 1 100px;min-width:0;display:grid;gap:2px;align-content:start;padding:10px 12px;border:1px solid #ffffff17;border-radius:14px;background:#ffffff08;text-align:left;font-weight:400;box-shadow:none;color:var(--tx)}
+.ctile small{font-size:12px;color:var(--mut);line-height:1.25}.ctile b{font-size:17px;font-weight:700;overflow-wrap:anywhere}
+button.ctile-btn{min-height:44px;cursor:pointer;background:#ffffff08;border:1px solid #ffffff17;color:var(--tx)}
+button.ctile-btn:hover{background:#9c6aff1a;box-shadow:none}
+button.ctile-btn[aria-pressed=true]{background:#9c6aff33;border-color:#b790ff}
+.cfilters{display:grid;gap:8px;margin:0 0 12px}
+.cseg{display:flex;gap:4px;padding:4px;border:1px solid #ffffff1f;border-radius:14px;background:#ffffff06}
+.cseg button{flex:1 1 0;min-width:0;min-height:44px;padding:6px 4px;border:1px solid transparent;border-radius:10px;background:transparent;color:var(--mut);box-shadow:none;font-weight:600;font-size:14px}
+.cseg button:hover{background:#ffffff0d;box-shadow:none}
+.cseg button[aria-pressed=true]{background:#9c6aff33;border-color:#b790ff80;color:#fff}
+.crow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.fmore>summary.fchip{display:flex;align-items:center;background:#ffffff0a;border:1px solid #ffffff24;color:#eadfff;font-weight:400}
+.fmore>summary.fchip.on{background:#9c6aff33;border-color:#b790ff;color:#fff}
+.fmore .menu-panel{left:0;right:auto}
+.fmore .menu-panel button[aria-pressed=true]{border-color:#b790ff}
+.cview{display:none;gap:4px;margin-left:auto}
+@media(min-width:1024px){.cview{display:flex}}
+.cmeta{color:var(--mut);font-size:14px}
+.cstat{font-size:12.5px;color:var(--mut);gap:4px 10px}.cstat .demo-badge{font-size:12px}
+.chip.dot::before{content:"";display:inline-block;width:7px;height:7px;margin-right:6px;border-radius:50%;background:currentColor;vertical-align:1px}
+.cacts{justify-content:space-between;align-items:center}
+.cacts .cnext,.cacts a.cnext{flex:0 1 auto;min-height:44px;display:inline-flex;align-items:center;justify-content:center;padding:8px 14px;border-radius:12px;background:transparent;border:1px solid #b790ff66;color:var(--ac);font-weight:700;font-size:14px;box-shadow:none;text-decoration:none;white-space:normal;line-height:1.2}
+.cacts button.cnext:first-child:not(:last-child){flex:0 1 auto}
+.cacts .cnext:hover{background:#9c6aff1f;box-shadow:none}
+.cacts .more{flex:0 0 48px;min-height:44px}
+.cnext-none{flex:1}
+.demo-bulk:empty{display:none}
+.cform-more{background:transparent;border:0;box-shadow:none;color:var(--ac);padding:8px 2px;min-height:44px;margin:0 0 8px;font-weight:600}
+.cform-more:hover{background:transparent;box-shadow:none;text-decoration:underline}
+.orphans.is-empty{margin-top:16px}
+.menu-quiet>summary{background:transparent;border:1px dashed #ffffff2e;color:var(--mut);font-weight:600;font-size:14px}
+.menu-quiet .menu-panel{left:0;right:auto}
+.orphans.is-empty .page-head{justify-content:flex-start}
+.kboard{display:grid;grid-template-columns:repeat(4,minmax(0,1fr)) minmax(0,.75fr);gap:10px;align-items:start;margin-bottom:8px}
+.kcol{display:grid;gap:8px;align-content:start;min-width:0;min-height:160px;margin:0;padding:8px;border:1px solid #ffffff14;border-radius:16px;background:#ffffff05;transition:border-color .15s,background .15s}
+.kcol.over{border-color:#b790ff;background:#9c6aff14}
+.khead{display:flex;justify-content:space-between;align-items:center;gap:6px;padding:2px 2px 4px}.khead small{color:var(--mut);font-size:12px}
+.kdrop{display:grid;gap:8px}
+.kempty{margin:0;padding:14px 8px;text-align:center;font-size:12.5px;color:var(--mut);border:1px dashed #ffffff1f;border-radius:12px}
+.klost>summary{cursor:pointer;font-weight:700;min-height:44px;display:flex;align-items:center;color:var(--mut)}
+.klost[open]>summary{margin-bottom:4px}
+.kdrop>.kcard{min-width:0;overflow:hidden}.kcard .cacts{flex-wrap:nowrap;gap:6px}.kcard .cacts .cnext,.kcard .cacts button.cnext:first-child:not(:last-child){flex:1 1 0;min-width:0;font-size:13px;padding:6px 8px}.kcard .cacts .more{flex:0 0 44px}.kcard .demo-badge{white-space:normal}.khead small{white-space:nowrap}
+.kcard{cursor:grab;padding:12px;gap:6px}.kcard.dragging{opacity:.5}.kcard .cname{font-size:15px}.kcard .ccard-top{flex-wrap:wrap}.kcard .chips{justify-content:flex-start}
+.stabs{position:sticky;top:-8px;z-index:2;display:flex;gap:4px;margin:0 -16px;padding:8px 16px;background:#14101c;border-bottom:1px solid #ffffff17;overflow-x:auto;scrollbar-width:none}
+.stabs [role=tab]{flex:1 0 auto;min-height:44px;padding:6px 12px;border-radius:10px;background:transparent;border:1px solid transparent;color:var(--mut);box-shadow:none;font-weight:600;font-size:14px;white-space:nowrap}
+.stabs [role=tab]:hover{background:#ffffff0d;box-shadow:none}
+.stabs [role=tab][aria-selected=true]{background:#9c6aff33;border-color:#b790ff80;color:#fff}
+.tline{list-style:none;margin:0;padding:0 0 0 4px;display:grid;gap:0}
+.tline li{position:relative;display:flex;gap:10px;align-items:flex-start;padding:6px 0 6px 2px;font-size:14px;line-height:1.4}
+.tline li:not(:last-child)::after{content:"";position:absolute;left:11px;top:30px;bottom:-4px;width:1px;background:#ffffff24}
+.tline li>span:first-child{flex:none;width:22px;text-align:center}
+.smore{margin:12px 0 0;background:transparent}.smore>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;color:var(--mut)}
+.smore .del.wide{margin-top:8px}
+@media(max-width:380px){.cacts{flex-wrap:nowrap}.cacts .cnext{flex:1 1 auto}.cacts .more{flex:0 0 48px}}
 </style></head><body>
 <header class="topbar"><a class="tb-brand" href="/admin" aria-label="Promisa, início"><img src="/assets/asset-1.webp" alt="" width="30" height="30"><b>Promisa</b></a><p id="cloud-status" class="tb-status" role="status" aria-live="polite">Conectando ao armazenamento…</p><div class="tb-alerts"><button type="button" id="cloud-conflicts" hidden>Resolver diferenças</button><button type="button" id="cloud-unlock" hidden>Destravar dados</button></div><details class="tb-menu"><summary>⋯ Conta</summary><div class="tb-panel"><a href="/acesso.html">← Escolher área</a><a href="/catalogo">Catálogo dos meus projetos</a><button type="button" id="cloud-sync">Sincronizar agora</button><button type="button" id="cloud-encrypt" hidden>Ativar criptografia</button><button type="button" id="cloud-copy">Cópia de segurança: baixar deste aparelho</button><label class="tb-file">Restaurar cópia<input type="file" id="cloud-restore" accept=".json,application/json"></label><button type="button" id="passkey-open" hidden>🔐 Face ID / chaves de acesso</button><button type="button" id="discord-open">💬 Discord</button><button type="button" class="session-logout" data-logout>Sair</button><button type="button" class="session-logout danger" data-logout data-clear-local>Sair e apagar dados deste aparelho</button><p class="tb-note">Os dados e anexos são compartilhados entre aparelhos quando o indicador mostra Salvo online. Importar arquivos não publica sites na internet. “Sair” mantém a cópia local; em aparelho compartilhado, use “Sair e apagar dados deste aparelho”.</p></div></details></header>
 <main id="app"></main>
 <nav id="nav"></nav>
-<script src="/assets/security.js" defer></script><script src="/assets/briefing-panel.js" defer></script><script src="/assets/plan-prompts.js" defer></script><script src="/assets/instagram-panel.js" defer></script><script src="/api/access?view=panel" defer></script><script src="/assets/private-session.js" defer></script><script src="/assets/cloud.js" defer></script><script src="/assets/passkey-panel.js" defer></script><script src="/assets/discord-panel.js" defer></script></body></html>
+<script src="/assets/security.js" defer></script><script src="/assets/briefing-panel.js" defer></script><script src="/assets/plan-prompts.js" defer></script><script src="/assets/instagram-panel.js" defer></script><script src="/assets/client-helpers.js" defer></script><script src="/api/access?view=panel" defer></script><script src="/assets/private-session.js" defer></script><script src="/assets/cloud.js" defer></script><script src="/assets/passkey-panel.js" defer></script><script src="/assets/discord-panel.js" defer></script></body></html>

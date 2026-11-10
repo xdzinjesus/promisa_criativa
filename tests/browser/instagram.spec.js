@@ -69,6 +69,7 @@ test('cadastro de cliente tem "Como conheceu a Promisa?" e guarda a origem', asy
   await page.goto('/admin?tab=clients');
   await page.locator('[data-click="toggleClientForm"]').first().click();
   await page.locator('#sc').fill('Padaria Teste');
+  await page.locator('#clientMoreBtn').click();
   await page.locator('#sorigem').selectOption('instagram');
   await page.locator('[data-click="addSale"]').click();
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('painel_v1')).sales[0]?.origem)).toBe('instagram');
