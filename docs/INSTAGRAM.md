@@ -58,3 +58,10 @@ Seu Instagram já é **Profissional** e **não** está ligado a uma página do F
 - Dados: `promisa/instagram/v1/history.json` e `promisa/instagram/v1/token.json` (Blob privado).
 - Rota do painel: `POST /api/instagram` com `status`, `sync`, `goals`, `clients-count`.
 - Arquivos: `lib/instagram.js`, `lib/instagram-store.js`, `lib/instagram-sync.js`, `lib/instagram-handler.js`, `lib/instagram-report.js`, `src/instagram-math.js`, `src/instagram-panel.js`, `api/instagram.js`, `tests/instagram.test.mjs`.
+
+## Se o token começar com "EA" (login unificado)
+O painel da Meta pode gerar um token no formato do Facebook. Nesse caso o sistema precisa saber **qual é a conta do Instagram**:
+1. Descubra o **ID da conta do Instagram** (número que começa com `1784...`), mostrado ao lado da conta na tela de gerar token do app.
+2. Na Vercel, crie a variável `INSTAGRAM_ACCOUNT_ID` com esse número e faça um novo deploy.
+
+Sem esse número, o sistema tenta achar a conta sozinho pelas Páginas do Facebook e pelo portfólio empresarial (precisa de permissão `business_management`).
