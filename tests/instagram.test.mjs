@@ -687,3 +687,32 @@ test('meta: prazo hoje ainda conta (1 dia), prazo vencido não', () => {
   assert.equal(late.perDayNeeded, null);
   assert.match(projectionText(late), /já passou/);
 });
+
+test('token do Facebook (login unificado): usa graph.facebook.com, acha a conta do Instagram e não tenta renovar', async () => {
+  const { createInstagramClient, createTokenManager, isFacebookToken, safeDetail } = await import('../lib/instagram.js');
+  const calls = [];
+  const fake = async url => {
+    const u = new URL(url); calls.push(u.host + u.pathname);
+    const json = body => ({ ok: true, status: 200, json: async () => body });
+    if (u.pathname.endsWith('/me') && u.searchParams.get('fields') === 'id,followers_count') return json({ id: '111' });
+    if (u.pathname.endsWith('/me/accounts')) return json({ data: [{ id: 'p1', instagram_business_account: { id: '17841400000000' } }] });
+    if (u.pathname.endsWith('/17841400000000')) return json({ id: '17841400000000', username: 'promisa', followers_count: 1200, follows_count: 10, media_count: 40 });
+    if (u.pathname.endsWith('/17841400000000/media')) return json({ data: [{ id: 'm1', media_type: 'IMAGE', timestamp: '2026-11-01T10:00:00+0000', like_count: 3 }] });
+    return { ok: false, status: 400, json: async () => ({ error: { code: 100, message: 'x' } }) };
+  };
+  const token = 'EA' + 'x'.repeat(60);
+  assert.equal(isFacebookToken(token), true);
+  assert.equal(isFacebookToken('IGAA' + 'x'.repeat(40)), false);
+  const client = createInstagramClient({ fetch: fake });
+  const me = await client.me(token);
+  assert.equal(me.followers, 1200);
+  const media = await client.media(token);
+  assert.equal(media.length, 1);
+  assert.ok(calls.every(c => c.startsWith('graph.facebook.com')));
+  let refreshed = false;
+  const manager = createTokenManager({ client: { refresh: async () => { refreshed = true; } }, store: { readToken: async () => null, writeToken: async () => {} }, env: { INSTAGRAM_TOKEN: token } });
+  const ensured = await manager.ensure();
+  assert.equal(ensured.token, token); assert.equal(refreshed, false);
+  const detail = safeDetail({ code: 190, message: 'Invalid OAuth access token - Cannot parse access_token EAAabcdefghijklmnopqrstuvwxyz0123 https://x.y/z' });
+  assert.ok(!/EAAabc/.test(detail) && !/https:/.test(detail) && /190/.test(detail));
+});
