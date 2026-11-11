@@ -27,6 +27,10 @@ PLANEJAR → DISTRIBUIR → IMPLEMENTAR → TESTAR → REVISAR → HANDOFF → C
 - `ui-ux-pro-max`: interfaces, design system, acessibilidade e responsividade.
 - REA (MCP `rea` e skill `rea:reverse-engineer-anything`): apenas em alvos que o usuário possui ou tem autorização para analisar.
 
+## Projeto e aprovação
+- Resumo de como tudo funciona: `docs/PROJETO.md`.
+- Fluxo: branch própria → commit/push → pull request → **merge só com a aprovação do dono no chat** → a Vercel publica sozinha em promisa.online.
+
 ## Discord
 - Antes de mexer em qualquer coisa do Discord (`api/discord.js`, `lib/discord*.js`, `src/discord-panel.js`), leia `docs/DISCORD.md`.
 
