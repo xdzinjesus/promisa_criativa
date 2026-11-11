@@ -143,22 +143,38 @@
   });
  }, { passive: true });
  art.addEventListener('pointerleave', resetArt);
- // Toque ou clique: o P gira em 3D com um pulinho e solta uma onda de luz.
+ // Toque ou clique: o P afunda de leve, gira uma volta suave em 3D e solta
+ // uma onda de luz. Animação feita pelo navegador (Web Animations), sem
+ // reiniciar no meio: cliques durante o giro são ignorados.
  // Com "Reduzir movimento" ligado, só um brilho suave (sem giro).
- let lastPop = 0;
+ const markPop = art.querySelector('.mark-pop');
+ const markRing = art.querySelector('.mark-ring');
+ const markBurst = art.querySelector('.mark-burst');
+ let spinning = null;
+ const press = on => art.classList.toggle('is-pressed', on);
+ art.addEventListener('pointerdown', () => press(true));
+ ['pointerup', 'pointercancel', 'pointerleave'].forEach(type => art.addEventListener(type, () => press(false)));
+ art.addEventListener('selectstart', event => event.preventDefault());
+ art.addEventListener('dragstart', event => event.preventDefault());
  const pop = () => {
-  const now = Date.now();
-  if (now - lastPop < 450) return;
-  lastPop = now;
-  const cls = reduced.matches ? 'is-glowing' : 'is-popping';
-  art.classList.remove('is-popping', 'is-glowing');
-  void art.offsetWidth;
-  art.classList.add(cls);
-  clearTimeout(art._popTimer);
-  art._popTimer = setTimeout(() => art.classList.remove(cls), 1100);
+  if (!markPop || typeof markPop.animate !== 'function') return;
+  if (spinning) return;
+  const glow = (el, frames, ms) => el && el.animate(frames, { duration: ms, easing: 'cubic-bezier(.22,1,.36,1)' });
+  if (reduced.matches) {
+   spinning = glow(markBurst, [{ opacity: 0 }, { opacity: .9, offset: .35 }, { opacity: 0 }], 900);
+  } else {
+   spinning = markPop.animate([
+    { transform: 'translateY(0) rotateY(0deg) scale(1)' },
+    { transform: 'translateY(-14px) rotateY(180deg) scale(1.06)', offset: .5 },
+    { transform: 'translateY(0) rotateY(360deg) scale(1)' }
+   ], { duration: 1200, easing: 'cubic-bezier(.65,0,.35,1)' });
+   glow(markRing, [{ opacity: .9, transform: 'scale(.6)' }, { opacity: 0, transform: 'scale(1.6)' }], 1100);
+   glow(markBurst, [{ opacity: 0, transform: 'scale(.85)' }, { opacity: 1, transform: 'scale(1)', offset: .3 }, { opacity: 0, transform: 'scale(1.1)' }], 1200);
+  }
+  if (!spinning) return;
+  const done = () => { spinning = null; };
+  spinning.onfinish = done; spinning.oncancel = done;
  };
- art.addEventListener('pointerdown', pop);
- art.addEventListener('touchstart', pop, { passive: true });
  art.addEventListener('click', pop);
  let spotFrame = 0;
  $$('.spotlight').forEach(card => card.addEventListener('pointermove', event => {

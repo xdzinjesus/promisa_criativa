@@ -380,6 +380,52 @@ button.ctile-btn[aria-pressed=true]{background:#9c6aff33;border-color:#b790ff}
 .smore{margin:12px 0 0;background:transparent}.smore>summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600;color:var(--mut)}
 .smore .del.wide{margin-top:8px}
 @media(max-width:380px){.cacts{flex-wrap:nowrap}.cacts .cnext{flex:1 1 auto}.cacts .more{flex:0 0 48px}}
+
+/* Aba Instagram */
+.ig-root{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-width:0}.ig-root>*,.ig-two>*{min-width:0}.ig-root>.sheet-grid{margin:0}.ig-root .card{margin:0}
+.ig-card{padding:18px 18px 16px}.ig-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}.ig-head h3{margin:0;font-size:16px;letter-spacing:-.02em}
+.ig-hint{font-size:12px;color:var(--mut)}.ig-small{font-size:12.5px;margin:10px 0 0}.ig-alert{color:var(--amb)!important;margin:0}
+.ig-up{color:var(--grn)}.ig-down{color:var(--red)}.ig-flat{color:var(--mut)}
+.ig-profile{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;padding:18px 20px;background:radial-gradient(ellipse 70% 120% at 0% 0%,#9c6aff2e,transparent 60%),linear-gradient(145deg,#ffffff0b,#ffffff04),#121019}
+.ig-avatar{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;font:700 24px Sora,system-ui,sans-serif;color:#fff;background:conic-gradient(from 210deg,#f9ce34,#ee2a7b,#9c6aff,#f9ce34);box-shadow:0 0 0 3px #121019,0 0 0 5px #9c6aff55}
+.ig-who{display:grid;gap:4px;min-width:0}.ig-handle{font:600 18px Sora,system-ui,sans-serif;color:var(--tx);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ig-handle:hover{color:var(--ac)}
+.ig-status{font-size:12px}.ig-status.ok{color:var(--grn)}.ig-status.warn{color:var(--amb)}
+.ig-stats{display:flex;gap:22px}.ig-stats div{display:grid;text-align:center}.ig-stats b{font:600 19px Sora,system-ui,sans-serif;letter-spacing:-.03em}.ig-stats span{font-size:12px;color:var(--mut)}
+.ig-kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.ig-kpi{position:relative;overflow:hidden}.ig-kpi small{display:flex;align-items:center;gap:7px}.ig-kpi-ico{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:9px;background:#9c6aff22;font-size:14px}
+.ig-kpi .ig-note{display:block;font-size:12px;line-height:1.35}.ig-kpi .ig-note:not(.ig-up):not(.ig-down){color:var(--mut)}
+.ig-tips{list-style:none;margin:0;padding:0;display:grid;gap:8px}.ig-tips li{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:14px;background:#ffffff07;border:1px solid #ffffff10}.ig-tips li>span{font-size:17px;line-height:1.3}.ig-tips p{margin:0;font-size:14px;line-height:1.45}
+.ig-tip-good{border-color:#5fdca933!important;background:#5fdca90d!important}.ig-tip-warn{border-color:#f6c46b40!important;background:#f6c46b0f!important}
+.ig-chart{margin-top:2px}.ig-plot{position:relative;height:210px;touch-action:pan-y;cursor:crosshair}.ig-plot svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.ig-grid{stroke:#ffffff10;stroke-width:1;stroke-dasharray:3 5}
+.ig-guide{position:absolute;top:0;bottom:0;width:1px;background:#c4a5ff55;opacity:0;transition:opacity .2s}.ig-plot.is-hover .ig-guide{opacity:1}
+.ig-dot{position:absolute;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:var(--ac);box-shadow:0 0 0 4px #9c6aff40,0 0 18px #9c6aff;pointer-events:none}
+.ig-tip{position:absolute;top:-4px;transform:translateX(-50%);padding:5px 10px;border-radius:10px;background:#1c1628ee;border:1px solid #ffffff1c;font-size:12px;white-space:nowrap;pointer-events:none;backdrop-filter:blur(8px)}.ig-tip b{font-family:Sora,system-ui,sans-serif}.ig-tip span{color:var(--mut)}
+.ig-axis{display:flex;justify-content:space-between;gap:8px;font-size:11.5px;color:var(--mut);margin-top:6px}
+.ig-gains{display:flex;align-items:flex-end;gap:2px;height:42px;margin-top:14px}.ig-gains i{flex:1;min-width:2px;border-radius:3px 3px 1px 1px;background:linear-gradient(#5fdca9,#5fdca955)}.ig-gains i.neg{background:linear-gradient(#ff8590,#ff859055)}
+.ig-gains+.ig-hint{display:block;margin-top:6px}
+.ig-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px}
+.ig-goal-big{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap;margin-bottom:10px}.ig-goal-big b{font:600 30px Sora,system-ui,sans-serif;letter-spacing:-.04em;background:linear-gradient(90deg,#fff,#c4a5ff);-webkit-background-clip:text;background-clip:text;color:transparent}.ig-goal-big small{color:var(--mut)}
+.ig-prog{height:12px;border-radius:99px}.ig-prog i{border-radius:99px;transition:width .8s var(--ease)}
+.ig-hbars{display:grid;gap:12px}.ig-hbar{display:grid;grid-template-columns:82px 1fr auto;align-items:center;gap:10px;font-size:13px}.ig-hbar b{font-weight:600}.ig-hbar small{color:var(--mut);font-size:12px;white-space:nowrap}
+.ig-track{height:10px;border-radius:99px;background:#ffffff10;overflow:hidden}.ig-track i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#6d3fd0,#a77bff)}.ig-hbar.is-best .ig-track i{background:linear-gradient(90deg,#9c6aff,#e3a3ff);box-shadow:0 0 14px #b78cff88}
+.ig-vbars{display:flex;align-items:stretch;gap:6px;height:150px;margin-top:4px}.ig-vbar{flex:1;display:grid;grid-template-rows:auto 1fr auto;gap:5px;text-align:center;min-width:0}
+.ig-vslot{display:flex;align-items:flex-end;justify-content:center;border-radius:10px;background:#ffffff06}.ig-vslot i{width:100%;max-width:34px;border-radius:9px 9px 4px 4px;background:linear-gradient(#8a5cf0,#8a5cf044)}
+.ig-vbar.is-best .ig-vslot i{background:linear-gradient(#d4b8ff,#9c6aff);box-shadow:0 0 16px #9c6aff88}.ig-vbar.is-empty .ig-vslot i{background:#ffffff14}
+.ig-vbar b{font-size:11.5px;font-weight:600;color:var(--mut)}.ig-vbar.is-best b{color:var(--ac)}.ig-vval{font-size:11px;color:var(--mut);min-height:14px}
+.ig-podium{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.ig-top-item{display:grid;gap:4px;padding:14px;border-radius:16px;background:linear-gradient(160deg,#9c6aff1c,#ffffff05);border:1px solid #ffffff14;color:var(--tx);text-decoration:none;transition:transform .25s var(--ease),border-color .25s}.ig-top-item:hover{transform:translateY(-2px);border-color:#9c6aff66}
+.ig-medal{font-size:22px}.ig-top-item b{font-size:14px}.ig-top-item p{margin:0;font-size:13px;color:#d9d3e6;line-height:1.4}.ig-top-item small{color:var(--ac);font-size:12px;font-weight:600}
+.ig-post{display:grid!important;grid-template-columns:auto 1fr auto;gap:12px;align-items:start}
+.ig-thumb{width:46px;height:46px;border-radius:13px;display:grid;place-items:center;font-size:20px;background:#ffffff0d}.ig-t-reels{background:linear-gradient(135deg,#ee2a7b44,#9c6aff44)}.ig-t-carousel{background:linear-gradient(135deg,#3b82f644,#9c6aff33)}.ig-t-image{background:linear-gradient(135deg,#f9ce3433,#ee2a7b33)}.ig-t-video{background:linear-gradient(135deg,#14b8a633,#3b82f633)}
+.ig-post-body{min-width:0;display:grid;gap:5px}.ig-post-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.ig-post-title small{color:var(--mut);font-size:12px}
+.ig-badge{font-size:11px;font-weight:700;letter-spacing:.02em;padding:2px 8px;border-radius:99px;background:#9c6aff26;color:var(--ac)}
+.ig-caption{margin:0;font-size:13.5px;line-height:1.4;color:#ddd7ea}
+.ig-metrics{display:flex;flex-wrap:wrap;gap:6px}.ig-metrics span{font-size:12px;padding:3px 8px;border-radius:8px;background:#ffffff0a;color:#cfc8dc}
+.ig-post-side{display:grid;gap:8px;justify-items:end}.ig-rate{font:600 13px Sora,system-ui,sans-serif;padding:4px 9px;border-radius:99px;background:#5fdca91a;color:var(--grn)}
+.ig-open{font-size:12.5px;font-weight:600;color:var(--ac);text-decoration:none;white-space:nowrap}.ig-open:hover{text-decoration:underline}
+@media(max-width:759px){.ig-profile{grid-template-columns:auto 1fr;gap:12px}.ig-stats{grid-column:1/-1;justify-content:space-around;padding-top:10px;border-top:1px solid #ffffff12}.ig-avatar{width:50px;height:50px;font-size:21px}.ig-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ig-plot{height:170px}.ig-card{padding:15px}.ig-hbar{grid-template-columns:70px 1fr auto}.ig-vbars{height:130px}}
+@media(prefers-reduced-motion:reduce){.ig-prog i,.ig-top-item,.ig-guide{transition:none}}
 </style></head><body>
 <header class="topbar"><a class="tb-brand" href="/admin" aria-label="Promisa, início"><img src="/assets/asset-1.webp" alt="" width="30" height="30"><b>Promisa</b></a><p id="cloud-status" class="tb-status" role="status" aria-live="polite">Conectando ao armazenamento…</p><div class="tb-alerts"><button type="button" id="cloud-conflicts" hidden>Resolver diferenças</button><button type="button" id="cloud-unlock" hidden>Destravar dados</button></div><details class="tb-menu"><summary>⋯ Conta</summary><div class="tb-panel"><a href="/acesso.html">← Escolher área</a><a href="/catalogo">Catálogo dos meus projetos</a><button type="button" id="cloud-sync">Sincronizar agora</button><button type="button" id="cloud-encrypt" hidden>Ativar criptografia</button><button type="button" id="cloud-copy">Cópia de segurança: baixar deste aparelho</button><label class="tb-file">Restaurar cópia<input type="file" id="cloud-restore" accept=".json,application/json"></label><button type="button" id="passkey-open" hidden>🔐 Face ID / chaves de acesso</button><button type="button" id="discord-open">💬 Discord</button><button type="button" class="session-logout" data-logout>Sair</button><button type="button" class="session-logout danger" data-logout data-clear-local>Sair e apagar dados deste aparelho</button><p class="tb-note">Os dados e anexos são compartilhados entre aparelhos quando o indicador mostra Salvo online. Importar arquivos não publica sites na internet. “Sair” mantém a cópia local; em aparelho compartilhado, use “Sair e apagar dados deste aparelho”.</p></div></details></header>
 <main id="app"></main>

@@ -1,0 +1,2 @@
+Origem: https://github.com/bm629/agent-skills (skills/token-optimization), commit 7f3a7ec, licença MIT (c) 2026 Bhushan Modi.
+Revisada em 2026-11-11: só Markdown, sem scripts nem comandos externos.
