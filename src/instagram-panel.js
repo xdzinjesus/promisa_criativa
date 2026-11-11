@@ -1,4 +1,5 @@
-import { dayKey, monthKey, followersDelta, projectFollowers, projectionText, clientsProgress, countInstagramLeads, addDays, validDay, formatInt, formatSigned, formatDayShort, formatDayLong, STATUS_LABEL } from './instagram-math.js';
+import { dayKey, monthKey, followersDelta, projectFollowers, projectionText, clientsProgress, countInstagramLeads, addDays, validDay, formatInt, formatSigned, formatDayShort, formatDayLong, STATUS_LABEL, weekdayOf } from './instagram-math.js';
+import { interactions, engagementRate, score, byFormat, byWeekday, cadence, dailyGains, tips, WEEKDAYS_SHORT } from './instagram-insights.js';
 
 // Aba "📈 Instagram" do painel. Só createElement/textContent (nada de innerHTML) e fala só com /api/instagram.
 // O painel principal chama window.promisaInstagram.mount(...) ao abrir a aba e .leadsChanged(...) ao salvar.
@@ -6,6 +7,7 @@ import { dayKey, monthKey, followersDelta, projectFollowers, projectionText, cli
 const DOCS = 'https://github.com/xdzinjesus/promisa_criativa/blob/main/docs/INSTAGRAM.md';
 const TYPE_LABEL = { REELS: 'Reels', CAROUSEL: 'Carrossel', VIDEO: 'Vídeo', IMAGE: 'Post' };
 const COUNT_KEY = 'promisa_ig_counts_v1';
+const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 const el = (tag, text, props = {}) => Object.assign(document.createElement(tag), text == null ? {} : { textContent: text }, props);
 const svgEl = (tag, attrs = {}) => { const node = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, String(value)); return node; };
 
@@ -39,56 +41,133 @@ function leadsChanged(leads) {
 
 // ---- peças de tela ----
 function progress(percent, label) {
-  const bar = el('div', null, { className: 'prog', role: 'progressbar' });
+  const bar = el('div', null, { className: 'prog ig-prog', role: 'progressbar' });
   bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100'); bar.setAttribute('aria-valuenow', String(percent)); bar.setAttribute('aria-label', label);
-  const fill = el('i'); fill.style.width = percent + '%'; bar.append(fill);
+  const fill = el('i'); fill.style.width = Math.max(0, Math.min(100, percent)) + '%'; bar.append(fill);
   return bar;
 }
-function kpi(title, value, note) {
-  const card = el('div', null, { className: 'card kpi' });
-  const extra = el('span', note || '');
-  extra.style.cssText = 'display:block;font-size:12px;color:var(--mut)';
-  card.append(el('small', title), el('b', value), extra);
+const toneOf = value => value > 0 ? 'ig-up' : value < 0 ? 'ig-down' : 'ig-flat';
+function kpi(icon, title, value, note, tone = '') {
+  const card = el('div', null, { className: 'card kpi ig-kpi' });
+  const head = el('small'); head.append(el('span', icon, { className: 'ig-kpi-ico', ariaHidden: 'true' }), document.createTextNode(title));
+  card.append(head, el('b', value), el('span', note || '', { className: 'ig-note ' + tone }));
+  return card;
+}
+function section(id, title, hint) {
+  const card = el('section', null, { className: 'card ig-card', id });
+  const head = el('div', null, { className: 'ig-head' });
+  head.append(el('h3', title));
+  if (hint) head.append(el('span', hint, { className: 'ig-hint' }));
+  card.append(head);
   return card;
 }
 const deltaNote = d => d ? `${formatSigned(d.value)}${d.partial ? ` (${d.days} ${d.days === 1 ? 'dia' : 'dias'})` : ''}` : '—';
+const pct = value => value == null ? '—' : String(value).replace('.', ',') + '%';
+let chartSeq = 0;
 
-// Gráfico de linha simples (SVG inline, sem biblioteca).
+// Gráfico de área (SVG inline, sem biblioteca) com dica ao passar o dedo/mouse.
 function chart(daily, days, today) {
   const since = addDays(today, -days + 1);
   const points = daily.filter(item => item.date >= since && item.date <= today);
   const box = el('div', null, { className: 'ig-chart' });
   if (points.length < 2) { box.append(el('p', 'O gráfico aparece quando houver pelo menos 2 dias de histórico.', { className: 'sub' })); return box; }
-  const W = 320, H = 120, P = 6;
-  const min = Math.min(...points.map(p => p.followers)), max = Math.max(...points.map(p => p.followers)), span = Math.max(1, max - min);
+  const W = 640, H = 200, P = 10;
+  const min = Math.min(...points.map(p => p.followers)), max = Math.max(...points.map(p => p.followers));
+  const pad = Math.max(2, Math.round((max - min) * .15)), lo = min - pad, span = Math.max(1, max + pad - lo);
   const t0 = Date.parse(points[0].date), t1 = Date.parse(points.at(-1).date), tspan = Math.max(1, t1 - t0);
-  const xy = p => [P + (Date.parse(p.date) - t0) / tspan * (W - 2 * P), H - P - (p.followers - min) / span * (H - 2 * P)];
-  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', role: 'img', 'aria-label': `Seguidores de ${formatDayShort(points[0].date)} a ${formatDayShort(points.at(-1).date)}: de ${points[0].followers} para ${points.at(-1).followers}` });
-  svg.style.display = 'block'; svg.style.height = 'auto';
-  svg.append(svgEl('polyline', { points: points.map(p => xy(p).map(n => n.toFixed(1)).join(',')).join(' '), fill: 'none', stroke: 'currentColor', 'stroke-width': 2.2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
-  const [lx, ly] = xy(points.at(-1));
-  svg.append(svgEl('circle', { cx: lx.toFixed(1), cy: ly.toFixed(1), r: 3.5, fill: 'currentColor' }));
-  svg.style.color = 'var(--ac)';
-  const legend = el('p', `${formatDayShort(points[0].date)} · ${formatInt(points[0].followers)}  →  ${formatDayShort(points.at(-1).date)} · ${formatInt(points.at(-1).followers)}`, { className: 'sub' });
-  legend.style.margin = '6px 0 0';
-  box.append(svg, legend);
+  const xy = p => [P + (Date.parse(p.date) - t0) / tspan * (W - 2 * P), H - P - (p.followers - lo) / span * (H - 2 * P)];
+  const coords = points.map(xy);
+  const gid = 'igfill' + (++chartSeq);
+  const svg = svgEl('svg', { viewBox: `0 0 ${W} ${H}`, width: '100%', preserveAspectRatio: 'none', role: 'img', 'aria-label': `Seguidores de ${formatDayShort(points[0].date)} a ${formatDayShort(points.at(-1).date)}: de ${points[0].followers} para ${points.at(-1).followers}` });
+  const defs = svgEl('defs'), grad = svgEl('linearGradient', { id: gid, x1: 0, y1: 0, x2: 0, y2: 1 });
+  grad.append(svgEl('stop', { offset: '0%', 'stop-color': '#9c6aff', 'stop-opacity': .45 }), svgEl('stop', { offset: '100%', 'stop-color': '#9c6aff', 'stop-opacity': 0 }));
+  defs.append(grad); svg.append(defs);
+  for (const f of [.25, .5, .75]) svg.append(svgEl('line', { x1: 0, x2: W, y1: (H * f).toFixed(1), y2: (H * f).toFixed(1), class: 'ig-grid', 'vector-effect': 'non-scaling-stroke' }));
+  const line = coords.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  svg.append(svgEl('path', { d: `M${coords[0][0].toFixed(1)},${H} L${line.replaceAll(' ', ' L')} L${coords.at(-1)[0].toFixed(1)},${H} Z`, fill: `url(#${gid})` }));
+  svg.append(svgEl('polyline', { points: line, fill: 'none', stroke: 'var(--ac)', 'stroke-width': 2.4, 'stroke-linejoin': 'round', 'stroke-linecap': 'round', 'vector-effect': 'non-scaling-stroke' }));
+  const plot = el('div', null, { className: 'ig-plot' });
+  const guide = el('i', null, { className: 'ig-guide' }), dot = el('i', null, { className: 'ig-dot' }), tip = el('div', null, { className: 'ig-tip', role: 'status' });
+  const place = index => {
+    const [x, y] = coords[index], p = points[index], prev = points[index - 1];
+    const left = x / W * 100, top = y / H * 100;
+    guide.style.left = dot.style.left = left + '%'; dot.style.top = top + '%';
+    tip.replaceChildren(el('b', formatInt(p.followers)), el('span', ` · ${formatDayShort(p.date)}${prev ? ` · ${formatSigned(p.followers - prev.followers)}` : ''}`));
+    tip.style.left = Math.min(82, Math.max(18, left)) + '%';
+  };
+  place(points.length - 1);
+  plot.append(svg, guide, dot, tip);
+  plot.addEventListener('pointermove', event => {
+    const rect = plot.getBoundingClientRect();
+    const rel = (event.clientX - rect.left) / rect.width * W;
+    let best = 0; coords.forEach(([x], i) => { if (Math.abs(x - rel) < Math.abs(coords[best][0] - rel)) best = i; });
+    plot.classList.add('is-hover'); place(best);
+  });
+  plot.addEventListener('pointerleave', () => { plot.classList.remove('is-hover'); place(points.length - 1); });
+  const axis = el('div', null, { className: 'ig-axis' });
+  axis.append(el('span', formatDayShort(points[0].date)), el('span', `mín. ${formatInt(min)} · máx. ${formatInt(max)}`), el('span', formatDayShort(points.at(-1).date)));
+  box.append(plot, axis);
+  const gains = dailyGains(daily, today, days);
+  if (gains.length >= 2) {
+    const top = Math.max(1, ...gains.map(g => Math.abs(g.gain)));
+    const bars = el('div', null, { className: 'ig-gains', ariaLabel: 'Seguidores ganhos por dia' });
+    for (const g of gains) {
+      const bar = el('i', null, { className: g.gain < 0 ? 'neg' : '', title: `${formatDayShort(g.date)}: ${formatSigned(g.gain)}` });
+      bar.style.height = Math.max(6, Math.abs(g.gain) / top * 100) + '%';
+      bars.append(bar);
+    }
+    const total = gains.reduce((sum, g) => sum + g.gain, 0);
+    const caption = el('p', null, { className: 'ig-hint' });
+    caption.append(document.createTextNode('Ganho por dia · total no período: '), el('b', formatSigned(total), { className: toneOf(total) }));
+    box.append(bars, caption);
+  }
   return box;
 }
 
-function postRow(post) {
+const TYPE_ICON = { REELS: '🎬', CAROUSEL: '🗂️', VIDEO: '🎥', IMAGE: '🖼️' };
+function postRow(post, followers) {
   const row = el('div', null, { className: 'item ig-post' });
-  const left = el('div');
+  const thumb = el('span', TYPE_ICON[post.type] || '🖼️', { className: 'ig-thumb ig-t-' + String(post.type || 'IMAGE').toLowerCase(), ariaHidden: 'true' });
+  const body = el('div', null, { className: 'ig-post-body' });
   const when = formatDayShort(dayKey(Date.parse(post.timestamp)));
-  left.append(el('b', `${TYPE_LABEL[post.type] || 'Post'} · ${when}`));
-  if (post.caption) left.append(el('br'), el('small', post.caption.length > 60 ? post.caption.slice(0, 59) + '…' : post.caption));
-  const metrics = [`❤️ ${formatInt(post.likes)}`, `💬 ${formatInt(post.comments)}`];
-  if (post.views != null) metrics.push(`👁 ${formatInt(post.views)} views`);
-  if (post.reach != null) metrics.push(`📡 ${formatInt(post.reach)} alcance`);
-  if (post.saved != null) metrics.push(`🔖 ${formatInt(post.saved)}`);
-  left.append(el('br'), el('small', metrics.join(' · ')));
-  row.append(left);
-  if (post.permalink) row.append(el('a', 'Abrir', { href: post.permalink, target: '_blank', rel: 'noopener noreferrer', className: 'ig-open' }));
+  const title = el('div', null, { className: 'ig-post-title' });
+  title.append(el('span', TYPE_LABEL[post.type] || 'Post', { className: 'ig-badge' }), el('small', `${WEEKDAYS_SHORT[weekdayOf(Date.parse(post.timestamp))]} · ${when}`));
+  body.append(title);
+  if (post.caption) body.append(el('p', post.caption.length > 90 ? post.caption.slice(0, 89) + '…' : post.caption, { className: 'ig-caption' }));
+  const chips = el('div', null, { className: 'ig-metrics' });
+  const metric = (icon, value, label) => { if (value == null) return; const chip = el('span', `${icon} ${formatInt(value)}`, { title: label }); chip.setAttribute('aria-label', `${label}: ${formatInt(value)}`); chips.append(chip); };
+  metric('❤️', post.likes, 'Curtidas'); metric('💬', post.comments, 'Comentários'); metric('👁', post.views, 'Visualizações'); metric('📡', post.reach, 'Alcance'); metric('🔖', post.saved || null, 'Salvamentos'); metric('↗️', post.shares || null, 'Compartilhamentos');
+  body.append(chips);
+  const side = el('div', null, { className: 'ig-post-side' });
+  const rate = engagementRate(post, followers);
+  if (rate != null) side.append(el('span', pct(rate), { className: 'ig-rate', title: 'Taxa de engajamento: interações ÷ alcance (ou ÷ seguidores)' }));
+  if (post.permalink) side.append(el('a', 'Abrir ↗', { href: post.permalink, target: '_blank', rel: 'noopener noreferrer', className: 'ig-open' }));
+  row.append(thumb, body, side);
   return row;
+}
+
+function hbars(rows) {
+  const wrap = el('div', null, { className: 'ig-hbars' });
+  const top = Math.max(1, ...rows.map(r => r.value || 0));
+  for (const r of rows) {
+    const line = el('div', null, { className: 'ig-hbar' + (r.best ? ' is-best' : '') });
+    const track = el('span', null, { className: 'ig-track' }), fill = el('i'); fill.style.width = Math.max(3, (r.value || 0) / top * 100) + '%'; track.append(fill);
+    line.append(el('b', r.label), track, el('small', r.note));
+    wrap.append(line);
+  }
+  return wrap;
+}
+function vbars(rows) {
+  const wrap = el('div', null, { className: 'ig-vbars' });
+  const top = Math.max(1, ...rows.map(r => r.value || 0));
+  for (const r of rows) {
+    const col = el('div', null, { className: 'ig-vbar' + (r.best ? ' is-best' : '') + (r.value == null ? ' is-empty' : ''), title: r.title || '' });
+    const bar = el('i'); bar.style.height = (r.value == null ? 4 : Math.max(8, r.value / top * 100)) + '%';
+    const slot = el('span', null, { className: 'ig-vslot' }); slot.append(bar);
+    col.append(el('small', r.value == null ? '' : formatInt(r.value), { className: 'ig-vval' }), slot, el('b', r.label));
+    wrap.append(col);
+  }
+  return wrap;
 }
 
 // ---- janela "Editar metas" ----
@@ -135,10 +214,11 @@ function goalsDialog(history, onSaved) {
 // ---- tela ----
 function mount(root, { leads = () => [] } = {}) {
   if (!root) return;
-  const state = { history: null, configured: true, nextSyncAt: 0, days: 30, message: '', bad: false, loading: true, busy: false };
+  const state = { history: null, configured: true, nextSyncAt: 0, days: 30, sort: 'recent', message: '', bad: false, loading: true, busy: false };
 
   function draw() {
     root.replaceChildren();
+    root.classList.add('ig-root');
     const today = dayKey(Date.now());
     const h = state.history;
     const bar = el('div', null, { className: 'sheet-grid' });
@@ -166,68 +246,139 @@ function mount(root, { leads = () => [] } = {}) {
     }
     if (!h?.account) { root.append(el('p', 'Ainda não há dados. Toque em "Atualizar agora" para buscar.', { className: 'sub' })); return; }
 
-    if (h.lastError) root.append(Object.assign(el('p', `⚠️ A última atualização falhou: ${h.lastError.message}${h.lastError.detail ? ' — Detalhe: ' + h.lastError.detail : ''}`, { className: 'sub' }), { style: 'color:var(--amb)' }));
+    if (h.lastError) root.append(Object.assign(el('p', `⚠️ A última atualização falhou: ${h.lastError.message}${h.lastError.detail ? ' — Detalhe: ' + h.lastError.detail : ''}`, { className: 'sub ig-alert' })));
+
+    const posts = h.posts || [];
+    const followers = h.account.followers;
+
+    // perfil
+    const profile = el('section', null, { className: 'card ig-profile', id: 'ig-profile' });
+    const avatar = el('span', (h.account.username || 'p').slice(0, 1).toUpperCase(), { className: 'ig-avatar', ariaHidden: 'true' });
+    const who = el('div', null, { className: 'ig-who' });
+    const handle = el('a', '@' + h.account.username, { href: 'https://www.instagram.com/' + encodeURIComponent(h.account.username) + '/', target: '_blank', rel: 'noopener noreferrer', className: 'ig-handle' });
+    const synced = h.lastSync ? new Date(h.lastSync).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }) : 'nunca';
+    who.append(handle, el('small', h.lastError ? '⚠️ Última atualização com falha' : `● Atualizado em ${synced}`, { className: h.lastError ? 'ig-status warn' : 'ig-status ok' }));
+    const stats = el('div', null, { className: 'ig-stats' });
+    for (const [value, label] of [[h.account.followers, 'seguidores'], [h.account.follows, 'seguindo'], [h.account.media, 'posts']]) { const s = el('div'); s.append(el('b', formatInt(value)), el('span', label)); stats.append(s); }
+    profile.append(avatar, who, stats);
+    root.append(profile);
 
     // cartões
     const d7 = followersDelta(h.daily, today, 7), d30 = followersDelta(h.daily, today, 30);
     const month = monthKey(Date.now());
-    const monthPosts = (h.posts || []).filter(post => monthKey(Date.parse(post.timestamp)) === month).length;
+    const monthPosts = posts.filter(post => monthKey(Date.parse(post.timestamp)) === month).length;
     const since = Date.now() - 30 * 86_400_000;
-    const reels = (h.posts || []).filter(post => post.type === 'REELS' && Date.parse(post.timestamp) >= since && (post.views ?? post.reach) != null);
+    const reels = posts.filter(post => post.type === 'REELS' && Date.parse(post.timestamp) >= since && (post.views ?? post.reach) != null);
     const avg = reels.length ? Math.round(reels.reduce((sum, post) => sum + (post.views ?? post.reach), 0) / reels.length) : null;
+    const rates = posts.slice(0, 10).map(post => engagementRate(post, followers)).filter(v => v != null);
+    const avgRate = rates.length ? Math.round(rates.reduce((a, b) => a + b, 0) / rates.length * 10) / 10 : null;
+    const cad = cadence(posts, today);
     const local = monthCounts(leads());
     const counts = { leads: local.leads, clients: local.clients };
-    const grid = el('div', null, { className: 'grid', id: 'ig-kpis' });
-    grid.style.gridTemplateColumns = 'repeat(auto-fit,minmax(150px,1fr))';
-    grid.style.marginBottom = '12px';
+    const grid = el('div', null, { className: 'grid ig-kpis', id: 'ig-kpis' });
     grid.append(
-      kpi('Seguidores', formatInt(h.account.followers), [`7 dias: ${deltaNote(d7)}`, d30 ? `30 dias: ${deltaNote(d30)}` : ''].filter(Boolean).join(' · ')),
-      kpi('Posts no mês', String(monthPosts), 'publicados neste mês'),
-      kpi('Média dos Reels', avg === null ? '—' : formatInt(avg), reels.length ? `visualizações · ${reels.length} ${reels.length === 1 ? 'Reel' : 'Reels'} em 30 dias` : 'sem Reels em 30 dias'),
-      kpi('Clientes do Instagram', `${counts.clients} de ${counts.leads}`, 'neste mês: contatos → clientes')
+      kpi('👥', 'Seguidores', formatInt(followers), [`7 dias: ${deltaNote(d7)}`, d30 ? `30 dias: ${deltaNote(d30)}` : ''].filter(Boolean).join(' · '), toneOf(d7?.value || 0)),
+      kpi('💜', 'Engajamento médio', pct(avgRate), rates.length ? `nos últimos ${rates.length} posts` : 'sem posts ainda', avgRate == null ? '' : avgRate >= 3 ? 'ig-up' : avgRate < 1 ? 'ig-down' : 'ig-flat'),
+      kpi('🎬', 'Média dos Reels', avg === null ? '—' : formatInt(avg), reels.length ? `visualizações · ${reels.length} ${reels.length === 1 ? 'Reel' : 'Reels'} em 30 dias` : 'sem Reels em 30 dias'),
+      kpi('🗓️', 'Posts no mês', String(monthPosts), cad.daysSince == null ? 'nenhum post ainda' : `${String(cad.perWeek).replace('.', ',')}/semana · último há ${cad.daysSince} ${cad.daysSince === 1 ? 'dia' : 'dias'}`, cad.daysSince != null && cad.daysSince >= 5 ? 'ig-down' : ''),
+      kpi('🤝', 'Clientes do Instagram', `${counts.clients} de ${counts.leads}`, 'neste mês: contatos → clientes')
     );
     root.append(grid);
 
-    // meta de seguidores
-    const p = projectFollowers({ daily: h.daily, goal: h.goals?.followers, today });
-    const goalCard = el('div', null, { className: 'card', id: 'ig-goal-followers' });
-    goalCard.append(el('b', '🎯 Meta de seguidores'));
-    if (p.status === 'none') goalCard.append(el('p', 'Você ainda não definiu uma meta. Toque em "Editar metas".', { className: 'sub' }));
-    else {
-      goalCard.append(el('small', ` ${formatInt(p.current)} de ${formatInt(p.target)} até ${formatDayLong(p.deadline)} · ${STATUS_LABEL[p.status]}`), progress(p.percent, 'Progresso da meta de seguidores'), el('p', projectionText(p), { className: 'sub', style: 'margin:10px 0 0' }));
+    // dicas automáticas
+    const list = tips({ posts, daily: h.daily, followers, today });
+    if (list.length) {
+      const tipsCard = section('ig-tips', '💡 O que os números dizem', 'dicas automáticas');
+      const ul = el('ul', null, { className: 'ig-tips' });
+      for (const t of list) { const li = el('li', null, { className: 'ig-tip-' + t.tone }); li.append(el('span', t.icon, { ariaHidden: 'true' }), el('p', t.text)); ul.append(li); }
+      tipsCard.append(ul);
+      root.append(tipsCard);
     }
-    root.append(goalCard);
-
-    // meta de clientes
-    const cp = clientsProgress({ goal: h.goals?.clientsPerMonth, counts });
-    const clientsCard = el('div', null, { className: 'card', id: 'ig-goal-clients' });
-    clientsCard.append(el('b', '🤝 Clientes vindos do Instagram (mês)'));
-    if (!cp.target) clientsCard.append(el('p', `${cp.leads} ${cp.leads === 1 ? 'contato' : 'contatos'} → ${cp.clients} ${cp.clients === 1 ? 'cliente' : 'clientes'} neste mês. Defina uma meta mensal em "Editar metas".`, { className: 'sub' }));
-    else clientsCard.append(el('small', ` ${cp.clients} de ${cp.target} · ${cp.leads} ${cp.leads === 1 ? 'contato' : 'contatos'} no mês${cp.status === 'achieved' ? ' · 🎉 meta batida' : ''}`), progress(cp.percent, 'Progresso da meta de clientes'));
-    clientsCard.append(el('p', 'Para contar, escolha "Instagram" em "Como conheceu a Promisa?" no cadastro do cliente.', { className: 'sub', style: 'margin:10px 0 0' }));
-    root.append(clientsCard);
 
     // gráfico
-    const chartCard = el('div', null, { className: 'card', id: 'ig-chart-card' });
+    const chartCard = section('ig-chart-card', '📈 Crescimento de seguidores');
     const chips = el('div', null, { className: 'fchips' });
-    for (const days of [30, 90]) {
+    for (const days of [7, 30, 90]) {
       const chip = el('button', `${days} dias`, { type: 'button', className: 'fchip' });
       chip.setAttribute('aria-pressed', String(state.days === days));
       chip.addEventListener('click', () => { state.days = days; draw(); });
       chips.append(chip);
     }
-    chartCard.append(el('b', '📈 Seguidores'), chips, chart(h.daily, state.days, today));
+    chartCard.append(chips, chart(h.daily, state.days, today));
     root.append(chartCard);
 
+    // metas
+    const goalsRow = el('div', null, { className: 'ig-two' });
+    const p = projectFollowers({ daily: h.daily, goal: h.goals?.followers, today });
+    const goalCard = section('ig-goal-followers', '🎯 Meta de seguidores');
+    if (p.status === 'none') goalCard.append(el('p', 'Você ainda não definiu uma meta. Toque em "Editar metas".', { className: 'sub' }));
+    else {
+      const big = el('div', null, { className: 'ig-goal-big' });
+      big.append(el('b', `${p.percent}%`), el('small', ` ${formatInt(p.current)} de ${formatInt(p.target)} até ${formatDayLong(p.deadline)} · ${STATUS_LABEL[p.status]}`));
+      goalCard.append(big, progress(p.percent, 'Progresso da meta de seguidores'), el('p', projectionText(p), { className: 'sub ig-small' }));
+    }
+    const cp = clientsProgress({ goal: h.goals?.clientsPerMonth, counts });
+    const clientsCard = section('ig-goal-clients', '🤝 Clientes vindos do Instagram');
+    if (!cp.target) clientsCard.append(el('p', `${cp.leads} ${cp.leads === 1 ? 'contato' : 'contatos'} → ${cp.clients} ${cp.clients === 1 ? 'cliente' : 'clientes'} neste mês. Defina uma meta mensal em "Editar metas".`, { className: 'sub' }));
+    else {
+      const big = el('div', null, { className: 'ig-goal-big' });
+      big.append(el('b', `${cp.clients}/${cp.target}`), el('small', ` · ${cp.leads} ${cp.leads === 1 ? 'contato' : 'contatos'} no mês${cp.status === 'achieved' ? ' · 🎉 meta batida' : ''}`));
+      clientsCard.append(big, progress(cp.percent, 'Progresso da meta de clientes'));
+    }
+    const months = Object.entries({ ...(h.clientsByMonth || {}), [month]: counts }).sort(([a], [b]) => a.localeCompare(b)).slice(-6);
+    if (months.length >= 2) {
+      const best = Math.max(...months.map(([, v]) => v.clients));
+      clientsCard.append(vbars(months.map(([m, v]) => ({ label: MONTHS[Number(m.slice(5, 7)) - 1], value: v.clients, best: v.clients === best && best > 0, title: `${v.leads} contatos → ${v.clients} clientes` }))));
+    }
+    clientsCard.append(el('p', 'Para contar, escolha "Instagram" em "Como conheceu a Promisa?" no cadastro do cliente.', { className: 'sub ig-small' }));
+    goalsRow.append(goalCard, clientsCard);
+    root.append(goalsRow);
+
+    // formatos e melhor dia
+    if (posts.length >= 2) {
+      const row = el('div', null, { className: 'ig-two' });
+      const formats = byFormat(posts);
+      const fCard = section('ig-formats', '🎬 Qual formato engaja mais', 'média de interações por post');
+      fCard.append(hbars(formats.map((f, i) => ({ label: f.label, value: f.avgInteractions, best: i === 0 && formats.length > 1, note: `${formatInt(f.avgInteractions)} · ${f.count} ${f.count === 1 ? 'post' : 'posts'}` }))));
+      const week = byWeekday(posts);
+      const bestDay = Math.max(...week.map(w => w.avg ?? 0));
+      const wCard = section('ig-weekdays', '📅 Melhor dia para postar', 'média de interações');
+      wCard.append(vbars(week.map(w => ({ label: w.label, value: w.avg, best: w.avg != null && w.avg === bestDay && bestDay > 0, title: w.count ? `${w.count} ${w.count === 1 ? 'post' : 'posts'}` : 'sem posts' }))));
+      row.append(fCard, wCard);
+      root.append(row);
+    }
+
+    // destaques
+    const ranked = [...posts].filter(post => interactions(post) > 0).sort((a, b) => score(b) - score(a)).slice(0, 3);
+    if (ranked.length) {
+      const topCard = section('ig-top', '🏆 Posts campeões', 'os que mais renderam');
+      const podium = el('div', null, { className: 'ig-podium' });
+      ranked.forEach((post, i) => {
+        const item = el(post.permalink ? 'a' : 'div', null, { className: 'ig-top-item', ...(post.permalink ? { href: post.permalink, target: '_blank', rel: 'noopener noreferrer' } : {}) });
+        item.append(el('span', ['🥇', '🥈', '🥉'][i], { className: 'ig-medal', ariaHidden: 'true' }), el('b', `${TYPE_LABEL[post.type] || 'Post'} · ${formatDayShort(dayKey(Date.parse(post.timestamp)))}`), el('p', post.caption ? (post.caption.length > 70 ? post.caption.slice(0, 69) + '…' : post.caption) : 'Sem legenda'), el('small', `${formatInt(interactions(post))} interações${(post.views ?? post.reach) != null ? ` · ${formatInt(post.views ?? post.reach)} ${post.views != null ? 'views' : 'alcance'}` : ''}`));
+        podium.append(item);
+      });
+      topCard.append(podium);
+      root.append(topCard);
+    }
+
     // posts
-    const postsCard = el('div', null, { className: 'card', id: 'ig-posts' });
-    postsCard.append(el('b', '📸 Últimos posts'));
-    if (!h.posts?.length) postsCard.append(el('p', 'Nenhum post encontrado ainda.', { className: 'sub' }));
-    for (const post of (h.posts || []).slice(0, 10)) postsCard.append(postRow(post));
+    const postsCard = section('ig-posts', '📸 Últimos posts');
+    const sorts = el('div', null, { className: 'fchips' });
+    for (const [key, label] of [['recent', 'Mais recentes'], ['engagement', 'Mais engajamento'], ['views', 'Mais vistos']]) {
+      const chip = el('button', label, { type: 'button', className: 'fchip' });
+      chip.setAttribute('aria-pressed', String(state.sort === key));
+      chip.addEventListener('click', () => { state.sort = key; draw(); });
+      sorts.append(chip);
+    }
+    if (posts.length > 1) postsCard.append(sorts);
+    if (!posts.length) postsCard.append(el('p', 'Nenhum post encontrado ainda.', { className: 'sub' }));
+    const sorted = state.sort === 'engagement' ? [...posts].sort((a, b) => (engagementRate(b, followers) ?? -1) - (engagementRate(a, followers) ?? -1))
+      : state.sort === 'views' ? [...posts].sort((a, b) => (b.views ?? b.reach ?? -1) - (a.views ?? a.reach ?? -1)) : posts;
+    for (const post of sorted.slice(0, 12)) postsCard.append(postRow(post, followers));
     root.append(postsCard);
 
-    const foot = el('p', `Última atualização: ${h.lastSync ? new Date(h.lastSync).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }) : 'nunca'} · @${h.account.username}`, { className: 'sub' });
-    root.append(foot);
+    root.append(el('p', `Última atualização: ${synced} · @${h.account.username} · O painel atualiza sozinho uma vez por dia.`, { className: 'sub ig-small' }));
   }
 
   async function load() {
