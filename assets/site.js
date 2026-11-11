@@ -148,6 +148,22 @@
  // reiniciar no meio: cliques durante o giro são ignorados.
  // Com "Reduzir movimento" ligado, só um brilho suave (sem giro).
  const markPop = art.querySelector('.mark-pop');
+ // Espessura 3D do P: cópias da mesma imagem (já baixada) empilhadas para trás,
+ // formando a lateral e o verso que aparecem durante o giro.
+ const markImage = markPop && markPop.querySelector('.mark-image');
+ if (markImage && !reduced.matches) {
+  const depth = 16, step = fine.matches ? 1 : 1.25;
+  const layers = document.createDocumentFragment();
+  for (let i = depth; i >= 1; i--) {
+   const layer = document.createElement('img');
+   layer.src = markImage.currentSrc || markImage.src;
+   layer.alt = ''; layer.setAttribute('aria-hidden', 'true'); layer.draggable = false; layer.decoding = 'async';
+   layer.className = 'mark-layer' + (i === depth ? ' is-back' : '');
+   layer.style.setProperty('--d', (i * step).toFixed(2) + 'px');
+   layers.append(layer);
+  }
+  markPop.insertBefore(layers, markImage);
+ }
  const markRing = art.querySelector('.mark-ring');
  const markBurst = art.querySelector('.mark-burst');
  let spinning = null;

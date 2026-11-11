@@ -88,10 +88,10 @@ section:focus{outline:none}
 .orbit-two{left:11%;top:13%;width:77%;height:72%;border-color:#b37bfd22;transform:rotate(34deg)}
 .orbit-two::after{top:auto;bottom:9%;left:auto;right:19%;width:3px;height:3px;opacity:.6}
 .orbit-floor{position:absolute;bottom:12%;left:9%;width:82%;height:18%;border-radius:50%;border:1px solid #b584ff33;transform:rotate(-8deg);background:radial-gradient(ellipse,#7f40d822,transparent 65%)}
-.mark-entry{position:absolute;inset:13% 13% 17%;animation:mark-enter 1.2s var(--ease) both}
+.mark-entry{position:absolute;inset:13% 13% 17%;animation:mark-enter 1.2s var(--ease) both;transform-style:preserve-3d}
 .mark-tilt{width:100%;height:100%;transform:rotateX(var(--rx,0deg)) rotateY(var(--ry,-8deg));transform-style:preserve-3d;transition:transform .5s var(--ease)}
 .hero-art.pointer-active .mark-tilt{transition:transform .15s linear}
-.mark-float{width:100%;height:100%;display:grid;place-items:center;animation:mark-float 8s ease-in-out infinite}
+.mark-float{width:100%;height:100%;display:grid;place-items:center;animation:mark-float 8s ease-in-out infinite;transform-style:preserve-3d}
 .mark-image{width:100%;height:auto;aspect-ratio:900/943;object-fit:contain;filter:drop-shadow(0 16px 24px #6f2cc66a);transform:translateZ(45px)}
 
 .mark-caption{position:absolute;inset:auto 0 4%;display:flex;align-items:center;justify-content:center;gap:13px;color:#a799bb;font-size:.62rem;font-weight:600;letter-spacing:.16em}
@@ -328,6 +328,9 @@ body::before{content:'';position:fixed;inset:0 0 auto;height:96px;z-index:55;poi
 .hero-art ::selection{background:transparent}
 .mark-pop{width:100%;display:grid;place-items:center;transform-style:preserve-3d;will-change:transform;transition:scale .35s var(--ease)}
 .hero-art.is-pressed .mark-pop{scale:.95;transition-duration:.18s}
+.mark-pop>*{grid-area:1/1}
+.mark-layer{width:100%;height:auto;aspect-ratio:900/943;object-fit:contain;pointer-events:none;backface-visibility:visible;filter:brightness(.42) saturate(1.35) hue-rotate(-8deg);transform:translateZ(calc(45px - var(--d)))}
+.mark-layer.is-back{filter:brightness(.8) saturate(1.1)}
 .mark-image{transition:filter .45s var(--ease)}
 .hero-art.pointer-active .mark-image{filter:drop-shadow(0 24px 38px #9b5cf6b3) brightness(1.08)}
 .mark-float{transition:scale .5s var(--ease)}
