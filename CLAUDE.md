@@ -23,6 +23,7 @@ PLANEJAR → DISTRIBUIR → IMPLEMENTAR → TESTAR → REVISAR → HANDOFF → C
 - Em sessões na nuvem o container é temporário: só sobrevive o que estiver commitado e enviado (push).
 
 ## Ferramentas sob demanda
+- `token-optimization` (`.claude/skills/`): ao perceber gasto alto de tokens (sessão longa, leituras grandes, laço caro). Nunca corta regras de segurança nem a verificação (testes).
 - `/arena-mode:arena`: só quando houver 2 ou mais abordagens realmente diferentes e o custo do erro for alto. Padrão econômico: `n=3 solver-model=sonnet judge-model=opus`.
 - `ui-ux-pro-max`: interfaces, design system, acessibilidade e responsividade.
 - REA (MCP `rea` e skill `rea:reverse-engineer-anything`): apenas em alvos que o usuário possui ou tem autorização para analisar.
