@@ -33,3 +33,17 @@ test('modelos: telefone, Instagram, preço e fotos', () => {
   const html = renderSite({ ...newDraft('barbearia'), showPromo: false, whatsapp: '' });
   assert.ok(!html.includes('class="promo"') && !html.includes('wa.me'), 'sem promoção e sem WhatsApp quando desligados');
 });
+
+test('planos: Essencial é enxuto, Premium tem tudo; odontologia sem preços nem promoções', async () => {
+  const { PLANS } = await import('../src/client-site-templates.js');
+  const base = niche => ({ ...newDraft(niche), testimonials: [{ name: 'Ana', text: 'Ótimo atendimento' }], team: [{ name: 'João', role: 'Barbeiro' }] });
+  const ess = renderSite({ ...base('barbearia'), plan: 'essencial' }), pre = renderSite({ ...base('barbearia'), plan: 'premium', heroStyle: 'split' });
+  assert.ok(!ess.includes('class="promo"') && !ess.includes('id="duvidas"') && !ess.includes('class="band"'), 'essencial sem promoção, FAQ e chamada final');
+  for (const part of ['class="marquee"', 'id="duvidas"', 'id="equipe"', 'id="depoimentos"', 'class="stats"', 'hero split', 'top sticky']) assert.ok(pre.includes(part), 'premium tem ' + part);
+  assert.ok(!renderSite({ ...base('barbearia'), plan: 'premium', hide: { faq: true } }).includes('id="duvidas"'), 'cliente pode esconder seção');
+  const odonto = renderSite({ ...newDraft('odontologia'), items: [{ name: 'Clareamento', price: '500', desc: '' }], promo: 'Promoção', showPromo: true });
+  assert.ok(!odonto.includes('R$ 500') && !odonto.includes('class="promo"'), 'regras do CFO: sem preço e sem promoção');
+  assert.ok(odonto.includes('Responsável técnico'), 'responsável técnico no rodapé');
+  for (const niche of Object.keys(NICHES)) for (const plan of Object.keys(PLANS)) assert.ok(!/<script/i.test(renderSite(newDraft(niche, plan))));
+});
+

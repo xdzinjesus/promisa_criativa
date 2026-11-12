@@ -76,5 +76,9 @@ test('limite de salvamentos por dia e rascunho limpo', async () => {
   for (let i = 0; i < MAX_SAVES_PER_DAY; i++) assert.equal((await w.call({ action: 'save', token, session, draft })).status, 200);
   assert.equal((await w.call({ action: 'save', token, session, draft })).status, 429);
   const clean = cleanDraft({ niche: 'restaurante', name: 'x'.repeat(500), gallery: Array(20).fill('data:image/png;base64,AAAA'), items: Array(50).fill({ name: 'a' }), extra: 'ignorado', palette: 99 });
-  assert.equal(clean.name.length, 60); assert.equal(clean.gallery.length, 8); assert.equal(clean.items.length, 30); assert.equal(clean.palette, 0); assert.ok(!('extra' in clean));
+  assert.equal(clean.name.length, 60); assert.equal(clean.gallery.length, 8); assert.equal(clean.items.length, 15, 'plano Profissional: 15 itens'); assert.equal(clean.palette, 0); assert.ok(!('extra' in clean));
+  const premium = cleanDraft({ plan: 'premium', items: Array(50).fill({ name: 'a' }), gallery: Array(20).fill('data:image/png;base64,AAAA') });
+  assert.equal(premium.items.length, 30); assert.equal(premium.gallery.length, 12);
+  const locked = cleanDraft({ plan: 'premium', niche: 'loja', items: Array(50).fill({ name: 'a' }) }, { niche: 'oficina', plan: 'essencial' });
+  assert.equal(locked.plan, 'essencial'); assert.equal(locked.niche, 'oficina'); assert.equal(locked.items.length, 6, 'cliente não sobe de plano sozinho');
 });

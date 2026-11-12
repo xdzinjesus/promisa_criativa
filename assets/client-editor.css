@@ -3,8 +3,12 @@
 .ce-intro{margin-bottom:14px}.ce-intro p{margin:6px 0 0}
 .ce-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:18px;align-items:start}
 .ce-form{display:grid;gap:12px;min-width:0}
-.ce-group{border:1px solid #ffffff17;border-radius:18px;padding:14px 16px 16px;margin:0;display:grid;gap:10px;background:linear-gradient(145deg,#ffffff0b,#ffffff04),#121019;min-width:0}
-.ce-group legend{font:600 14px Sora,system-ui,sans-serif;padding:0 6px;color:var(--ac)}
+.ce-formcol{display:grid;gap:10px;min-width:0}.ce-toggles{display:flex;gap:8px;justify-content:flex-end}.ce-toggles button{min-height:34px;padding:6px 12px;font-size:12.5px}
+.ce-group{border:1px solid #ffffff17;border-radius:18px;margin:0;background:linear-gradient(145deg,#ffffff0b,#ffffff04),#121019;min-width:0;overflow:hidden}
+.ce-group>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:15px 16px;font:600 14.5px Sora,system-ui,sans-serif;color:var(--tx);user-select:none}
+.ce-group>summary::-webkit-details-marker{display:none}.ce-group>summary:after{content:"";width:9px;height:9px;border-right:2px solid var(--ac);border-bottom:2px solid var(--ac);transform:rotate(45deg);margin-top:-5px;transition:transform .25s var(--ease),margin .25s}
+.ce-group[open]>summary:after{transform:rotate(-135deg);margin-top:5px}.ce-group>summary:hover{background:#ffffff06}.ce-group[open]>summary{border-bottom:1px solid #ffffff12}
+.ce-group-body{display:grid;gap:10px;padding:14px 16px 16px}.ce-hint{margin:0;font-size:12.5px;color:var(--mut);line-height:1.45}
 .ce-field{display:grid;gap:5px}.ce-field span,.ce-label,.ce-photo>span{font-size:12.5px;color:var(--mut);font-weight:600}
 .ce-field input,.ce-field textarea,.ce-item input{width:100%;min-width:0;background:#ffffff08;border:1px solid #ffffff1c;border-radius:11px;color:var(--tx);padding:10px 12px;font:inherit;font-size:14px}
 .ce-field input:focus,.ce-field textarea:focus,.ce-item input:focus{outline:2px solid #9c6aff88;border-color:transparent}
@@ -13,7 +17,7 @@
 .ce-chip[aria-pressed="true"]{background:#9c6aff33;border-color:#b78cff;color:#fff}
 .ce-colors{display:flex;gap:10px}.ce-color{width:40px;height:40px;border-radius:50%;border:2px solid #ffffff22;padding:0;min-height:0}.ce-color[aria-pressed="true"]{border-color:#fff;box-shadow:0 0 0 3px #9c6aff88}
 .ce-perks{display:grid;gap:8px}.ce-perks input{width:100%;min-width:0;background:#ffffff08;border:1px solid #ffffff1c;border-radius:11px;color:var(--tx);padding:10px 12px;font:inherit;font-size:14px}
-.ce-items{display:grid;gap:10px}.ce-item{display:grid;grid-template-columns:1fr 120px 36px 36px;gap:6px}.ce-item .ce-desc{grid-column:1/-1}
+.ce-items{display:grid;gap:10px}.ce-item{display:grid;grid-template-columns:1fr 36px 36px;gap:6px;padding-bottom:10px;border-bottom:1px dashed #ffffff12}.ce-item.ce-cols-2{grid-template-columns:1fr 120px 36px 36px}.ce-item .ce-desc{grid-column:1/-1}.ce-item textarea{width:100%;min-width:0;background:#ffffff08;border:1px solid #ffffff1c;border-radius:11px;color:var(--tx);padding:10px 12px;font:inherit;font-size:14px;resize:vertical}
 .ce-del,.ce-mv{min-height:0;padding:0;border-radius:10px;background:#ffffff0a;color:var(--mut);border:1px solid #ffffff1c}.ce-del:hover{color:var(--red)}
 .ce-photo{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ce-photo>span{min-width:90px}
 .ce-thumbs{display:flex;gap:6px;flex-wrap:wrap}.ce-thumb{width:46px;height:46px;border-radius:10px;background:#ffffff10 center/cover no-repeat;border:1px solid #ffffff22;padding:0;min-height:0;cursor:pointer}.ce-thumb:hover{outline:2px solid var(--red)}
@@ -25,7 +29,7 @@
 .ce-guide{font-size:13px;color:var(--ac);font-weight:600}
 .ce-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.ce-status{font-size:13px;color:var(--mut);margin:0;text-align:center}
 @media(max-width:1000px){.ce-layout{grid-template-columns:1fr}.ce-preview{position:static;order:-1}.ce-frame{height:560px}}
-@media(max-width:480px){.ce-item{grid-template-columns:1fr 90px 34px 34px}}
+@media(max-width:480px){.ce-item.ce-cols-2{grid-template-columns:1fr 84px 34px 34px}}
 
 /* Controle de acesso do cliente (painel do dono) */
 .ca-box{width:100%;border:1px solid #ffffff17;border-radius:18px;padding:14px 16px;background:linear-gradient(145deg,#ffffff0b,#ffffff04),#121019;display:grid;gap:10px}
