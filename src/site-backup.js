@@ -1,18 +1,27 @@
 // Backup automático dos sites do painel no Discord (canal 🗄️・backup-sites).
 // Lê os sites do próprio navegador (IndexedDB) e envia o ZIP direto ao webhook do Discord:
-// zero leituras/gravações no Blob e sem passar pela Vercel (limite de 4,5 MB por pedido).
-// Só envia o que mudou desde o último backup feito neste aparelho. Nada de dados de contato do cliente.
+// os arquivos não passam pela Vercel (limite de 4,5 MB por pedido) nem pelo Blob.
+// Sem duplicar: cada site é identificado pelo conteúdo (SHA-256 dos arquivos). Antes de enviar, o painel confere
+// a lista do que já está no canal (vale para todos os aparelhos, 1 leitura pequena) e marca cada envio nela.
+// Entre abas do mesmo navegador, uma trava (Web Locks) impede dois envios ao mesmo tempo.
+// Nada de dados de contato do cliente.
 
 const SITE_DB = 'arquivo-sites-v1', SITE_STORE = 'sites';
-const DONE_KEY = 'promisa_site_backup_v1';
+const DONE_KEY = 'promisa_site_backup_v2';
 export const PART_BYTES = 8 * 1024 * 1024; // abaixo do limite de 10 MB do Discord (servidor sem impulso)
 const FIRST_CHECK_MS = 20_000, CHECK_EVERY_MS = 10 * 60_000;
 
-export const fingerprint = site => {
-  const files = site?.files || [];
-  const size = files.reduce((sum, file) => sum + (typeof file?.data === 'string' ? file.data.length : file?.data?.size || file?.data?.byteLength || 0), 0);
-  return [site?.updatedAt || site?.createdAt || '', files.length, size, site?.sourceZip?.blob?.size || 0, site?.name || ''].join('|');
-};
+// "Impressão digital" do conteúdo do site: muda só quando algum arquivo muda (nome do site não conta).
+const toBytes = async data => data instanceof Blob ? new Uint8Array(await data.arrayBuffer()) : data instanceof ArrayBuffer ? new Uint8Array(data) : ArrayBuffer.isView(data) ? new Uint8Array(data.buffer, data.byteOffset, data.byteLength) : new TextEncoder().encode(String(data ?? ''));
+export async function contentHash(site) {
+  const encoder = new TextEncoder(), chunks = [];
+  if (site?.sourceZip?.blob instanceof Blob) chunks.push(encoder.encode('zip\0'), await toBytes(site.sourceZip.blob));
+  else for (const file of [...(site?.files || [])].sort((a, b) => String(a.path).localeCompare(String(b.path)))) chunks.push(encoder.encode(String(file.path) + '\0'), await toBytes(file.data), encoder.encode('\0'));
+  const total = new Uint8Array(chunks.reduce((sum, c) => sum + c.byteLength, 0));
+  let at = 0; for (const c of chunks) { total.set(c, at); at += c.byteLength; }
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', total));
+  return [...digest.slice(0, 16)].map(b => b.toString(16).padStart(2, '0')).join('');
+}
 export const formatSize = bytes => bytes >= 1048576 ? (bytes / 1048576).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB';
 export const safeName = text => String(text || 'site').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'site';
 // Pedaços de no máximo PART_BYTES (juntar com 7-Zip abrindo a parte .001).
@@ -22,8 +31,9 @@ export function splitParts(size, partBytes = PART_BYTES) {
   for (let start = 0; start < size; start += partBytes) parts.push({ start, end: Math.min(size, start + partBytes) });
   return parts;
 }
-export function changedSites(sites, done) {
-  return sites.filter(site => site?.id && done[site.id] !== fingerprint(site));
+// Sites cujo conteúdo ainda não está no canal: compara com o que este aparelho já sabe e com a lista do Discord.
+export function pendingSites(hashed, ...known) {
+  return hashed.filter(({ site, hash }) => site?.id && !known.some(map => (map?.[site.id]?.h ?? map?.[site.id]) === hash));
 }
 
 function readDone() { try { return JSON.parse(localStorage.getItem(DONE_KEY) || '{}') || {}; } catch { return {}; } }
@@ -85,30 +95,50 @@ async function backupSite(site) {
   }
 }
 
+async function panelApi(action, extra = {}) {
+  const response = await fetch('/api/discord', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', cache: 'no-store', body: JSON.stringify({ action, ...extra }) });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw Object.assign(new Error(body.error || 'Discord indisponível.'), { reason: body.code || body.reason || 'error' });
+  return body;
+}
+// Uma aba por vez (se o navegador não tiver Web Locks, segue sem a trava).
+const exclusive = fn => navigator.locks?.request ? navigator.locks.request('promisa-site-backup', { ifAvailable: true }, lock => lock ? fn() : undefined) : fn();
+
 const state = { running: false, last: null, error: '', pending: 0, sent: 0, listeners: new Set() };
 const emit = () => state.listeners.forEach(fn => { try { fn(); } catch { /* ok */ } });
 
-// Envia os sites novos ou alterados (ou todos, com force). Um por vez.
-export async function runBackup({ force = false, manual = false } = {}) {
-  if (state.running || !navigator.onLine || (state.blocked && !manual && !force)) return;
+// Envia os sites novos ou alterados, um por vez, sem repetir o que já está no canal.
+export async function runBackup({ manual = false, recheck = false } = {}) {
+  if (state.running || !navigator.onLine || (state.blocked && !manual)) return;
   state.running = true; state.error = ''; state.sent = 0; emit();
   try {
-    const sites = await allSites();
-    const done = force ? {} : readDone();
-    const todo = changedSites(sites, done);
-    state.pending = todo.length; emit();
-    const kept = readDone();
-    for (const id of Object.keys(kept)) if (!sites.some(site => site.id === id)) delete kept[id];
-    for (const site of todo) {
-      await backupSite(site);
-      kept[site.id] = fingerprint(site); writeDone(kept);
-      state.sent++; state.pending--; emit();
-    }
-    writeDone(kept);
-    state.last = Date.now();
+    await exclusive(async () => {
+      const sites = await allSites();
+      const hashed = [];
+      for (const site of sites) if (site?.id) hashed.push({ site, hash: await contentHash(site) });
+      const local = readDone();
+      for (const id of Object.keys(local)) if (!sites.some(site => site.id === id)) delete local[id];
+      let todo = pendingSites(hashed, recheck ? {} : local);
+      if (todo.length) {
+        // Confere a lista do canal (todos os aparelhos) antes de enviar qualquer coisa.
+        const remote = (await panelApi('backup-index')).sites || {};
+        for (const { site, hash } of todo) if (remote[site.id]?.h === hash) local[site.id] = hash;
+        writeDone(local);
+        todo = pendingSites(todo, remote);
+      }
+      state.pending = todo.length; emit();
+      for (const { site, hash } of todo) {
+        await backupSite(site);
+        local[site.id] = hash; writeDone(local);
+        await panelApi('backup-mark', { items: [{ id: site.id, h: hash }] }).catch(() => {}); // se falhar, o aviso local já evita repetir aqui
+        state.sent++; state.pending--; emit();
+      }
+      writeDone(local);
+      state.last = Date.now();
+    });
   } catch (error) {
     state.blocked = Boolean(HELP[error.reason]); // configuração faltando: não tenta sozinho de novo até reabrir o painel
-    state.error = error.reason === 'permission' || error.reason === 'no-channel' || error.reason === 'not-configured' || error.reason === 'discord-not-configured' ? error.reason : (error.message || 'Falha no backup.');
+    state.error = HELP[error.reason] ? error.reason : (error.message || 'Falha no backup.');
   } finally { state.running = false; emit(); }
 }
 
@@ -125,7 +155,7 @@ function mount(root) {
   const draw = () => {
     if (!root.isConnected) { state.listeners.delete(draw); return; }
     root.replaceChildren();
-    root.append(el('h2', '🗄️ Backup automático no Discord', { style: 'margin-top:0' }), el('p', 'Sempre que um site é anexado ou alterado, o painel guarda uma cópia em ZIP no canal 🗄️・backup-sites do Discord. Não gasta a cota do armazenamento online.'));
+    root.append(el('h2', '🗄️ Backup automático no Discord', { style: 'margin-top:0' }), el('p', 'Sempre que um site é anexado ou alterado, o painel guarda uma cópia em ZIP no canal 🗄️・backup-sites do Discord. Cada versão vai uma vez só, mesmo usando vários aparelhos.'));
     const status = el('p', null, { className: 'site-count', role: 'status' });
     if (state.running) status.textContent = `Enviando… ${state.sent} enviado(s), ${state.pending} na fila.`;
     else if (state.error) { status.textContent = '⚠️ ' + (HELP[state.error] || state.error); status.style.color = 'var(--amb)'; }
@@ -133,9 +163,9 @@ function mount(root) {
     else status.textContent = 'O primeiro envio começa alguns segundos depois de abrir o painel.';
     const bar = el('div', null, { className: 'site-toolbar' });
     const now = el('button', 'Enviar alterados agora', { type: 'button', id: 'siteBackupNow', disabled: state.running });
-    const all = el('button', 'Reenviar todos', { type: 'button', className: 'sec', id: 'siteBackupAll', disabled: state.running });
+    const all = el('button', 'Conferir todos', { type: 'button', className: 'sec', id: 'siteBackupAll', disabled: state.running, title: 'Confere todos os sites com o canal e envia só os que estiverem faltando' });
     now.addEventListener('click', () => runBackup({ manual: true }));
-    all.addEventListener('click', () => { if (confirm('Reenviar o ZIP de todos os sites para o Discord?')) runBackup({ force: true }); });
+    all.addEventListener('click', () => runBackup({ manual: true, recheck: true }));
     bar.append(now, all);
     root.append(status, bar);
     if (state.error === 'permission') {

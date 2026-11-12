@@ -1,16 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fingerprint, splitParts, changedSites, safeName, formatSize, PART_BYTES } from '../src/site-backup.js';
+import { contentHash, pendingSites, splitParts, safeName, formatSize, PART_BYTES } from '../src/site-backup.js';
 import { createDiscord } from '../lib/discord.js';
+import { createBackupIndexStore, normalizeIndex } from '../lib/backup-index-store.js';
 
-test('backup dos sites: só envia o que mudou', () => {
-  const a = { id: 'a', name: 'GV Barber', updatedAt: '2026-11-01', files: [{ path: 'index.html', data: '<h1>oi</h1>' }] };
-  const b = { id: 'b', name: 'Kaetano', updatedAt: '2026-11-02', files: [] };
-  const done = { a: fingerprint(a) };
-  assert.deepEqual(changedSites([a, b], done).map(s => s.id), ['b']);
-  const edited = { ...a, updatedAt: '2026-11-12' };
-  assert.deepEqual(changedSites([edited, b], { a: fingerprint(a), b: fingerprint(b) }).map(s => s.id), ['a']);
-  assert.notEqual(fingerprint(a), fingerprint({ ...a, files: [{ path: 'index.html', data: '<h1>oi!</h1>' }] }));
+test('backup dos sites: identifica pelo conteúdo e nunca repete', async () => {
+  const a = { id: 'a', name: 'GV Barber', files: [{ path: 'index.html', data: '<h1>oi</h1>' }, { path: 'css/s.css', data: 'h1{}' }] };
+  const b = { id: 'b', name: 'Kaetano', files: [{ path: 'index.html', data: '<p>k</p>' }] };
+  const ha = await contentHash(a), hb = await contentHash(b);
+  assert.match(ha, /^[a-f0-9]{32}$/);
+  assert.equal(ha, await contentHash({ ...a, name: 'Outro nome', updatedAt: 'x', files: [...a.files].reverse() }), 'nome, data e ordem não mudam a impressão digital');
+  assert.notEqual(ha, await contentHash({ ...a, files: [{ path: 'index.html', data: '<h1>oi!</h1>' }, a.files[1]] }));
+  assert.notEqual(ha, await contentHash({ ...a, sourceZip: { blob: new Blob(['zip']) } }));
+  const hashed = [{ site: a, hash: ha }, { site: b, hash: hb }];
+  assert.deepEqual(pendingSites(hashed, {}).map(x => x.site.id), ['a', 'b']);
+  assert.deepEqual(pendingSites(hashed, { a: ha }).map(x => x.site.id), ['b'], 'este aparelho já enviou');
+  assert.deepEqual(pendingSites(hashed, {}, { b: { h: hb, at: '2026-11-12' } }).map(x => x.site.id), ['a'], 'outro aparelho já enviou');
+  assert.deepEqual(pendingSites(hashed, { a: 'velho' }, { b: { h: hb } }).map(x => x.site.id), ['a'], 'conteúdo mudou: envia de novo');
+});
+
+test('lista de backups enviados: valida, junta e limita', async () => {
+  const store = createBackupIndexStore({ token: () => '', memory: () => true, now: () => Date.parse('2026-11-12T10:00:00Z') });
+  assert.deepEqual((await store.read()).sites, {});
+  assert.equal(await store.mark([{ id: 'site-1', h: 'a'.repeat(32) }, { id: 'bad id!', h: 'a'.repeat(32) }, { id: 'site-2', h: 'xyz' }]), 1);
+  assert.deepEqual((await store.read()).sites, { 'site-1': { h: 'a'.repeat(32), at: '2026-11-12T10:00:00.000Z' } });
+  await store.mark([{ id: 'site-2', h: 'b'.repeat(32) }]);
+  assert.deepEqual(Object.keys((await store.read()).sites).sort(), ['site-1', 'site-2']);
+  assert.deepEqual(normalizeIndex({ sites: { x: { h: 'zz' }, y: { h: 'c'.repeat(20), at: 1 } } }).sites, { y: { h: 'c'.repeat(20), at: '1' } });
 });
 
 test('backup dos sites: divide arquivos grandes e nomes seguros', () => {
