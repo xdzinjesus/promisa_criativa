@@ -1,13 +1,13 @@
-import { NICHES, newDraft, renderSite, safeImage } from './client-site-templates.js';
+import { NICHES, PLANS, SECTION_LABELS, HERO_LABELS, newDraft, renderSite, safeImage } from './client-site-templates.js';
 import { accessBox } from './client-access-ui.js';
 
 // Aba "🧩 Painel do cliente" (demonstração): o que o cliente veria no painel dele.
 // Escolhe o ramo, edita campos guiados e vê o site mudar na hora. O rascunho fica só neste aparelho
 // (localStorage): nenhuma leitura ou gravação no Blob. "Salvar como site" usa o mesmo cadastro de sites do painel.
-const DRAFT_KEY = 'promisa_client_editor_v1';
+const DRAFT_KEY = 'promisa_client_editor_v1', OPEN_KEY = 'promisa_client_editor_open';
 const el = (tag, text, props = {}) => Object.assign(document.createElement(tag), text == null ? {} : { textContent: text }, props);
 
-function load() { try { const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); if (saved && NICHES[saved.niche]) return { ...newDraft(saved.niche), ...saved }; } catch { /* sem rascunho */ } return newDraft('barbearia'); }
+function load() { try { const saved = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); if (saved && NICHES[saved.niche]) return { ...newDraft(saved.niche, saved.plan), ...saved, plan: PLANS[saved.plan] ? saved.plan : 'premium' }; } catch { /* sem rascunho */ } return newDraft('barbearia'); }
 function save(draft) { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); return true; } catch { return false; } }
 
 // Reduz a foto para no máximo `max` px e JPEG ~82% (cabe no rascunho e deixa o site leve).
@@ -32,7 +32,7 @@ function shrink(file, max = 1400) {
 export function mount(root, opts = {}) {
   if (!root) return;
   const client = opts.client || null;
-  let draft = client ? { ...newDraft(client.draft?.niche), ...client.draft } : load(), device = 'mobile', timer = 0, dirty = false;
+  let draft = client ? { ...newDraft(client.draft?.niche, client.draft?.plan), ...client.draft } : load(), device = 'mobile', timer = 0, dirty = false;
   const status = el('p', '', { className: 'ce-status', role: 'status' });
   const frame = el('iframe', null, { className: 'ce-frame', title: 'Prévia do site do cliente' });
   frame.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
@@ -49,7 +49,16 @@ export function mount(root, opts = {}) {
 
   // ---- formulário ----
   const form = el('div', null, { className: 'ce-form' });
-  const group = (title, ...children) => { const box = el('fieldset', null, { className: 'ce-group' }); box.append(el('legend', title), ...children); return box; };
+  // Blocos que abrem e fecham (lembra quais ficaram abertos neste aparelho).
+  let open; try { open = new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || 'null') || ['ramo', 'identidade']); } catch { open = new Set(['ramo', 'identidade']); }
+  const group = (key, title, ...children) => {
+    const box = el('details', null, { className: 'ce-group', open: open.has(key) });
+    const summary = el('summary', title);
+    box.addEventListener('toggle', () => { box.open ? open.add(key) : open.delete(key); try { localStorage.setItem(OPEN_KEY, JSON.stringify([...open])); } catch { /* ok */ } });
+    const body = el('div', null, { className: 'ce-group-body' }); body.append(...children);
+    box.append(summary, body);
+    return box;
+  };
   const field = (label, key, { area = false, type = 'text', placeholder = '', max = 200 } = {}) => {
     const wrap = el('label', null, { className: 'ce-field' });
     const input = el(area ? 'textarea' : 'input', null, { value: draft[key] ?? '', placeholder, maxLength: max, ...(area ? { rows: 3 } : { type }) });
@@ -60,101 +69,131 @@ export function mount(root, opts = {}) {
 
   function draw() {
     form.replaceChildren();
-    const niche = NICHES[draft.niche];
-    // ramo
-    const niches = el('div', null, { className: 'ce-niches' });
-    for (const [key, def] of Object.entries(NICHES)) {
-      const b = el('button', `${def.icon} ${def.label}`, { type: 'button', className: 'ce-chip' });
-      b.setAttribute('aria-pressed', String(draft.niche === key));
-      b.addEventListener('click', () => {
-        if (draft.niche === key) return;
-        if (!confirm(`Trocar para o modelo "${def.label}"? Os textos voltam ao exemplo do ramo (as fotos ficam).`)) return;
-        draft = { ...newDraft(key), logo: draft.logo, cover: draft.cover, gallery: draft.gallery, whatsapp: draft.whatsapp, instagram: draft.instagram, address: draft.address, siteId: draft.siteId };
-        draw(); refresh(true);
-      });
-      niches.append(b);
-    }
-    // cores
+    const niche = NICHES[draft.niche], plan = PLANS[draft.plan] || PLANS.profissional;
+    const rerender = () => { draw(); refresh(true); dirty = true; };
+    const chips = (options, current, onPick) => {
+      const box = el('div', null, { className: 'ce-niches' });
+      for (const [key, label] of options) {
+        const b = el('button', label, { type: 'button', className: 'ce-chip' });
+        b.setAttribute('aria-pressed', String(current === key));
+        b.addEventListener('click', () => { if (current !== key) onPick(key); });
+        box.append(b);
+      }
+      return box;
+    };
+    // ramo e plano (só o dono)
+    const niches = chips(Object.entries(NICHES).map(([k, d]) => [k, `${d.icon} ${d.label}`]), draft.niche, key => {
+      if (!confirm(`Trocar para o modelo "${NICHES[key].label}"? Os textos voltam ao exemplo do ramo (fotos e contatos ficam).`)) return;
+      draft = { ...newDraft(key, draft.plan), logo: draft.logo, cover: draft.cover, gallery: draft.gallery, whatsapp: draft.whatsapp, instagram: draft.instagram, address: draft.address, team: draft.team, testimonials: draft.testimonials, siteId: draft.siteId };
+      rerender();
+    });
+    const plans = chips(Object.entries(PLANS).map(([k, p]) => [k, `${p.icon} ${p.label}`]), draft.plan, key => { draft.plan = key; rerender(); });
+    const planInfo = el('p', `${plan.icon} ${plan.label}: até ${plan.items} ${niche.items.toLowerCase()}, ${plan.gallery} fotos na galeria, ${plan.palettes} combinações de cores${plan.sections.length > 1 ? ', seções: ' + plan.sections.map(s => SECTION_LABELS[s]).join(', ') : ''}.`, { className: 'ce-hint' });
+    // cores e estilo do topo
     const colors = el('div', null, { className: 'ce-colors' });
-    niche.palettes.forEach(([p, bg], i) => {
+    niche.palettes.slice(0, plan.palettes).forEach(([p, bg], i) => {
       const b = el('button', null, { type: 'button', className: 'ce-color', ariaLabel: `Cores ${i + 1}` });
       b.style.background = `linear-gradient(135deg,${p} 50%,${bg} 50%)`;
       b.setAttribute('aria-pressed', String(draft.palette === i));
-      b.addEventListener('click', () => { draft.palette = i; draw(); refresh(true); });
+      b.addEventListener('click', () => { draft.palette = i; rerender(); });
       colors.append(b);
     });
-    // itens
-    const list = el('div', null, { className: 'ce-items' });
-    draft.items.forEach((item, i) => {
-      const row = el('div', null, { className: 'ce-item' });
-      const name = el('input', null, { value: item.name, placeholder: 'Nome', maxLength: 60, ariaLabel: 'Nome' });
-      const price = el('input', null, { value: item.price, placeholder: 'Preço (ex.: 45)', maxLength: 30, ariaLabel: 'Preço', className: 'ce-price' });
-      const desc = el('input', null, { value: item.desc, placeholder: 'Descrição curta', maxLength: 120, ariaLabel: 'Descrição', className: 'ce-desc' });
-      const del = el('button', '✕', { type: 'button', className: 'ce-del', ariaLabel: 'Remover ' + (item.name || 'item') });
-      name.addEventListener('input', () => { item.name = name.value; refresh(); });
-      price.addEventListener('input', () => { item.price = price.value; refresh(); });
-      desc.addEventListener('input', () => { item.desc = desc.value; refresh(); });
-      const move = (dir) => { const j = i + dir; if (j < 0 || j >= draft.items.length) return; [draft.items[i], draft.items[j]] = [draft.items[j], draft.items[i]]; draw(); refresh(true); };
-      const up = el('button', '↑', { type: 'button', className: 'ce-mv', ariaLabel: 'Subir' }); up.addEventListener('click', () => move(-1));
-      del.addEventListener('click', () => { draft.items.splice(i, 1); draw(); refresh(true); });
-      row.append(name, price, up, del, desc);
-      list.append(row);
-    });
-    const add = el('button', `＋ Adicionar ${niche.items.toLowerCase().replace(/s$/, '')}`, { type: 'button', className: 'sec ce-add' });
-    add.disabled = draft.items.length >= 30;
-    add.addEventListener('click', () => { draft.items.push({ name: '', price: '', desc: '' }); draw(); refresh(true); list.lastElementChild?.querySelector('input')?.focus(); });
+    const heroStyles = plan.heroStyles.length > 1 ? chips(plan.heroStyles.map(k => [k, HERO_LABELS[k]]), plan.heroStyles.includes(draft.heroStyle) ? draft.heroStyle : 'full', key => { draft.heroStyle = key; rerender(); }) : null;
     // fotos
-    const photo = (label, key, multiple = false) => {
+    const photo = (label, key, max = 1) => {
+      const multiple = max > 1;
       const wrap = el('div', null, { className: 'ce-photo' });
       const input = el('input', null, { type: 'file', accept: 'image/jpeg,image/png,image/webp', multiple, hidden: true });
-      const pick = el('button', multiple ? '＋ Fotos' : (draft[key] ? 'Trocar' : 'Escolher'), { type: 'button', className: 'sec' });
+      const current = multiple ? (draft[key] || []).slice(0, max) : (draft[key] ? [draft[key]] : []);
+      const pick = el('button', multiple ? `＋ Fotos (${current.length}/${max})` : (draft[key] ? 'Trocar' : 'Escolher'), { type: 'button', className: 'sec', disabled: multiple && current.length >= max });
       pick.addEventListener('click', () => input.click());
       input.addEventListener('change', async () => {
         try {
-          const files = [...input.files].slice(0, multiple ? 8 - draft.gallery.length : 1);
-          const shots = []; for (const file of files) shots.push(await shrink(file, key === 'logo' ? 400 : 1400));
-          if (multiple) draft.gallery = [...draft.gallery, ...shots].slice(0, 8); else draft[key] = shots[0] || '';
-          draw(); refresh(true);
+          const files = [...input.files].slice(0, multiple ? max - current.length : 1);
+          const shots = []; for (const file of files) shots.push(await shrink(file, key === 'logo' ? 400 : 1200));
+          if (multiple) draft[key] = [...current, ...shots].slice(0, max); else draft[key] = shots[0] || '';
+          rerender();
         } catch (error) { status.textContent = '⚠️ ' + error.message; }
       });
       const thumbs = el('div', null, { className: 'ce-thumbs' });
-      const srcs = multiple ? draft.gallery : (draft[key] ? [draft[key]] : []);
-      srcs.forEach((src, i) => {
-        const t = el('button', null, { type: 'button', className: 'ce-thumb', title: 'Remover foto', ariaLabel: 'Remover foto' });
-        const safe = safeImage(src); if (safe) t.style.backgroundImage = `url("${safe}")`;
-        t.addEventListener('click', () => { if (multiple) draft.gallery.splice(i, 1); else draft[key] = ''; draw(); refresh(true); });
-        thumbs.append(t);
+      current.forEach((src, i) => {
+        const tb = el('button', null, { type: 'button', className: 'ce-thumb', title: 'Remover foto', ariaLabel: 'Remover foto' });
+        const safe = safeImage(src); if (safe) tb.style.backgroundImage = `url("${safe}")`;
+        tb.addEventListener('click', () => { if (multiple) draft[key].splice(i, 1); else draft[key] = ''; rerender(); });
+        thumbs.append(tb);
       });
       wrap.append(el('span', label), thumbs, pick, input);
       return wrap;
     };
+    // lista genérica (itens, perguntas, depoimentos, equipe): campos + subir + remover + adicionar
+    const listEditor = (key, fields, max, addLabel, { fixed = false, photoKey = '' } = {}) => {
+      const box = el('div', null, { className: 'ce-items' });
+      draft[key] = Array.isArray(draft[key]) ? draft[key] : [];
+      if (fixed) while (draft[key].length < max) draft[key].push(Object.fromEntries(fields.map(f => [f.k, ''])));
+      draft[key].slice(0, max).forEach((row, i) => {
+        const line = el('div', null, { className: 'ce-item' });
+        line.style.gridTemplateColumns = [...fields.filter(f => !f.wide).map(f => f.small ? 'minmax(70px,110px)' : 'minmax(0,1fr)'), ...Array((photoKey ? 1 : 0) + (fixed ? 0 : 2)).fill('36px')].join(' ') || '1fr';
+        for (const f of fields) {
+          const input = el(f.area ? 'textarea' : 'input', null, { value: row[f.k] ?? '', placeholder: f.ph, maxLength: f.max, ariaLabel: f.ph, className: f.wide ? 'ce-desc' : f.small ? 'ce-price' : '', ...(f.area ? { rows: 2 } : {}) });
+          input.addEventListener('input', () => { row[f.k] = input.value; dirty = true; refresh(); });
+          line.append(input);
+        }
+        if (photoKey) {
+          const pick = el('button', row[photoKey] ? '🖼️' : '📷', { type: 'button', className: 'ce-mv', ariaLabel: 'Foto', title: row[photoKey] ? 'Trocar foto (toque e segure para remover)' : 'Adicionar foto' });
+          const file = el('input', null, { type: 'file', accept: 'image/jpeg,image/png,image/webp', hidden: true });
+          pick.addEventListener('click', () => file.click());
+          file.addEventListener('change', async () => { try { row[photoKey] = await shrink(file.files[0], 360); rerender(); } catch (error) { status.textContent = '⚠️ ' + error.message; } });
+          line.append(pick, file);
+        }
+        if (!fixed) {
+          const upBtn = el('button', '↑', { type: 'button', className: 'ce-mv', ariaLabel: 'Subir' });
+          upBtn.addEventListener('click', () => { if (i > 0) { [draft[key][i - 1], draft[key][i]] = [draft[key][i], draft[key][i - 1]]; rerender(); } });
+          const del = el('button', '✕', { type: 'button', className: 'ce-del', ariaLabel: 'Remover' });
+          del.addEventListener('click', () => { draft[key].splice(i, 1); rerender(); });
+          line.append(upBtn, del);
+        }
+        box.append(line);
+      });
+      if (!fixed) {
+        const add = el('button', `＋ ${addLabel} (${Math.min(draft[key].length, max)}/${max})`, { type: 'button', className: 'sec ce-add', disabled: draft[key].length >= max });
+        add.addEventListener('click', () => { draft[key].push(Object.fromEntries(fields.map(f => [f.k, '']))); rerender(); box.querySelector('.ce-item:last-of-type input, .ce-item:last-of-type textarea')?.focus(); });
+        box.append(add);
+      }
+      return box;
+    };
+    const check = (label, on, onChange) => { const w = el('label', null, { className: 'ce-check' }); const c = el('input', null, { type: 'checkbox', checked: on }); c.addEventListener('change', () => onChange(c.checked)); w.append(c, el('span', label)); return w; };
     const perks = el('div', null, { className: 'ce-perks' });
     draft.highlights = Array.from({ length: 3 }, (_, i) => draft.highlights?.[i] ?? '');
     draft.highlights.forEach((text, i) => {
       const input = el('input', null, { value: text, placeholder: `Destaque ${i + 1} (ex.: Estacionamento grátis)`, maxLength: 50, ariaLabel: `Destaque ${i + 1}` });
-      input.addEventListener('input', () => { draft.highlights[i] = input.value; refresh(); });
+      input.addEventListener('input', () => { draft.highlights[i] = input.value; dirty = true; refresh(); });
       perks.append(input);
     });
-    const promo = el('label', null, { className: 'ce-check' });
-    const promoOn = el('input', null, { type: 'checkbox', checked: draft.showPromo });
-    promoOn.addEventListener('change', () => set('showPromo', promoOn.checked));
-    promo.append(promoOn, el('span', 'Mostrar faixa de promoção no topo'));
+    const has = key => plan.sections.includes(key);
+    const itemFields = [{ k: 'name', ph: 'Nome', max: 60 }, ...(niche.noPrices ? [] : [{ k: 'price', ph: 'Preço (ex.: 45)', max: 30, small: true }]), { k: 'desc', ph: 'Descrição curta', max: 120, wide: true }];
+    const sections = el('div', null, { className: 'ce-perks' });
+    for (const key of plan.sections) sections.append(check(`Mostrar "${SECTION_LABELS[key]}"`, !draft.hide?.[key], on => { draft.hide = { ...(draft.hide || {}), [key]: !on }; rerender(); }));
 
-    let n = 0; const t = title => `${++n}. ${title}`;
     form.append(
-      ...(client ? [] : [group(t('Ramo do negócio'), niches)]),
-      group(t('Identidade'), field('Nome do negócio', 'name', { max: 60 }), field('Frase de destaque', 'slogan', { max: 120 }), el('span', 'Cores', { className: 'ce-label' }), colors, photo('Logo', 'logo'), photo('Foto de capa', 'cover')),
-      group(t('Destaques do negócio'), perks),
-      group(t(niche.items), list, add),
-      group(t('Promoção'), promo, field('Texto da promoção', 'promo', { max: 120 })),
-      group(t('Sobre e fotos'), field('Sobre o negócio', 'about', { area: true, max: 600 }), photo('Galeria (até 8)', 'gallery', true)),
-      group(t('Contato'), field('WhatsApp (com DDD)', 'whatsapp', { type: 'tel', placeholder: '49 99999-9999', max: 20 }), field('Instagram', 'instagram', { placeholder: '@seunegocio', max: 60 }), field('Endereço', 'address', { max: 160 }), field('Horários (um por linha)', 'hours', { area: true, max: 300 }))
+      ...(client ? [] : [group('ramo', '🧭 Ramo e plano', el('span', 'Ramo de atividade', { className: 'ce-label' }), niches, el('span', 'Plano do cliente', { className: 'ce-label' }), plans, planInfo)]),
+      group('identidade', '🎨 Identidade e visual', field('Nome do negócio', 'name', { max: 60 }), field('Frase de destaque', 'slogan', { max: 120 }), field('Texto do botão principal', 'ctaLabel', { max: 30, placeholder: niche.cta }), el('span', 'Cores', { className: 'ce-label' }), colors, ...(heroStyles ? [el('span', 'Estilo do topo', { className: 'ce-label' }), heroStyles] : []), photo('Logo', 'logo'), photo('Foto de capa', 'cover')),
+      ...(plan.highlights ? [group('destaques', '✦ Destaques do negócio', perks)] : []),
+      group('itens', `📋 ${niche.items}`, ...(niche.noPrices ? [el('p', 'Odontologia: pelas regras do CFO, o site não mostra preços nem promoções.', { className: 'ce-hint' })] : []), listEditor('items', itemFields, plan.items, 'Adicionar')),
+      ...(plan.promo && !niche.noPromo ? [group('promo', '🏷️ Promoção', check('Mostrar faixa de promoção no topo', draft.showPromo, on => set('showPromo', on)), field('Texto da promoção', 'promo', { max: 120 }))] : []),
+      group('sobre', '📖 Sobre e fotos', field('Sobre o negócio', 'about', { area: true, max: 600 }), photo(`Galeria`, 'gallery', plan.gallery)),
+      ...(has('steps') ? [group('steps', '🪜 Como funciona (3 passos)', listEditor('steps', [{ k: 'title', ph: 'Passo', max: 50 }, { k: 'text', ph: 'Explicação curta', max: 140, wide: true }], 3, '', { fixed: true }))] : []),
+      ...(has('stats') ? [group('stats', '🔢 Números do negócio', listEditor('stats', [{ k: 'value', ph: 'Número (ex.: 10+)', max: 12, small: true }, { k: 'label', ph: 'O que significa', max: 40 }], 4, '', { fixed: true }))] : []),
+      ...(has('team') ? [group('team', '👥 Equipe', listEditor('team', [{ k: 'name', ph: 'Nome', max: 50 }, { k: 'role', ph: 'Função', max: 50 }], 8, 'Adicionar pessoa', { photoKey: 'photo' }))] : []),
+      ...(has('testimonials') ? [group('depo', '💬 Depoimentos', el('p', 'Use só depoimentos reais de clientes (com autorização).', { className: 'ce-hint' }), listEditor('testimonials', [{ k: 'name', ph: 'Nome do cliente', max: 50 }, { k: 'text', ph: 'O que ele disse', max: 300, wide: true, area: true }], 8, 'Adicionar depoimento'))] : []),
+      ...(has('faq') ? [group('faq', '❓ Perguntas frequentes', listEditor('faq', [{ k: 'q', ph: 'Pergunta', max: 120, wide: true }, { k: 'a', ph: 'Resposta', max: 400, wide: true, area: true }], 10, 'Adicionar pergunta'))] : []),
+      ...(plan.sections.length > 1 ? [group('secoes', '👁️ Mostrar ou esconder seções', sections)] : []),
+      group('contato', '📞 Contato', field('WhatsApp (com DDD)', 'whatsapp', { type: 'tel', placeholder: '49 99999-9999', max: 20 }), field('Instagram', 'instagram', { placeholder: '@seunegocio', max: 60 }), field('Endereço', 'address', { max: 160 }), field('Horários (um por linha)', 'hours', { area: true, max: 300 }), ...(niche.responsible ? [field('Responsável técnico e CRO (obrigatório)', 'responsible', { max: 100, placeholder: 'Dr(a). Nome · CRO-SC 00000' })] : []))
     );
   }
 
   // ---- topo, prévia e ações ----
   const head = el('div', null, { className: 'card ce-intro' });
-  if (client) head.append(el('b', `👋 Aqui você edita o site ${client.siteName ? 'de ' + client.siteName : ''}`), el('p', 'Troque textos, preços, fotos e contatos e veja o site mudar na hora. Quando terminar, toque em "Salvar e publicar".', { className: 'sub' }));
+  if (client) head.append(el('b', `👋 Aqui você edita o site ${client.siteName ? 'de ' + client.siteName : ''} · plano ${(PLANS[draft.plan] || PLANS.profissional).icon} ${(PLANS[draft.plan] || PLANS.profissional).label}`), el('p', 'Troque textos, preços, fotos e contatos e veja o site mudar na hora. Quando terminar, toque em "Salvar e publicar".', { className: 'sub' }));
   else head.append(el('b', '🧩 Esta é a tela que o seu cliente teria no painel dele.'), el('p', 'Ele troca textos, preços, fotos e contatos, e o site muda na hora. O design fica protegido: ele não consegue "quebrar" o visual. Para dar acesso a ele, use "🔑 Acesso do cliente" (embaixo da prévia).', { className: 'sub' }));
   const devices = el('div', null, { className: 'ce-devices' });
   for (const [key, label] of [['mobile', '📱 Celular'], ['desktop', '🖥️ Computador']]) {
@@ -217,8 +256,11 @@ export function mount(root, opts = {}) {
     preview.append(devices, screen, actions, status, access, guide);
   }
 
+  const toggles = el('div', null, { className: 'ce-toggles' });
+  for (const [label, value] of [['Abrir todos', true], ['Fechar todos', false]]) { const b = el('button', label, { type: 'button', className: 'sec' }); b.addEventListener('click', () => form.querySelectorAll('details.ce-group').forEach(d => { d.open = value; })); toggles.append(b); }
+  const formCol = el('div', null, { className: 'ce-formcol' }); formCol.append(toggles, form);
   const layout = el('div', null, { className: 'ce-layout' });
-  layout.append(form, preview);
+  layout.append(formCol, preview);
   root.replaceChildren(head, layout);
   draw(); refresh(true);
 }

@@ -57,7 +57,19 @@ O painel precisa de duas informações da sua Cloudflare, guardadas na Vercel:
 ### Atualizar um site que já está no ar
 Mudou alguma coisa? No Painel do cliente, toque em **🚀 Publicar na Cloudflare** de novo (ele salva por cima do mesmo site) e, na janela, toque em **Atualizar site**. O endereço continua o mesmo. Para tirar do ar: **Tirar do ar**, na mesma janela.
 
-## 4. Dar ao cliente acesso para editar o próprio site ("Meu site")
+## 4. Planos dos sites (Essencial, Profissional, Premium)
+
+No **🧩 Painel do cliente**, em **🧭 Ramo e plano**, escolha o ramo (barbearia, restaurante, oficina, salão, odontologia ou loja) e o plano que o cliente comprou:
+
+| Plano | O que libera |
+|---|---|
+| 🌱 Essencial | Topo, até 6 serviços, Sobre, galeria de 4 fotos, contato, 2 combinações de cores |
+| 🚀 Profissional | + destaques, promoção, "Como funciona", galeria de 8 fotos, depoimentos, perguntas frequentes, chamada final, topo dividido com foto, 4 cores |
+| 👑 Premium | + faixa animada, números do negócio, equipe com fotos, menu fixo no topo, topo centralizado, 30 itens, 12 fotos, 6 cores |
+
+O cliente **não consegue trocar de plano nem de ramo**: o servidor confere. Odontologia segue as regras do CFO (sem preços e sem promoções; responsável técnico e CRO no rodapé).
+
+## 4.1 Dar ao cliente acesso para editar o próprio site ("Meu site")
 
 O cliente edita **só o site dele** (textos, preços, fotos, promoção, horários). Ele não vê o seu painel. **Quem controla é você.**
 
