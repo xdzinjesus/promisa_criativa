@@ -106,3 +106,87 @@ test('dono cria acesso do zero (ramo + plano), muda o plano e o cliente não vol
   assert.ok(w.deploys.at(-1).site.files[0].data.includes('--p:#ff0000'), 'cor livre vai para o site');
 });
 
+
+// Blob falso com ETag e ifMatch de verdade, e uma pausa em cada chamada para os pedidos se intercalarem.
+function fakeBlob() {
+  const files = new Map(); let version = 0;
+  const tick = () => new Promise(r => setTimeout(r, Math.random() * 4));
+  class BlobNotFoundError extends Error {} class BlobPreconditionFailedError extends Error {}
+  return {
+    head: async path => { await tick(); const f = files.get(path); if (!f) throw new BlobNotFoundError('not found'); return { etag: f.etag }; },
+    get: async path => { await tick(); const f = files.get(path); if (!f) throw new BlobNotFoundError('not found'); return { stream: new Response(f.body).body, blob: { size: f.body.length } }; },
+    put: async (path, body, opts) => {
+      await tick(); const f = files.get(path);
+      if (opts.ifMatch && (!f || f.etag !== opts.ifMatch)) throw new BlobPreconditionFailedError('precondition failed');
+      if (!opts.ifMatch && f && opts.allowOverwrite === false) throw new BlobPreconditionFailedError('already exists');
+      files.set(path, { body, etag: 'e' + (++version) });
+    }
+  };
+}
+function blobWorld({ deployGate = null } = {}) {
+  const blob = fakeBlob(), clock = { now: Date.parse('2026-11-12T12:00:00Z') };
+  const store = createClientAccessStore({ ...blob, token: () => 'tok', memory: () => false });
+  const deploys = [];
+  const cloudflare = () => ({ deploy: async (project, site) => { if (deployGate) await deployGate(); deploys.push(project); return { project, url: `https://${project}.pages.dev`, deploymentId: 'd' }; } });
+  const publishStore = { get: async () => null, set: async () => ({}) };
+  const handler = createClientAccessHandler({ store, publishStore, cloudflare, authorized: async req => req.headers.cookie === 'admin', sameOrigin: () => true, secret: () => 's'.repeat(40), now: () => clock.now });
+  const call = async (body, cookie = '') => { const res = { statusCode: 0, setHeader() {}, end(t) { this.body = JSON.parse(t); } }; await handler({ method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify(body) }, res); return { status: res.statusCode, body: res.body }; };
+  return { store, call, deploys };
+}
+
+test('corrida 1: 20 códigos errados ao mesmo tempo não furam o bloqueio de 5 tentativas', async () => {
+  const w = blobWorld();
+  const made = await w.call({ action: 'admin-create', siteName: 'Teste', niche: 'loja', plan: 'essencial' }, 'admin');
+  const token = tokenOf(made.body.link), wrong = made.body.code === '000000' ? '111111' : '000000';
+  const results = await Promise.all(Array.from({ length: 20 }, () => w.call({ action: 'login', token, code: wrong })));
+  const checked = results.filter(r => r.status === 401).length;
+  assert.ok(checked <= MAX_FAILS, `no máximo ${MAX_FAILS} códigos conferidos (foram ${checked})`);
+  assert.ok(results.every(r => [401, 429].includes(r.status)), JSON.stringify(results.map(r => r.status)));
+  const rec = await w.store.getRecord(tokenHash(token));
+  assert.ok(rec.lockUntil > 0, 'ficou bloqueado');
+  assert.equal((await w.call({ action: 'login', token, code: made.body.code })).status, 429, 'nem o código certo entra durante o bloqueio');
+});
+
+test('corrida 2: cortar o acesso durante uma publicação não é desfeito quando ela termina', async () => {
+  let release; const gate = new Promise(r => { release = r; });
+  const w = blobWorld({ deployGate: () => gate });
+  const made = await w.call({ action: 'admin-create', siteName: 'Teste', niche: 'loja', plan: 'essencial' }, 'admin');
+  const token = tokenOf(made.body.link);
+  const login = await w.call({ action: 'login', token, code: made.body.code });
+  const saving = w.call({ action: 'save', token, session: login.body.session, draft: login.body.draft });
+  await new Promise(r => setTimeout(r, 60));
+  const siteId = Object.keys((await w.call({ action: 'admin-list' }, 'admin')).body.sites)[0];
+  assert.equal((await w.call({ action: 'admin-revoke', siteId }, 'admin')).status, 200);
+  release();
+  await saving;
+  assert.equal((await w.store.getRecord(tokenHash(token))).revoked, true, 'continua cortado');
+  assert.equal((await w.call({ action: 'login', token, code: made.body.code })).status, 404, 'link antigo não volta a funcionar');
+});
+
+test('corrida 3: vários salvamentos ao mesmo tempo não passam do limite do dia', async () => {
+  const w = blobWorld();
+  const made = await w.call({ action: 'admin-create', siteName: 'Teste', niche: 'loja', plan: 'essencial' }, 'admin');
+  const token = tokenOf(made.body.link), hash = tokenHash(token);
+  const login = await w.call({ action: 'login', token, code: made.body.code });
+  await w.store.updateRecord(hash, r => ({ ...r, saves: { day: '2026-11-12', count: MAX_SAVES_PER_DAY - 1 } }));
+  const results = await Promise.all(Array.from({ length: 10 }, () => w.call({ action: 'save', token, session: login.body.session, draft: login.body.draft })));
+  assert.equal(results.filter(r => r.status === 200).length, 1, 'só 1 salvamento cabia na cota');
+  assert.equal(w.deploys.length, 1, 'só 1 publicação na Cloudflare');
+  assert.equal((await w.store.getRecord(hash)).saves.count, MAX_SAVES_PER_DAY);
+});
+
+test('corrida 4: trocar o plano durante uma publicação não é desfeito quando ela termina', async () => {
+  let release; const gate = new Promise(r => { release = r; });
+  const w = blobWorld({ deployGate: () => gate });
+  const made = await w.call({ action: 'admin-create', siteName: 'Teste', niche: 'loja', plan: 'premium' }, 'admin');
+  const token = tokenOf(made.body.link);
+  const login = await w.call({ action: 'login', token, code: made.body.code });
+  const saving = w.call({ action: 'save', token, session: login.body.session, draft: login.body.draft });
+  await new Promise(r => setTimeout(r, 60));
+  const siteId = Object.keys((await w.call({ action: 'admin-list' }, 'admin')).body.sites)[0];
+  assert.equal((await w.call({ action: 'admin-plan', siteId, plan: 'essencial' }, 'admin')).status, 200);
+  release();
+  assert.equal((await saving).status, 200);
+  assert.equal((await w.store.getRecord(tokenHash(token))).draft.plan, 'essencial', 'o plano novo continua valendo');
+  assert.equal((await w.call({ action: 'admin-list' }, 'admin')).body.sites[siteId].plan, 'essencial', 'a lista também');
+});

@@ -9,7 +9,7 @@ const ELEGANT = '"Cormorant Garamond","Didot","Bodoni MT",Georgia,serif';
 
 // O que cada plano libera. O dono escolhe o plano; o cliente não consegue mudar.
 export const PLANS = {
-  essencial: { label: 'Essencial', icon: '🌱', items: 6, gallery: 4, palettes: 2, heroStyles: ['full'], styles: ['classico'], promo: false, highlights: false, cta: false, sections: ['about'] },
+  essencial: { label: 'Essencial', icon: '🌱', items: 6, gallery: 4, palettes: 2, heroStyles: ['full'], styles: ['classico'], promo: false, highlights: false, cta: false, sections: ['about', 'gallery'] },
   profissional: { label: 'Profissional', icon: '🚀', items: 15, gallery: 8, palettes: 4, heroStyles: ['full', 'split'], styles: ['classico', 'moderno'], promo: true, highlights: true, cta: true, sections: ['about', 'steps', 'gallery', 'testimonials', 'faq'] },
   premium: { label: 'Premium', icon: '👑', items: 30, gallery: 12, palettes: 6, heroStyles: ['full', 'split', 'center'], styles: ['classico', 'moderno', 'ousado'], promo: true, highlights: true, cta: true, marquee: true, sections: ['about', 'steps', 'stats', 'team', 'gallery', 'testimonials', 'faq'] }
 };
@@ -333,7 +333,7 @@ footer{padding:44px 0;border-top:1px solid var(--line);color:var(--mut);font-siz
 .style-ousado .marquee{font-size:20px;transform:rotate(-1.5deg) scale(1.02);margin:12px 0}
 .style-ousado main>section{position:relative}.style-ousado main>section:before{content:"";position:absolute;left:0;top:0;width:min(28vw,280px);height:6px;background:var(--p)}
 .style-ousado .faq details{border-radius:0;border-width:0 0 0 4px;border-color:var(--p)}
-@media(max-width:820px){.style-ousado .marquee{transform:none;margin:0}.style-moderno .about{grid-template-columns:1fr}.style-moderno .about>div:first-child{order:0}.style-moderno .stats{grid-template-columns:repeat(2,1fr)}
+@media(max-width:820px){.style-moderno .prow{grid-template-columns:48px minmax(0,1fr);padding:16px}.style-moderno .prow>.price,.style-moderno .prow>.mini{grid-column:2;justify-self:start}.prow b,.prow p{overflow-wrap:anywhere}.style-ousado .marquee{transform:none;margin:0}.style-moderno .about{grid-template-columns:1fr}.style-moderno .about>div:first-child{order:0}.style-moderno .stats{grid-template-columns:repeat(2,1fr)}
 .style-ousado .svc{grid-template-columns:72px 1fr;grid-template-areas:"pic name" "pic desc" "buy buy";padding:16px}.style-ousado .svc>:first-child,.style-ousado .svc-img{width:72px!important}.style-ousado .svc>.buy{flex-direction:row;align-items:center;justify-content:space-between;width:100%;margin-top:8px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}`;
 
