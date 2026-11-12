@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><meta name="theme-color" content="#09080e">
+<title>Meu site | Promisa</title>
+<link rel="icon" href="/assets/asset-1.webp"><link rel="stylesheet" href="/assets/client-editor.css?v=1">
+<script src="/assets/client-portal.js?v=1" defer></script>
+</head>
+<body class="mp-page">
+<header class="mp-top"><a class="mp-brand" href="/" target="_blank" rel="noopener"><img src="/assets/asset-1.webp" alt="" width="34" height="34"><span>PROMISA<small>Meu site</small></span></a></header>
+<main class="mp-wrap">
+<section id="mp-login" class="card mp-card">
+<h1>Editar meu site</h1>
+<p class="sub">Digite o código de 6 números que a Promisa enviou para você.</p>
+<form id="mp-form" novalidate autocomplete="off">
+<label class="ce-field"><span>Código de acesso</span><input id="mp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" class="mp-code"></label>
+<p id="mp-error" class="mp-error" role="alert"></p>
+<button id="mp-enter" type="submit">Entrar</button>
+</form>
+</section>
+<section id="mp-invalid" class="card mp-card" hidden><h1>Link inválido</h1><p class="sub">Confira o link que a Promisa enviou ou peça um novo.</p></section>
+<section id="mp-editor" hidden><div id="mp-root"></div></section>
+</main>
+</body>
+</html>

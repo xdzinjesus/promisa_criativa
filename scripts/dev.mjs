@@ -10,6 +10,7 @@ import diagnosticoHandler from '../api/diagnostico.js';
 import publishHandler from '../api/publish.js';
 import discordHandler from '../api/discord.js';
 import instagramHandler from '../api/instagram.js';
+import meuSiteHandler from '../api/meu-site.js';
 
 const root = resolve('public');
 const config = JSON.parse(await readFile('vercel.json', 'utf8'));
@@ -30,6 +31,8 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/diagnostico') { req.query = Object.fromEntries(url.searchParams); return await diagnosticoHandler(req, res); }
     if (url.pathname === '/api/briefing') { req.query = Object.fromEntries(url.searchParams); return await briefingHandler(req, res); }
     if (/^\/briefing\/[^/]+\/?$/.test(url.pathname)) url.pathname = '/briefing.html';
+    if (url.pathname === '/api/meu-site') { req.query = {}; return await meuSiteHandler(req, res); }
+    if (/^\/meu-site\/[^/]+\/?$/.test(url.pathname)) url.pathname = '/meu-site.html';
     const route = config.rewrites.find(item => item.source === url.pathname);
     if (url.pathname === '/api/access' || url.pathname === '/api/cloud' || route) {
       const destination = new URL(route?.destination || req.url, 'http://localhost');

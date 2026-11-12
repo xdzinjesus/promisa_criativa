@@ -1,4 +1,5 @@
 import { NICHES, newDraft, renderSite, safeImage } from './client-site-templates.js';
+import { accessBox } from './client-access-ui.js';
 
 // Aba "🧩 Painel do cliente" (demonstração): o que o cliente veria no painel dele.
 // Escolhe o ramo, edita campos guiados e vê o site mudar na hora. O rascunho fica só neste aparelho
@@ -26,9 +27,12 @@ function shrink(file, max = 1400) {
   });
 }
 
-function mount(root) {
+// opts.client = { draft, siteName, onSave(draft) } → modo do cliente ("Meu site"): sem trocar ramo, sem rascunho local,
+// só "Salvar e publicar". Sem opts → modo do dono (painel), com publicação e controle de acesso.
+export function mount(root, opts = {}) {
   if (!root) return;
-  let draft = load(), device = 'mobile', timer = 0;
+  const client = opts.client || null;
+  let draft = client ? { ...newDraft(client.draft?.niche), ...client.draft } : load(), device = 'mobile', timer = 0, dirty = false;
   const status = el('p', '', { className: 'ce-status', role: 'status' });
   const frame = el('iframe', null, { className: 'ce-frame', title: 'Prévia do site do cliente' });
   frame.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox');
@@ -37,10 +41,11 @@ function mount(root) {
     clearTimeout(timer);
     timer = setTimeout(() => {
       frame.srcdoc = renderSite(draft);
+      if (client) { if (dirty) status.textContent = 'Você tem alterações ainda não publicadas.'; return; }
       status.textContent = save(draft) ? 'Rascunho salvo neste aparelho.' : '⚠️ Fotos demais para guardar o rascunho. O site continua funcionando; salve como site para não perder.';
     }, now ? 0 : 250);
   };
-  const set = (key, value) => { draft[key] = value; refresh(); };
+  const set = (key, value) => { draft[key] = value; dirty = true; refresh(); };
 
   // ---- formulário ----
   const form = el('div', null, { className: 'ce-form' });
@@ -135,20 +140,22 @@ function mount(root) {
     promoOn.addEventListener('change', () => set('showPromo', promoOn.checked));
     promo.append(promoOn, el('span', 'Mostrar faixa de promoção no topo'));
 
+    let n = 0; const t = title => `${++n}. ${title}`;
     form.append(
-      group('1. Ramo do negócio', niches),
-      group('2. Identidade', field('Nome do negócio', 'name', { max: 60 }), field('Frase de destaque', 'slogan', { max: 120 }), el('span', 'Cores', { className: 'ce-label' }), colors, photo('Logo', 'logo'), photo('Foto de capa', 'cover')),
-      group('3. Destaques do negócio', perks),
-      group('4. ' + niche.items, list, add),
-      group('5. Promoção', promo, field('Texto da promoção', 'promo', { max: 120 })),
-      group('6. Sobre e fotos', field('Sobre o negócio', 'about', { area: true, max: 600 }), photo('Galeria (até 8)', 'gallery', true)),
-      group('7. Contato', field('WhatsApp (com DDD)', 'whatsapp', { type: 'tel', placeholder: '49 99999-9999', max: 20 }), field('Instagram', 'instagram', { placeholder: '@seunegocio', max: 60 }), field('Endereço', 'address', { max: 160 }), field('Horários (um por linha)', 'hours', { area: true, max: 300 }))
+      ...(client ? [] : [group(t('Ramo do negócio'), niches)]),
+      group(t('Identidade'), field('Nome do negócio', 'name', { max: 60 }), field('Frase de destaque', 'slogan', { max: 120 }), el('span', 'Cores', { className: 'ce-label' }), colors, photo('Logo', 'logo'), photo('Foto de capa', 'cover')),
+      group(t('Destaques do negócio'), perks),
+      group(t(niche.items), list, add),
+      group(t('Promoção'), promo, field('Texto da promoção', 'promo', { max: 120 })),
+      group(t('Sobre e fotos'), field('Sobre o negócio', 'about', { area: true, max: 600 }), photo('Galeria (até 8)', 'gallery', true)),
+      group(t('Contato'), field('WhatsApp (com DDD)', 'whatsapp', { type: 'tel', placeholder: '49 99999-9999', max: 20 }), field('Instagram', 'instagram', { placeholder: '@seunegocio', max: 60 }), field('Endereço', 'address', { max: 160 }), field('Horários (um por linha)', 'hours', { area: true, max: 300 }))
     );
   }
 
   // ---- topo, prévia e ações ----
   const head = el('div', null, { className: 'card ce-intro' });
-  head.append(el('b', '🧩 Esta é a tela que o seu cliente teria no painel dele.'), el('p', 'Ele escolhe o modelo do ramo, troca textos, preços, fotos e contatos, e o site muda na hora. O design fica protegido: ele não consegue "quebrar" o visual.', { className: 'sub' }));
+  if (client) head.append(el('b', `👋 Aqui você edita o site ${client.siteName ? 'de ' + client.siteName : ''}`), el('p', 'Troque textos, preços, fotos e contatos e veja o site mudar na hora. Quando terminar, toque em "Salvar e publicar".', { className: 'sub' }));
+  else head.append(el('b', '🧩 Esta é a tela que o seu cliente teria no painel dele.'), el('p', 'Ele troca textos, preços, fotos e contatos, e o site muda na hora. O design fica protegido: ele não consegue "quebrar" o visual. Para dar acesso a ele, use "🔑 Acesso do cliente" (embaixo da prévia).', { className: 'sub' }));
   const devices = el('div', null, { className: 'ce-devices' });
   for (const [key, label] of [['mobile', '📱 Celular'], ['desktop', '🖥️ Computador']]) {
     const b = el('button', label, { type: 'button', className: 'ce-chip' });
@@ -189,9 +196,26 @@ function mount(root) {
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
   });
   reset.addEventListener('click', () => { if (!confirm('Apagar o rascunho e voltar ao exemplo do ramo? (O site já salvo no cadastro continua lá.)')) return; draft = newDraft(draft.niche); draw(); refresh(true); });
-  actions.append(publish, saveSite, download, reset);
-  const guide = el('a', '📘 Como funciona a hospedagem (passo a passo)', { href: 'https://github.com/xdzinjesus/promisa_criativa/blob/main/docs/HOSPEDAGEM.md', target: '_blank', rel: 'noopener noreferrer', className: 'ce-guide' });
-  preview.append(devices, screen, actions, status, guide);
+  if (client) {
+    const go = el('button', '💾 Salvar e publicar', { type: 'button', id: 'ceClientSave' });
+    go.addEventListener('click', async () => {
+      go.disabled = true; const old = go.textContent; go.textContent = 'Publicando… (até 1 minuto)';
+      try { const result = await client.onSave(draft); dirty = false; status.textContent = '✅ Pronto! Seu site foi atualizado.' + (result?.url ? ' ' + result.url : ''); }
+      catch (error) { status.textContent = '⚠️ ' + (error.message || 'Não foi possível salvar.'); }
+      go.disabled = false; go.textContent = old;
+    });
+    actions.append(go);
+    window.addEventListener('beforeunload', event => { if (dirty) { event.preventDefault(); event.returnValue = ''; } });
+    preview.append(devices, screen, actions, status);
+  } else {
+    actions.append(publish, saveSite, download, reset);
+    const guide = el('a', '📘 Como funciona a hospedagem (passo a passo)', { href: 'https://github.com/xdzinjesus/promisa_criativa/blob/main/docs/HOSPEDAGEM.md', target: '_blank', rel: 'noopener noreferrer', className: 'ce-guide' });
+    const access = accessBox({
+      getDraft: () => draft, ensureSaved: async () => { await store(); return draft.siteId; },
+      useDraft: incoming => { draft = { ...newDraft(incoming.niche), ...incoming, siteId: draft.siteId }; draw(); refresh(true); }
+    });
+    preview.append(devices, screen, actions, status, access, guide);
+  }
 
   const layout = el('div', null, { className: 'ce-layout' });
   layout.append(form, preview);
@@ -199,4 +223,4 @@ function mount(root) {
   draw(); refresh(true);
 }
 
-window.promisaClientEditor = { mount };
+if (typeof window !== 'undefined') window.promisaClientEditor = { mount };

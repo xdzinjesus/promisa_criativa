@@ -208,3 +208,21 @@ ${phone || ig ? `<div class="card"><b>💬 Fale com a gente</b>${phone ? `<p>Wha
 ${wa ? `<a class="wa-float" href="${esc(wa)}" target="_blank" rel="noopener" aria-label="Falar no WhatsApp">${WA_SVG}</a>` : ''}
 </body></html>`;
 }
+
+// Limpa um rascunho vindo de fora (navegador do cliente): só campos conhecidos, tamanhos limitados,
+// fotos só data:image jpg/png/webp. Usado no servidor antes de guardar e publicar.
+const str = (value, max) => String(value ?? '').slice(0, max);
+export function cleanDraft(raw, { niche: fixedNiche } = {}) {
+  const input = raw && typeof raw === 'object' ? raw : {};
+  const niche = NICHES[fixedNiche] ? fixedNiche : NICHES[input.niche] ? input.niche : 'barbearia';
+  const base = newDraft(niche);
+  const palette = Number.isInteger(input.palette) && input.palette >= 0 && input.palette < NICHES[niche].palettes.length ? input.palette : 0;
+  return {
+    version: 2, niche, palette,
+    name: str(input.name, 60), slogan: str(input.slogan, 120), about: str(input.about, 600), promo: str(input.promo, 120), showPromo: input.showPromo !== false,
+    hours: str(input.hours, 300), whatsapp: str(input.whatsapp, 20), instagram: str(input.instagram, 60), address: str(input.address, 160),
+    highlights: Array.from({ length: 3 }, (_, i) => str(Array.isArray(input.highlights) ? input.highlights[i] : base.highlights[i], 50)),
+    items: (Array.isArray(input.items) ? input.items : []).slice(0, 30).map(item => ({ name: str(item?.name, 60), price: str(item?.price, 30), desc: str(item?.desc, 120) })),
+    logo: safeImage(input.logo), cover: safeImage(input.cover), gallery: (Array.isArray(input.gallery) ? input.gallery : []).map(safeImage).filter(Boolean).slice(0, 8)
+  };
+}
