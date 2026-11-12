@@ -36,6 +36,7 @@ export function accessBox({ getDraft, ensureSaved, useDraft }) {
     try {
       const siteId = await ensureSaved();
       const draft = getDraft();
+      if (JSON.stringify(draft).length > 4_000_000) throw new Error('Fotos pesadas demais para criar o acesso. Remova algumas fotos e tente de novo.');
       const result = await accessApi('admin-create', { siteId, siteName: draft.name, draft });
       await load(); body.prepend(credentialsCard({ ...result, siteName: draft.name, phone: draft.whatsapp }));
     } catch (error) { msg('⚠️ ' + error.message); button.disabled = false; }

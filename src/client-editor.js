@@ -11,7 +11,7 @@ function load() { try { const saved = JSON.parse(localStorage.getItem(DRAFT_KEY)
 function save(draft) { try { localStorage.setItem(DRAFT_KEY, JSON.stringify(draft)); return true; } catch { return false; } }
 
 // Reduz a foto para no máximo `max` px e JPEG ~82% (cabe no rascunho e deixa o site leve).
-function shrink(file, max = 1400) {
+function shrink(file, max = 1400, quality = 0.78) {
   return new Promise((resolve, reject) => {
     if (!/^image\/(jpeg|png|webp)$/.test(file.type)) { reject(new Error('Use foto JPG, PNG ou WEBP.')); return; }
     const url = URL.createObjectURL(file), img = new Image();
@@ -20,7 +20,7 @@ function shrink(file, max = 1400) {
       const canvas = Object.assign(document.createElement('canvas'), { width: Math.round(img.width * scale), height: Math.round(img.height * scale) });
       canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/jpeg', 0.82));
+      resolve(canvas.toDataURL('image/jpeg', quality));
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Não consegui abrir a foto.')); };
     img.src = url;
@@ -110,7 +110,7 @@ export function mount(root, opts = {}) {
       input.addEventListener('change', async () => {
         try {
           const files = [...input.files].slice(0, multiple ? max - current.length : 1);
-          const shots = []; for (const file of files) shots.push(await shrink(file, key === 'logo' ? 400 : 1200));
+          const shots = []; for (const file of files) shots.push(await shrink(file, key === 'logo' ? 400 : key === 'cover' ? 1400 : 1000, key === 'cover' ? 0.8 : 0.74));
           if (multiple) draft[key] = [...current, ...shots].slice(0, max); else draft[key] = shots[0] || '';
           rerender();
         } catch (error) { status.textContent = '⚠️ ' + error.message; }
@@ -122,6 +122,7 @@ export function mount(root, opts = {}) {
         tb.addEventListener('click', () => { if (multiple) draft[key].splice(i, 1); else draft[key] = ''; rerender(); });
         thumbs.append(tb);
       });
+      if (multiple && (draft[key] || []).length > max) thumbs.append(el('small', `+${draft[key].length - max} escondida(s) neste plano`, { className: 'ce-hint' }));
       wrap.append(el('span', label), thumbs, pick, input);
       return wrap;
     };
@@ -139,10 +140,10 @@ export function mount(root, opts = {}) {
           line.append(input);
         }
         if (photoKey) {
-          const pick = el('button', row[photoKey] ? '🖼️' : '📷', { type: 'button', className: 'ce-mv', ariaLabel: 'Foto', title: row[photoKey] ? 'Trocar foto (toque e segure para remover)' : 'Adicionar foto' });
+          const pick = el('button', row[photoKey] ? '🖼️' : '📷', { type: 'button', className: 'ce-mv', ariaLabel: row[photoKey] ? 'Trocar ou remover foto' : 'Adicionar foto', title: row[photoKey] ? 'Trocar ou remover foto' : 'Adicionar foto' });
           const file = el('input', null, { type: 'file', accept: 'image/jpeg,image/png,image/webp', hidden: true });
-          pick.addEventListener('click', () => file.click());
-          file.addEventListener('change', async () => { try { row[photoKey] = await shrink(file.files[0], 360); rerender(); } catch (error) { status.textContent = '⚠️ ' + error.message; } });
+          pick.addEventListener('click', () => { if (row[photoKey] && confirm('Remover esta foto? (Cancelar = escolher outra)')) { row[photoKey] = ''; rerender(); return; } file.click(); });
+          file.addEventListener('change', async () => { try { row[photoKey] = await shrink(file.files[0], 360, 0.8); rerender(); } catch (error) { status.textContent = '⚠️ ' + error.message; } });
           line.append(pick, file);
         }
         if (!fixed) {
@@ -154,6 +155,7 @@ export function mount(root, opts = {}) {
         }
         box.append(line);
       });
+      if (draft[key].length > max) box.append(el('p', `⚠️ ${draft[key].length - max} item(ns) a mais ficam escondidos neste plano (aparecem de novo num plano maior).`, { className: 'ce-hint' }));
       if (!fixed) {
         const add = el('button', `＋ ${addLabel} (${Math.min(draft[key].length, max)}/${max})`, { type: 'button', className: 'sec ce-add', disabled: draft[key].length >= max });
         add.addEventListener('click', () => { draft[key].push(Object.fromEntries(fields.map(f => [f.k, '']))); rerender(); box.querySelector('.ce-item:last-of-type input, .ce-item:last-of-type textarea')?.focus(); });
@@ -239,7 +241,7 @@ export function mount(root, opts = {}) {
     const go = el('button', '💾 Salvar e publicar', { type: 'button', id: 'ceClientSave' });
     go.addEventListener('click', async () => {
       go.disabled = true; const old = go.textContent; go.textContent = 'Publicando… (até 1 minuto)';
-      try { const result = await client.onSave(draft); dirty = false; status.textContent = '✅ Pronto! Seu site foi atualizado.' + (result?.url ? ' ' + result.url : ''); }
+      try { if (JSON.stringify(draft).length > 4_000_000) throw new Error('As fotos ficaram pesadas demais para enviar. Remova algumas fotos da galeria ou da equipe e tente de novo.'); const result = await client.onSave(draft); dirty = false; status.textContent = '✅ Pronto! Seu site foi atualizado.' + (result?.url ? ' ' + result.url : ''); }
       catch (error) { status.textContent = '⚠️ ' + (error.message || 'Não foi possível salvar.'); }
       go.disabled = false; go.textContent = old;
     });
