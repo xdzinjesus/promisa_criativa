@@ -24,7 +24,7 @@ await build({ entryPoints: ['src/passkey-panel.js'], bundle: true, minify: true,
 await build({ entryPoints: ['src/discord-panel.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/discord-panel.js' });
 await build({ entryPoints: ['src/client-helpers-panel.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/client-helpers.js' });
 await build({ entryPoints: ['src/client-portal.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/client-portal.js' });
-await build({ entryPoints: ['src/client-editor.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/client-editor.js' });
+await build({ entryPoints: ['src/client-panel-entry.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/client-editor.js' });
 await build({ entryPoints: ['src/site-backup.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/site-backup.js' });
 await build({ entryPoints: ['src/instagram-panel.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/instagram-panel.js' });
 await writeFile('public/robots.txt', `User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /catalogo\nDisallow: /acesso.html\nDisallow: /api/\nDisallow: /demo/\nDisallow: /projeto/\nDisallow: /briefing/\nDisallow: /diagnostico/\nDisallow: /briefing.html\nDisallow: /meu-site/\nDisallow: /meu-site.html\nSitemap: ${origin}/sitemap.xml\n`);

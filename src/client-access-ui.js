@@ -1,5 +1,5 @@
 // Controle do dono sobre o "Meu site" dos clientes (só no painel, com a sessão do dono).
-// accessBox: cartão "🔑 Acesso do cliente" no editor. mountControl: aba "🔐 Acessos dos clientes".
+// mountControl: aba "🔐 Acessos dos clientes" (criar acesso, plano, abrir no editor, renovar, cortar).
 const el = (tag, text, props = {}) => Object.assign(document.createElement(tag), text == null ? {} : { textContent: text }, props);
 const when = ms => ms ? new Date(ms).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' }) : '—';
 
@@ -26,57 +26,46 @@ export function credentialsCard({ link, code, siteName, phone = '' }) {
   return box;
 }
 
-export function accessBox({ getDraft, ensureSaved, useDraft }) {
-  const box = el('section', null, { className: 'ca-box', ariaLabel: 'Acesso do cliente' });
-  const body = el('div');
-  box.append(el('h3', '🔑 Acesso do cliente'), body);
-  const msg = text => { const p = el('p', text, { className: 'ca-msg' }); body.append(p); return p; };
-  async function create(button) {
-    button.disabled = true;
-    try {
-      const siteId = await ensureSaved();
-      const draft = getDraft();
-      if (JSON.stringify(draft).length > 4_000_000) throw new Error('Fotos pesadas demais para criar o acesso. Remova algumas fotos e tente de novo.');
-      const result = await accessApi('admin-create', { siteId, siteName: draft.name, draft });
-      await load(); body.prepend(credentialsCard({ ...result, siteName: draft.name, phone: draft.whatsapp }));
-    } catch (error) { msg('⚠️ ' + error.message); button.disabled = false; }
-  }
-  async function load() {
-    body.replaceChildren(el('p', 'Carregando…', { className: 'ca-msg' }));
-    const siteId = getDraft().siteId;
-    if (!siteId) {
-      const go = el('button', '🔑 Dar acesso ao cliente', { type: 'button' }); go.addEventListener('click', () => create(go));
-      body.replaceChildren(el('p', 'O cliente recebe um link e um código de 6 números para editar só este site. Você controla tudo e pode cortar quando quiser.', { className: 'ca-msg' }), go);
-      return;
-    }
-    let data;
-    try { data = await accessApi('admin-get', { siteId }); } catch (error) { body.replaceChildren(); msg('⚠️ ' + error.message); return; }
-    body.replaceChildren();
-    const a = data.access;
-    if (!a || a.revoked) {
-      msg(a?.revoked ? '⛔ Acesso cortado. O cliente não consegue mais editar (o site continua no ar).' : 'Este site ainda não tem acesso de cliente.');
-      const go = el('button', a?.revoked ? '🔑 Dar acesso de novo' : '🔑 Dar acesso ao cliente', { type: 'button' }); go.addEventListener('click', () => create(go));
-      body.append(go); return;
-    }
-    msg(`🟢 Acesso ativo desde ${when(a.createdAt)} · última edição do cliente: ${when(a.lastSaveAt)} · ${a.saves || 0} salvamento(s).`);
-    const bar = el('div', null, { className: 'ca-actions' });
-    const pull = el('button', '⬇️ Trazer edições do cliente', { type: 'button', className: 'sec', disabled: !data.draft || !a.lastSaveAt });
-    pull.addEventListener('click', () => { if (confirm('Trocar o rascunho deste editor pela versão que o cliente salvou?')) useDraft(data.draft); });
-    const renew = el('button', '🔄 Novo link e código', { type: 'button', className: 'sec' });
-    renew.addEventListener('click', () => { if (confirm('Gerar link e código novos? O link antigo para de funcionar.')) create(renew); });
-    const cut = el('button', '⛔ Cortar acesso', { type: 'button', className: 'sec ca-danger' });
-    cut.addEventListener('click', async () => { if (!confirm('Cortar o acesso deste cliente? O site continua no ar; ele só não consegue mais editar.')) return; cut.disabled = true; try { await accessApi('admin-revoke', { siteId }); await load(); } catch (error) { msg('⚠️ ' + error.message); cut.disabled = false; } });
-    bar.append(pull, renew, cut);
-    body.append(bar);
-  }
-  load();
-  return box;
-}
+// Aba de controle interno: criar acessos, mudar plano, abrir no editor, renovar e cortar (1 leitura do Blob ao abrir).
+const EDITOR_KEY = 'promisa_client_editor_v1';
+const editorDraft = () => { try { const d = JSON.parse(localStorage.getItem(EDITOR_KEY) || 'null'); return d && typeof d === 'object' && d.niche ? d : null; } catch { return null; } };
 
-// Aba de controle interno: todos os acessos de clientes (1 leitura do Blob ao abrir).
-export function mountControl(root) {
+export function mountControl(root, { niches = {}, plans = {} } = {}) {
   if (!root) return;
-  const draw = async () => {
+  const select = (options, value, label) => { const s = el('select', null, { ariaLabel: label }); for (const [k, text] of options) s.append(el('option', text, { value: k, selected: k === value })); return s; };
+  const planOptions = Object.entries(plans).map(([k, p]) => [k, `${p.icon} ${p.label}`]);
+
+  function createForm() {
+    const card = el('form', null, { className: 'card ca-new' });
+    const local = editorDraft();
+    const name = el('input', null, { placeholder: 'Nome do negócio (ex.: Barbearia do Zé)', maxLength: 60, required: true, value: local?.name || '' });
+    const niche = select(Object.entries(niches).map(([k, n]) => [k, `${n.icon} ${n.label}`]), local?.niche || 'barbearia', 'Ramo');
+    const plan = select(planOptions, local?.plan || 'profissional', 'Plano');
+    const phone = el('input', null, { placeholder: 'WhatsApp do cliente (para enviar o acesso)', type: 'tel', maxLength: 20, value: local?.whatsapp && local.whatsapp !== '49999999999' ? local.whatsapp : '' });
+    const useLocal = el('input', null, { type: 'checkbox', checked: Boolean(local) });
+    const useWrap = el('label', null, { className: 'ce-check' }); useWrap.append(useLocal, el('span', local ? `Começar com o site montado no 🧩 Painel do cliente ("${local.name || 'sem nome'}")` : 'Nenhum site montado no Painel do cliente: o cliente começa do modelo do ramo'));
+    useLocal.disabled = !local;
+    const go = el('button', '🔑 Dar acesso', { type: 'submit' });
+    const out = el('div');
+    const row = (label, input) => { const w = el('label', null, { className: 'ce-field' }); w.append(el('span', label), input); return w; };
+    card.append(el('h2', '➕ Dar acesso a um cliente', { style: 'margin:0' }), el('p', 'O cliente recebe um link e um código para editar só o site dele, dentro do plano que você escolher.', { className: 'sub', style: 'margin:0' }), row('Nome do negócio', name), el('div', null, { className: 'ca-two' }), row('WhatsApp do cliente', phone), useWrap, go, out);
+    card.querySelector('.ca-two').append(row('Ramo', niche), row('Plano', plan));
+    card.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!name.value.trim()) { name.focus(); return; }
+      go.disabled = true; out.replaceChildren();
+      try {
+        const base = useLocal.checked && local ? { ...local, niche: niche.value, plan: plan.value, name: name.value.trim() } : null;
+        if (base && JSON.stringify(base).length > 4_000_000) throw new Error('As fotos do rascunho estão pesadas demais. Remova algumas no Painel do cliente.');
+        const result = await accessApi('admin-create', { siteId: base?.siteId || undefined, siteName: name.value.trim(), niche: niche.value, plan: plan.value, whatsapp: phone.value, ...(base ? { draft: base } : {}) });
+        await draw();
+        root.prepend(credentialsCard({ ...result, siteName: name.value.trim(), phone: phone.value }));
+      } catch (error) { out.append(el('p', '⚠️ ' + error.message, { className: 'ca-msg' })); go.disabled = false; }
+    });
+    return card;
+  }
+
+  async function draw() {
     root.replaceChildren(el('p', 'Carregando…', { className: 'sub' }));
     let sites;
     try { sites = (await accessApi('admin-list')).sites || {}; } catch (error) { root.replaceChildren(el('p', '⚠️ ' + error.message, { className: 'sub' })); return; }
@@ -84,15 +73,32 @@ export function mountControl(root) {
     const active = entries.filter(([, a]) => !a.revoked).length;
     const head = el('div', null, { className: 'grid ca-kpis' });
     for (const [label, value] of [['Clientes com acesso', active], ['Acessos cortados', entries.length - active], ['Salvamentos (total)', entries.reduce((s, [, a]) => s + (a.saves || 0), 0)]]) { const k = el('div', null, { className: 'card kpi' }); k.append(el('small', label), el('b', String(value))); head.append(k); }
-    root.replaceChildren(head);
-    if (!entries.length) { root.append(el('div', 'Nenhum cliente com acesso ainda. Para dar acesso: Mais → 🧩 Painel do cliente → monte o site → "🔑 Dar acesso ao cliente".', { className: 'card' })); return; }
+    root.replaceChildren(head, createForm());
+    if (!entries.length) return;
     const list = el('div', null, { className: 'ca-list' });
+    list.append(el('h2', 'Clientes com acesso', { style: 'margin:8px 0 0' }));
     for (const [siteId, a] of entries) {
       const card = el('div', null, { className: 'card ca-item' + (a.revoked ? ' is-off' : '') });
       const info = el('div');
-      info.append(el('b', `${a.revoked ? '⛔' : '🟢'} ${a.siteName || 'Site'}`), el('small', `Acesso desde ${when(a.createdAt)} · última edição: ${when(a.lastSaveAt)} · ${a.saves || 0} salvamento(s)`));
+      const n = niches[a.niche];
+      info.append(el('b', `${a.revoked ? '⛔' : '🟢'} ${a.siteName || 'Site'}${n ? ' · ' + n.icon + ' ' + n.label : ''}`), el('small', `Acesso desde ${when(a.createdAt)} · última edição: ${when(a.lastSaveAt)} · ${a.saves || 0} salvamento(s)`));
       if (a.url) info.append(el('a', a.url, { href: a.url, target: '_blank', rel: 'noopener noreferrer', className: 'ca-url' }));
       const bar = el('div', null, { className: 'ca-actions' });
+      const planSel = select(planOptions, a.plan || 'profissional', 'Plano do cliente');
+      planSel.addEventListener('change', async () => {
+        const label = plans[planSel.value]?.label || planSel.value;
+        if (!confirm(`Mudar ${a.siteName} para o plano ${label}? Vale na próxima vez que o cliente salvar.`)) { planSel.value = a.plan || 'profissional'; return; }
+        planSel.disabled = true;
+        try { await accessApi('admin-plan', { siteId, plan: planSel.value }); a.plan = planSel.value; } catch (error) { alert(error.message); planSel.value = a.plan || 'profissional'; }
+        planSel.disabled = false;
+      });
+      const openEditor = el('button', '✏️ Abrir no Painel do cliente', { type: 'button', className: 'sec' });
+      openEditor.addEventListener('click', async () => {
+        if (editorDraft() && !confirm('Isso troca o rascunho que está no Painel do cliente pela versão deste cliente. Continuar?')) return;
+        openEditor.disabled = true;
+        try { const data = await accessApi('admin-get', { siteId }); if (!data.draft) throw new Error('Sem rascunho salvo.'); localStorage.setItem(EDITOR_KEY, JSON.stringify({ ...data.draft, siteId })); location.href = '/admin?tab=clientPanel'; }
+        catch (error) { alert(error.message === 'Sem rascunho salvo.' ? error.message : 'Não foi possível abrir: ' + error.message); openEditor.disabled = false; }
+      });
       const renew = el('button', a.revoked ? '🔑 Liberar de novo' : '🔄 Novo link e código', { type: 'button', className: 'sec' });
       renew.addEventListener('click', async () => {
         if (!confirm(a.revoked ? 'Liberar o acesso de novo com link e código novos?' : 'Gerar link e código novos? O antigo para de funcionar.')) return;
@@ -100,7 +106,7 @@ export function mountControl(root) {
         try { const result = await accessApi('admin-create', { siteId, siteName: a.siteName }); await draw(); root.prepend(credentialsCard({ ...result, siteName: a.siteName })); }
         catch (error) { alert(error.message); renew.disabled = false; }
       });
-      bar.append(renew);
+      bar.append(planSel, openEditor, renew);
       if (!a.revoked) {
         const cut = el('button', '⛔ Cortar acesso', { type: 'button', className: 'sec ca-danger' });
         cut.addEventListener('click', async () => { if (!confirm(`Cortar o acesso de ${a.siteName}? O site continua no ar.`)) return; cut.disabled = true; try { await accessApi('admin-revoke', { siteId }); await draw(); } catch (error) { alert(error.message); cut.disabled = false; } });
@@ -109,9 +115,8 @@ export function mountControl(root) {
       card.append(info, bar);
       list.append(card);
     }
-    root.append(list, el('p', 'Para trazer as edições de um cliente para o seu painel: Mais → 🧩 Painel do cliente → abra o mesmo site → "⬇️ Trazer edições do cliente".', { className: 'sub' }));
-  };
+    root.append(list);
+  }
   draw();
 }
 
-if (typeof window !== 'undefined') window.promisaClientAccess = { mountControl };

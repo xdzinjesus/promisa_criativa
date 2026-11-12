@@ -82,3 +82,27 @@ test('limite de salvamentos por dia e rascunho limpo', async () => {
   const locked = cleanDraft({ plan: 'premium', niche: 'loja', items: Array(50).fill({ name: 'a' }) }, { niche: 'oficina', plan: 'essencial' });
   assert.equal(locked.plan, 'essencial'); assert.equal(locked.niche, 'oficina'); assert.equal(locked.items.length, 6, 'cliente não sobe de plano sozinho');
 });
+
+test('dono cria acesso do zero (ramo + plano), muda o plano e o cliente não volta atrás', async () => {
+  const w = world();
+  const made = await w.call({ action: 'admin-create', siteName: 'Clínica Sorriso', niche: 'odontologia', plan: 'essencial', whatsapp: '(49) 98888-7777' }, asAdmin);
+  assert.equal(made.status, 200);
+  const list = (await w.call({ action: 'admin-list' }, asAdmin)).body.sites;
+  const [siteId, entry] = Object.entries(list)[0];
+  assert.match(siteId, /^cli-[a-f0-9]{12}$/); assert.equal(entry.niche, 'odontologia'); assert.equal(entry.plan, 'essencial');
+  const token = tokenOf(made.body.link);
+  let login = await w.call({ action: 'login', token, code: made.body.code });
+  assert.equal(login.body.draft.name, 'Clínica Sorriso'); assert.equal(login.body.draft.whatsapp, '(49) 98888-7777');
+  assert.equal((await w.call({ action: 'admin-plan', siteId, plan: 'ouro' }, asAdmin)).status, 400);
+  assert.equal((await w.call({ action: 'admin-plan', siteId, plan: 'premium' }, asAdmin)).status, 200);
+  assert.equal((await w.call({ action: 'admin-list' }, asAdmin)).body.sites[siteId].plan, 'premium');
+  login = await w.call({ action: 'login', token, code: made.body.code });
+  const saved = await w.call({ action: 'save', token, session: login.body.session, draft: { ...login.body.draft, plan: 'essencial', customColor: '#FF0000', customBg: 'red; x', items: [{ name: 'Implante', photo: 'data:image/jpeg;base64,AAAA' }, { name: 'X', photo: 'https://evil/x.png' }] } });
+  assert.equal(saved.status, 200);
+  const rec = await w.store.getRecord(tokenHash(token));
+  assert.equal(rec.draft.plan, 'premium', 'cliente não rebaixa nem sobe o plano');
+  assert.equal(rec.draft.customColor, '#ff0000'); assert.equal(rec.draft.customBg, '', 'cor inválida é descartada');
+  assert.equal(rec.draft.items[0].photo, 'data:image/jpeg;base64,AAAA'); assert.equal(rec.draft.items[1].photo, '');
+  assert.ok(w.deploys.at(-1).site.files[0].data.includes('--p:#ff0000'), 'cor livre vai para o site');
+});
+
