@@ -57,7 +57,7 @@
 .ce-picker{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--tx);cursor:pointer}
 .ce-picker input{width:44px;height:44px;padding:0;border:2px solid #ffffff2a;border-radius:12px;background:none;cursor:pointer}.ce-picker input::-webkit-color-swatch-wrapper{padding:3px}.ce-picker input::-webkit-color-swatch{border:0;border-radius:8px}
 .ce-custom .sec{min-height:36px;padding:6px 12px;font-size:12.5px}
-.ce-rowpic{background:#ffffff0a center/cover no-repeat!important;font-size:16px}
+.ce-rowpic{background-color:#ffffff0a;background-position:center;background-size:cover;background-repeat:no-repeat;font-size:16px}
 .ce-guide-note{text-align:center;max-width:520px}
 .ca-new{display:grid;gap:12px;margin-bottom:16px}.ca-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ca-new input,.ca-new select,.ca-actions select{width:100%;min-width:0;background:#ffffff08;border:1px solid #ffffff1c;border-radius:11px;color:var(--tx);padding:10px 12px;font:inherit;font-size:14px}

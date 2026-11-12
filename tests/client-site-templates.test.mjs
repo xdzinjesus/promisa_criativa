@@ -58,3 +58,10 @@ test('estilos de layout por plano e animações só nos planos pagos', async () 
   const styles = new Set(Object.keys(NICHES).map(k => /<body class="plan-\w+ style-(\w+)"/.exec(renderSite(newDraft(k, 'premium')))[1]));
   assert.ok(styles.size >= 3, 'cada ramo começa com um estilo, para os sites não ficarem iguais');
 });
+
+test('Essencial mostra a galeria de até 4 fotos (apontado pelo Codex)', () => {
+  const foto = 'data:image/jpeg;base64,AAAA';
+  const html = renderSite({ ...newDraft('odontologia', 'essencial'), gallery: [foto, foto, foto, foto, foto] });
+  assert.ok(html.includes('id="fotos"'), 'seção Galeria aparece');
+  assert.equal((html.match(/id="fotos"[\s\S]*?<\/section>/)[0].match(/<img /g) || []).length, 3, 'a 1ª vai no Sobre, as outras 3 na galeria (limite de 4)');
+});

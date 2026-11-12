@@ -103,7 +103,7 @@ export function mount(root, opts = {}) {
     const picker = (label, key, fallback) => {
       const w = el('label', null, { className: 'ce-picker' });
       const input = el('input', null, { type: 'color', value: validHex(draft[key]) || fallback });
-      input.addEventListener('input', () => { draft[key] = input.value; dirty = true; refresh(); custom.classList.add('is-on'); });
+      input.addEventListener('input', () => { draft[key] = input.value; dirty = true; refresh(); custom.classList.add('is-on'); resetColors.disabled = false; });
       w.append(input, el('span', label));
       return w;
     };
