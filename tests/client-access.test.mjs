@@ -214,3 +214,16 @@ test('ramo livre: só quando o dono libera o cliente pode trocar o ramo', async 
   assert.equal((await w.store.getRecord(tokenHash(a.token))).draft.niche, 'oficina', 'depois de liberado, troca');
   assert.equal((await w.call({ action: 'admin-niche', siteId: lockedId, allow: true })).status, 401, 'só o dono');
 });
+
+test('salvamento só confirma "pronto" se o rascunho foi guardado (apontado pelo Codex)', async () => {
+  const w = world();
+  const made = await w.call({ action: 'admin-create', siteName: 'Teste', niche: 'loja', plan: 'essencial' }, asAdmin);
+  const token = tokenOf(made.body.link);
+  const login = await w.call({ action: 'login', token, code: made.body.code });
+  const real = w.store.updateRecord.bind(w.store); let calls = 0;
+  w.store.updateRecord = async (hash, change) => { calls++; if (calls === 2) throw Object.assign(new Error('busy'), { code: 'busy' }); return real(hash, change); };
+  const res = await w.call({ action: 'save', token, session: login.body.session, draft: { ...login.body.draft, name: 'Nome Novo' } });
+  assert.equal(res.status, 503); assert.equal(res.body.saved, false); assert.notEqual(res.body.ok, true);
+  w.store.updateRecord = real;
+  assert.notEqual((await w.store.getRecord(tokenHash(token))).draft.name, 'Nome Novo', 'de fato não guardou, e o cliente foi avisado');
+});
