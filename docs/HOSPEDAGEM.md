@@ -77,10 +77,12 @@ O cliente edita **só o site dele** (textos, preços, cores, fotos em qualquer p
 
 1. Painel → **Mais** → **🔐 Acessos dos clientes**.
 2. Em **➕ Dar acesso a um cliente**, preencha o nome do negócio, o **ramo**, o **plano** e o WhatsApp do cliente. Se quiser, marque "Começar com o site montado no 🧩 Painel do cliente".
+   - Para o cliente **escolher o ramo sozinho**, marque "Deixar o cliente escolher o ramo".
+   - Para **liberar tudo** (todos os blocos e todos os ramos), toque em **✨ Liberar tudo**: ele marca o Premium e o ramo livre.
 3. Toque em **🔑 Dar acesso**. Aparecem um **link** e um **código de 6 números**. **Anote o código: ele aparece só nessa hora.** Toque em **📲 Enviar no WhatsApp**.
 4. O cliente abre o link, digita o código e edita. Ao tocar em **Salvar e publicar**, o site dele atualiza sozinho na Cloudflare. Você recebe um aviso no Discord (`🚀・sites-no-ar`).
 
-**Seu controle (na mesma aba):** lista de todos os clientes com acesso, quando editaram e quantas vezes salvaram; trocar o **plano** (vale no próximo salvamento); **✏️ Abrir no Painel do cliente** (para você mesmo ajustar o site dele); **⛔ Cortar acesso** (o site continua no ar, só a edição para) e **🔄 Novo link e código** (o antigo para de funcionar).
+**Seu controle (na mesma aba):** lista de todos os clientes com acesso, quando editaram e quantas vezes salvaram; trocar o **plano** (vale no próximo salvamento); **🧭 Ramo livre: sim/não** (deixa ou não o cliente trocar o ramo); **✏️ Abrir no Painel do cliente** (para você mesmo ajustar o site dele); **⛔ Cortar acesso** (o site continua no ar, só a edição para) e **🔄 Novo link e código** (o antigo para de funcionar).
 
 **Segurança:** o link tem uma parte secreta longa; o código fica guardado embaralhado; 5 códigos errados bloqueiam por 15 minutos; a entrada do cliente vale 2 horas; no máximo 30 salvamentos por dia; tudo o que o cliente envia é limpo no servidor antes de publicar.
 

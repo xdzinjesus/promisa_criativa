@@ -43,10 +43,11 @@
 .ca-list{display:grid;gap:10px;margin-bottom:12px}.ca-item{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.ca-item>div:first-child{display:grid;gap:3px;min-width:0}
 .ca-item small{color:var(--mut)}.ca-url{color:var(--ac);font-size:13px;word-break:break-all}.ca-item.is-off{opacity:.65}
 /* Página "Meu site" do cliente */
+.mp-page [hidden],.ce-group [hidden],.ca-new [hidden]{display:none!important}
 .mp-page{--bg:#09080e;--card:#121019;--tx:#f3f1f8;--mut:#b3adc1;--ac:#c4a5ff;--red:#ff8590;--grn:#5fdca9;--ease:cubic-bezier(.2,.75,.25,1);margin:0;min-height:100vh;background:radial-gradient(ellipse 60% 40% at 80% -8%,#7c3aed2e,transparent 70%),var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 .mp-page *{box-sizing:border-box}.mp-page .sub{color:var(--mut)}
-.mp-page button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:12px 18px;min-height:46px;cursor:pointer;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff}
-.mp-page button.sec{background:#ffffff0d;border:1px solid #ffffff1f;color:var(--tx)}.mp-page button:disabled{opacity:.6;cursor:default}
+:where(.mp-page) button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:12px 18px;min-height:46px;cursor:pointer;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff}
+:where(.mp-page) button.sec{background:#ffffff0d;border:1px solid #ffffff1f;color:var(--tx)}:where(.mp-page) button:disabled{opacity:.6;cursor:default}
 .mp-page .card{background:linear-gradient(145deg,#ffffff0b,#ffffff04),#121019;border:1px solid #ffffff17;border-radius:20px;padding:18px}
 .mp-top{padding:14px 20px}.mp-brand{display:inline-flex;align-items:center;gap:10px;color:var(--tx);text-decoration:none;font-weight:800;letter-spacing:.04em}.mp-brand small{display:block;font-size:10px;color:var(--mut);letter-spacing:.14em}
 .mp-wrap{width:min(1240px,100% - 32px);margin:0 auto 40px}.mp-card{max-width:420px;margin:8vh auto 0;display:grid;gap:6px}.mp-card h1{margin:0;font-size:26px}

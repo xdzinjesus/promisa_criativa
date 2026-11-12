@@ -82,8 +82,8 @@ export function mount(root, opts = {}) {
     };
     // ramo e plano (só o dono)
     const niches = chips(Object.entries(NICHES).map(([k, d]) => [k, `${d.icon} ${d.label}`]), draft.niche, key => {
-      if (!confirm(`Trocar para o modelo "${NICHES[key].label}"? Os textos voltam ao exemplo do ramo (fotos e contatos ficam).`)) return;
-      draft = { ...newDraft(key, draft.plan), logo: draft.logo, cover: draft.cover, gallery: draft.gallery, whatsapp: draft.whatsapp, instagram: draft.instagram, address: draft.address, team: draft.team, testimonials: draft.testimonials, siteId: draft.siteId };
+      if (!confirm(`Trocar para o modelo "${NICHES[key].label}"? Os textos voltam ao exemplo do novo ramo (nome, fotos e contatos ficam).`)) return;
+      draft = { ...newDraft(key, draft.plan), name: draft.name || NICHES[key].defaults.name, logo: draft.logo, cover: draft.cover, gallery: draft.gallery, whatsapp: draft.whatsapp, instagram: draft.instagram, address: draft.address, team: draft.team, testimonials: draft.testimonials, siteId: draft.siteId };
       rerender();
     });
     const plans = chips(Object.entries(PLANS).map(([k, p]) => [k, `${p.icon} ${p.label}`]), draft.plan, key => { draft.plan = key; rerender(); });
@@ -193,7 +193,7 @@ export function mount(root, opts = {}) {
     for (const key of plan.sections) sections.append(check(`Mostrar "${SECTION_LABELS[key]}"`, !draft.hide?.[key], on => { draft.hide = { ...(draft.hide || {}), [key]: !on }; rerender(); }));
 
     form.append(
-      ...(client ? [] : [group('ramo', '🧭 Ramo e plano', el('span', 'Ramo de atividade', { className: 'ce-label' }), niches, el('span', 'Plano do cliente', { className: 'ce-label' }), plans, planInfo)]),
+      ...(client ? (client.allowNiche ? [group('ramo', '🧭 Ramo do negócio', el('p', 'Escolha o ramo do seu negócio. Os textos de exemplo mudam; fotos e contatos ficam.', { className: 'ce-hint' }), niches)] : []) : [group('ramo', '🧭 Ramo e plano', el('span', 'Ramo de atividade', { className: 'ce-label' }), niches, el('span', 'Plano do cliente', { className: 'ce-label' }), plans, planInfo)]),
       group('identidade', '🎨 Identidade e visual', field('Nome do negócio', 'name', { max: 60 }), field('Frase de destaque', 'slogan', { max: 120 }), field('Texto do botão principal', 'ctaLabel', { max: 30, placeholder: niche.cta }), el('span', 'Cores prontas', { className: 'ce-label' }), colors, el('span', 'Ou escolha qualquer cor', { className: 'ce-label' }), custom, ...(siteStyles ? [el('span', 'Estilo do layout (muda a cara do site inteiro)', { className: 'ce-label' }), siteStyles] : []), ...(heroStyles ? [el('span', 'Estilo do topo', { className: 'ce-label' }), heroStyles] : []), photo('Logo', 'logo'), photo('📷 Foto da tela principal (topo)', 'cover')),
       ...(plan.highlights ? [group('destaques', '✦ Destaques do negócio', perks)] : []),
       group('itens', `📋 ${niche.items}`, ...(niche.noPrices ? [el('p', 'Odontologia: pelas regras do CFO, o site não mostra preços nem promoções.', { className: 'ce-hint' })] : []), el('p', 'Toque em 📷 para colocar uma foto em cada item.', { className: 'ce-hint' }), listEditor('items', itemFields, plan.items, 'Adicionar', { photoKey: 'photo', photoMax: 640 })),
