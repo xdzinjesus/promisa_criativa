@@ -11,6 +11,7 @@ import { publishSite } from '../lib/publish-handler.js';
 import { analyzeSite } from '../lib/diagnostico-analyze.js';
 import { createCloudflare, configured as cloudflareConfigured } from '../lib/cloudflare-pages.js';
 import { readSiteInfo } from '../lib/site-cache.js';
+import { createBackupIndexStore } from '../lib/backup-index-store.js';
 import { settings, authorized, sameOrigin } from './access.js';
 
 // Discord: Interactions Endpoint URL = https://www.promisa.online/api/discord (comandos de barra),
@@ -31,7 +32,7 @@ const commands = createCommands({
 });
 
 export default createDiscordHandler({
-  discord, commands, events, waitUntil,
+  discord, commands, events, waitUntil, backupIndex: createBackupIndexStore(),
   authorized: async req => { const admin = settings(); return Boolean(admin) && Boolean(await authorized(req, admin)); },
   sameOrigin
 });

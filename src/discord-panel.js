@@ -76,7 +76,7 @@ if (openButton) {
     const box = dialog.querySelector('#discord-invite');
     box.replaceChildren();
     if (!status.appId) return;
-    const url = `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(status.appId)}&permissions=${Number(status.permissions) || 93200}&scope=bot+applications.commands`;
+    const url = `https://discord.com/oauth2/authorize?client_id=${encodeURIComponent(status.appId)}&permissions=${Number(status.permissions) || 536964112}&scope=bot+applications.commands`;
     box.append(el('a', url, { href: url, target: '_blank', rel: 'noopener noreferrer' }));
   }
 
