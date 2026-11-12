@@ -25,7 +25,7 @@ function start() {
       const data = await api('login', { code: input.value });
       session = data.session;
       $('mp-login').hidden = true; $('mp-editor').hidden = false;
-      mount($('mp-root'), { client: { draft: data.draft, siteName: data.siteName, onSave } });
+      mount($('mp-root'), { client: { draft: data.draft, siteName: data.siteName, allowNiche: Boolean(data.allowNiche), onSave } });
     } catch (e) { error.textContent = e.message; button.disabled = false; button.textContent = 'Entrar'; }
   });
   input.focus();

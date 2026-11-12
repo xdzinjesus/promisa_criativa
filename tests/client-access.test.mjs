@@ -190,3 +190,27 @@ test('corrida 4: trocar o plano durante uma publicação não é desfeito quando
   assert.equal((await w.store.getRecord(tokenHash(token))).draft.plan, 'essencial', 'o plano novo continua valendo');
   assert.equal((await w.call({ action: 'admin-list' }, 'admin')).body.sites[siteId].plan, 'essencial', 'a lista também');
 });
+
+test('ramo livre: só quando o dono libera o cliente pode trocar o ramo', async () => {
+  const w = world();
+  const locked = await w.call({ action: 'admin-create', siteName: 'Travado', niche: 'barbearia', plan: 'premium' }, asAdmin);
+  const free = await w.call({ action: 'admin-create', siteName: 'Livre', niche: 'barbearia', plan: 'premium', allowNiche: true }, asAdmin);
+  const save = async made => {
+    const token = tokenOf(made.body.link);
+    const login = await w.call({ action: 'login', token, code: made.body.code });
+    await w.call({ action: 'save', token, session: login.body.session, draft: { ...login.body.draft, niche: 'restaurante' } });
+    return { token, login, rec: await w.store.getRecord(tokenHash(token)) };
+  };
+  const a = await save(locked), b = await save(free);
+  assert.equal(a.login.body.allowNiche, false); assert.equal(a.rec.draft.niche, 'barbearia', 'travado continua no ramo');
+  assert.equal(b.login.body.allowNiche, true); assert.equal(b.rec.draft.niche, 'restaurante', 'liberado troca o ramo');
+  const sites = (await w.call({ action: 'admin-list' }, asAdmin)).body.sites;
+  const lockedId = Object.keys(sites).find(id => sites[id].siteName === 'Travado');
+  assert.equal(sites[lockedId].allowNiche, false);
+  assert.equal((await w.call({ action: 'admin-niche', siteId: lockedId, allow: true }, asAdmin)).status, 200);
+  assert.equal((await w.call({ action: 'admin-list' }, asAdmin)).body.sites[lockedId].allowNiche, true);
+  const relog = await w.call({ action: 'login', token: a.token, code: locked.body.code });
+  await w.call({ action: 'save', token: a.token, session: relog.body.session, draft: { ...relog.body.draft, niche: 'oficina' } });
+  assert.equal((await w.store.getRecord(tokenHash(a.token))).draft.niche, 'oficina', 'depois de liberado, troca');
+  assert.equal((await w.call({ action: 'admin-niche', siteId: lockedId, allow: true })).status, 401, 'só o dono');
+});

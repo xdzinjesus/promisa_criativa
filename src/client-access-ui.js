@@ -45,10 +45,14 @@ export function mountControl(root, { niches = {}, plans = {} } = {}) {
     const useLocal = el('input', null, { type: 'checkbox', checked: Boolean(local) });
     const useWrap = el('label', null, { className: 'ce-check' }); useWrap.append(useLocal, el('span', local ? `Começar com o site montado no 🧩 Painel do cliente ("${local.name || 'sem nome'}")` : 'Nenhum site montado no Painel do cliente: o cliente começa do modelo do ramo'));
     useLocal.disabled = !local;
+    const freeNiche = el('input', null, { type: 'checkbox' });
+    const freeWrap = el('label', null, { className: 'ce-check' }); freeWrap.append(freeNiche, el('span', 'Deixar o cliente escolher o ramo (barbearia, restaurante, oficina…)'));
+    const all = el('button', '✨ Liberar tudo (Premium + todos os ramos)', { type: 'button', className: 'sec' });
+    all.addEventListener('click', () => { plan.value = 'premium'; freeNiche.checked = true; all.textContent = '✅ Tudo liberado: Premium + todos os ramos'; });
     const go = el('button', '🔑 Dar acesso', { type: 'submit' });
     const out = el('div');
     const row = (label, input) => { const w = el('label', null, { className: 'ce-field' }); w.append(el('span', label), input); return w; };
-    card.append(el('h2', '➕ Dar acesso a um cliente', { style: 'margin:0' }), el('p', 'O cliente recebe um link e um código para editar só o site dele, dentro do plano que você escolher.', { className: 'sub', style: 'margin:0' }), row('Nome do negócio', name), el('div', null, { className: 'ca-two' }), row('WhatsApp do cliente', phone), useWrap, go, out);
+    card.append(el('h2', '➕ Dar acesso a um cliente', { style: 'margin:0' }), el('p', 'O cliente recebe um link e um código para editar só o site dele, dentro do plano que você escolher.', { className: 'sub', style: 'margin:0' }), row('Nome do negócio', name), el('div', null, { className: 'ca-two' }), row('WhatsApp do cliente', phone), useWrap, freeWrap, all, go, out);
     card.querySelector('.ca-two').append(row('Ramo', niche), row('Plano', plan));
     card.addEventListener('submit', async event => {
       event.preventDefault();
@@ -57,7 +61,7 @@ export function mountControl(root, { niches = {}, plans = {} } = {}) {
       try {
         const base = useLocal.checked && local ? { ...local, niche: niche.value, plan: plan.value, name: name.value.trim() } : null;
         if (base && JSON.stringify(base).length > 4_000_000) throw new Error('As fotos do rascunho estão pesadas demais. Remova algumas no Painel do cliente.');
-        const result = await accessApi('admin-create', { siteId: base?.siteId || undefined, siteName: name.value.trim(), niche: niche.value, plan: plan.value, whatsapp: phone.value, ...(base ? { draft: base } : {}) });
+        const result = await accessApi('admin-create', { siteId: base?.siteId || undefined, siteName: name.value.trim(), niche: niche.value, plan: plan.value, allowNiche: freeNiche.checked, whatsapp: phone.value, ...(base ? { draft: base } : {}) });
         await draw();
         root.prepend(credentialsCard({ ...result, siteName: name.value.trim(), phone: phone.value }));
       } catch (error) { out.append(el('p', '⚠️ ' + error.message, { className: 'ca-msg' })); go.disabled = false; }
@@ -106,7 +110,15 @@ export function mountControl(root, { niches = {}, plans = {} } = {}) {
         try { const result = await accessApi('admin-create', { siteId, siteName: a.siteName }); await draw(); root.prepend(credentialsCard({ ...result, siteName: a.siteName })); }
         catch (error) { alert(error.message); renew.disabled = false; }
       });
-      bar.append(planSel, openEditor, renew);
+      const nicheBtn = el('button', a.allowNiche ? '🧭 Ramo livre: sim' : '🧭 Ramo livre: não', { type: 'button', className: 'sec', title: 'O cliente pode trocar o ramo do site?' });
+      nicheBtn.addEventListener('click', async () => {
+        const allow = !a.allowNiche;
+        if (!confirm(allow ? `Deixar ${a.siteName} escolher o ramo do site?` : `Travar o ramo de ${a.siteName}? Ele fica no ramo atual.`)) return;
+        nicheBtn.disabled = true;
+        try { await accessApi('admin-niche', { siteId, allow }); a.allowNiche = allow; nicheBtn.textContent = allow ? '🧭 Ramo livre: sim' : '🧭 Ramo livre: não'; } catch (error) { alert(error.message); }
+        nicheBtn.disabled = false;
+      });
+      bar.append(planSel, nicheBtn, openEditor, renew);
       if (!a.revoked) {
         const cut = el('button', '⛔ Cortar acesso', { type: 'button', className: 'sec ca-danger' });
         cut.addEventListener('click', async () => { if (!confirm(`Cortar o acesso de ${a.siteName}? O site continua no ar.`)) return; cut.disabled = true; try { await accessApi('admin-revoke', { siteId }); await draw(); } catch (error) { alert(error.message); cut.disabled = false; } });
