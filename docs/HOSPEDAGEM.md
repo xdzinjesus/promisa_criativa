@@ -67,6 +67,8 @@ No **🧩 Painel do cliente**, em **🧭 Ramo e plano**, escolha o ramo (barbear
 | 🚀 Profissional | + destaques, promoção, "Como funciona", galeria de 8 fotos, depoimentos, perguntas frequentes, chamada final, topo dividido com foto, 4 cores |
 | 👑 Premium | + faixa animada, números do negócio, equipe com fotos, menu fixo no topo, topo centralizado, 30 itens, 12 fotos, 6 cores |
 
+**Estilos de layout:** 🏛️ Clássico (todos os planos), ✨ Moderno (Profissional e Premium) e ⚡ Ousado (só Premium). Cada ramo começa com um estilo diferente. **Animações:** o Profissional e o Premium mostram os blocos surgindo ao rolar e o brilho nos botões; o Premium tem ainda título com brilho, fundo animado, cartões que flutuam e zoom nas fotos.
+
 O cliente **não consegue trocar de plano nem de ramo**: o servidor confere. Odontologia segue as regras do CFO (sem preços e sem promoções; responsável técnico e CRO no rodapé).
 
 ## 4.1 Dar ao cliente acesso para editar o próprio site ("Meu site")

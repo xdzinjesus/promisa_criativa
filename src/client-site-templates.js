@@ -9,12 +9,13 @@ const ELEGANT = '"Cormorant Garamond","Didot","Bodoni MT",Georgia,serif';
 
 // O que cada plano libera. O dono escolhe o plano; o cliente não consegue mudar.
 export const PLANS = {
-  essencial: { label: 'Essencial', icon: '🌱', items: 6, gallery: 4, palettes: 2, heroStyles: ['full'], promo: false, highlights: false, cta: false, sections: ['about'] },
-  profissional: { label: 'Profissional', icon: '🚀', items: 15, gallery: 8, palettes: 4, heroStyles: ['full', 'split'], promo: true, highlights: true, cta: true, sections: ['about', 'steps', 'gallery', 'testimonials', 'faq'] },
-  premium: { label: 'Premium', icon: '👑', items: 30, gallery: 12, palettes: 6, heroStyles: ['full', 'split', 'center'], promo: true, highlights: true, cta: true, marquee: true, sections: ['about', 'steps', 'stats', 'team', 'gallery', 'testimonials', 'faq'] }
+  essencial: { label: 'Essencial', icon: '🌱', items: 6, gallery: 4, palettes: 2, heroStyles: ['full'], styles: ['classico'], promo: false, highlights: false, cta: false, sections: ['about'] },
+  profissional: { label: 'Profissional', icon: '🚀', items: 15, gallery: 8, palettes: 4, heroStyles: ['full', 'split'], styles: ['classico', 'moderno'], promo: true, highlights: true, cta: true, sections: ['about', 'steps', 'gallery', 'testimonials', 'faq'] },
+  premium: { label: 'Premium', icon: '👑', items: 30, gallery: 12, palettes: 6, heroStyles: ['full', 'split', 'center'], styles: ['classico', 'moderno', 'ousado'], promo: true, highlights: true, cta: true, marquee: true, sections: ['about', 'steps', 'stats', 'team', 'gallery', 'testimonials', 'faq'] }
 };
 export const SECTION_LABELS = { about: 'Sobre', steps: 'Como funciona', stats: 'Números', team: 'Equipe', gallery: 'Galeria', testimonials: 'Depoimentos', faq: 'Perguntas frequentes' };
 export const HERO_LABELS = { full: 'Tela cheia', split: 'Dividido com foto', center: 'Centralizado' };
+export const STYLE_LABELS = { classico: '🏛️ Clássico', moderno: '✨ Moderno', ousado: '⚡ Ousado' };
 
 const step = (title, text) => ({ title, text }), faq = (q, a) => ({ q, a }), stat = (value, label) => ({ value, label });
 
@@ -22,6 +23,7 @@ export const NICHES = {
   barbearia: {
     label: 'Barbearia', icon: '💈', items: 'Serviços', cta: 'Agendar horário', kicker: 'Barbearia clássica', band: 'Bora marcar seu horário?',
     look: { head: SERIF, body: SANS, layout: 'list', radius: '6px', upper: true, pattern: 'pole' },
+    style: 'classico',
     palettes: [['#c8a35a', '#14110e'], ['#d9480f', '#141010'], ['#4c8dff', '#0c111c'], ['#22b573', '#0c1310'], ['#e11d48', '#120c0e'], ['#a3a3a3', '#0e0e0e']],
     defaults: {
       name: 'Barbearia Navalha', slogan: 'Corte clássico, barba na navalha e aquele atendimento de primeira.',
@@ -37,6 +39,7 @@ export const NICHES = {
   restaurante: {
     label: 'Restaurante', icon: '🍽️', items: 'Cardápio', cta: 'Fazer pedido', kicker: 'Comida de verdade', band: 'Bateu a fome?',
     look: { head: SERIF, body: SANS, layout: 'menu', radius: '18px', upper: false, pattern: 'dots' },
+    style: 'moderno',
     palettes: [['#e8590c', '#fff8f1'], ['#c92a2a', '#fffaf5'], ['#2f9e44', '#f6fbf4'], ['#9c36b5', '#fcf7ff'], ['#f59f00', '#17120c'], ['#e03131', '#120d0c']],
     defaults: {
       name: 'Sabor da Casa', slogan: 'Comida caseira, feita com carinho todos os dias.',
@@ -52,6 +55,7 @@ export const NICHES = {
   oficina: {
     label: 'Oficina / Pneus', icon: '🔧', items: 'Serviços', cta: 'Pedir orçamento', kicker: 'Centro automotivo', band: 'Precisa de um orçamento?',
     look: { head: CONDENSED, body: SANS, layout: 'cards', radius: '4px', upper: true, pattern: 'hazard' },
+    style: 'ousado',
     palettes: [['#f59f00', '#101214'], ['#e03131', '#111111'], ['#1c7ed6', '#0d141e'], ['#37b24d', '#0f1410'], ['#f76707', '#f6f6f4'], ['#1971c2', '#f4f7fb']],
     defaults: {
       name: 'Auto Center Rota', slogan: 'Seu carro em boas mãos, com preço justo e garantia.',
@@ -67,6 +71,7 @@ export const NICHES = {
   estetica: {
     label: 'Salão / Estética', icon: '💅', items: 'Serviços', cta: 'Agendar horário', kicker: 'Beleza e bem-estar', band: 'Que tal reservar um tempo para você?',
     look: { head: ELEGANT, body: SANS, layout: 'soft', radius: '28px', upper: false, pattern: 'blobs' },
+    style: 'moderno',
     palettes: [['#d6336c', '#fff7fa'], ['#ae3ec9', '#fdf7ff'], ['#b07a3b', '#fffaf3'], ['#0ca678', '#f4fcf9'], ['#e64980', '#160c11'], ['#c9a227', '#13110c']],
     defaults: {
       name: 'Studio Bella', slogan: 'Realce a sua beleza natural, no seu tempo.',
@@ -82,6 +87,7 @@ export const NICHES = {
   odontologia: {
     label: 'Odontologia', icon: '🦷', items: 'Tratamentos', cta: 'Agendar avaliação', kicker: 'Clínica odontológica', band: 'Que tal cuidar do seu sorriso?', noPrices: true, noPromo: true, responsible: true,
     look: { head: SANS, body: SANS, layout: 'soft', radius: '22px', upper: false, pattern: 'waves' },
+    style: 'moderno',
     palettes: [['#0ea5a4', '#f3fbfb'], ['#2563eb', '#f5f8ff'], ['#0891b2', '#f2fafc'], ['#7c3aed', '#f8f6ff'], ['#14b8a6', '#0b1514'], ['#3b82f6', '#0b1020']],
     defaults: {
       name: 'Clínica Sorriso Vivo', slogan: 'Cuidado completo para o seu sorriso, com conforto e tecnologia.',
@@ -97,6 +103,7 @@ export const NICHES = {
   loja: {
     label: 'Loja', icon: '🛍️', items: 'Produtos', cta: 'Comprar pelo WhatsApp', kicker: 'Novidades toda semana', band: 'Gostou de alguma coisa?',
     look: { head: SANS, body: SANS, layout: 'products', radius: '20px', upper: false, pattern: 'grid' },
+    style: 'ousado',
     palettes: [['#7048e8', '#f8f7ff'], ['#1098ad', '#f3fbfc'], ['#f76707', '#fff9f3'], ['#212529', '#f8f9fa'], ['#a78bfa', '#0d0b14'], ['#f472b6', '#140b10']],
     defaults: {
       name: 'Loja Ponto Certo', slogan: 'Moda e acessórios com o seu estilo, sem sair de casa.',
@@ -115,7 +122,7 @@ export function newDraft(niche = 'barbearia', plan = 'premium') {
   const key = NICHES[niche] ? niche : 'barbearia';
   const d = structuredClone(NICHES[key].defaults);
   return {
-    version: 3, niche: key, plan: PLANS[plan] ? plan : 'premium', palette: 0, heroStyle: 'full', ctaLabel: '',
+    version: 3, niche: key, plan: PLANS[plan] ? plan : 'premium', palette: 0, heroStyle: 'full', siteStyle: NICHES[key].style || 'classico', ctaLabel: '',
     ...d, steps: d.steps || [], stats: d.stats || [], faq: d.faq || [], testimonials: [], team: [], responsible: d.responsible || '',
     whatsapp: '49999999999', instagram: '', address: 'Rua Principal, 100 - Centro, Concórdia/SC',
     showPromo: !NICHES[key].noPromo, hide: {}, logo: '', cover: '', aboutPhoto: '', customColor: '', customBg: '', gallery: []
@@ -167,6 +174,9 @@ export function renderSite(draft) {
   const maps = draft.address ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(draft.address) : '';
   const show = key => plan.sections.includes(key) && !draft.hide?.[key];
   const heroStyle = plan.heroStyles.includes(draft.heroStyle) ? draft.heroStyle : 'full';
+  const planKey = Object.keys(PLANS).find(k => PLANS[k] === plan) || 'profissional';
+  const wanted = draft.siteStyle || niche.style || 'classico';
+  const siteStyle = plan.styles.includes(wanted) ? wanted : plan.styles.includes(niche.style) ? niche.style : plan.styles[0];
   const prices = !niche.noPrices;
   const link = (href, label, cls) => href ? `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener">${label}</a>` : '';
   const name = esc(draft.name || niche.label);
@@ -268,6 +278,63 @@ footer{padding:44px 0;border-top:1px solid var(--line);color:var(--mut);font-siz
 @media(max-width:820px){.hero.split .wrap{grid-template-columns:1fr;padding:110px 0 70px;gap:36px}.art{aspect-ratio:4/3;transform:none}.steps{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.stats div:nth-child(3){border-left:0}.stats div:nth-child(n+3){border-top:1px solid rgba(255,255,255,.12)}}
 @media(max-width:820px){.top nav a:not(.pill){display:none}.perks .wrap{grid-template-columns:1fr}.perk+.perk{border-left:0;border-top:1px solid var(--line)}.about{grid-template-columns:1fr;gap:40px}.about .photo:before{inset:12px -10px -12px 10px}
 .gallery{grid-template-columns:repeat(2,1fr);grid-auto-rows:150px}.prow{grid-template-columns:40px 1fr auto;gap:12px}.prow .mini{grid-column:2/-1;justify-self:start}.products{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.product{padding:12px}.product .thumb{margin:-4px -4px 8px}.product b{font-size:15px}.product p{font-size:13px}.product .buy{flex-direction:column;align-items:flex-start;gap:8px}.product .price{font-size:19px}.about .photo.empty{aspect-ratio:4/3}section{padding:68px 0}.hero .wrap{padding:118px 0 92px}}
+/* ===== Animações por plano ===== */
+.plan-profissional .btn,.plan-premium .btn{position:relative;overflow:hidden;isolation:isolate}
+.plan-profissional .btn:after,.plan-premium .btn:after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(110deg,transparent 25%,rgba(255,255,255,.38) 50%,transparent 75%);translate:-130% 0;transition:translate .8s cubic-bezier(.2,.75,.25,1)}
+.plan-profissional .btn:hover:after,.plan-premium .btn:hover:after{translate:130% 0}
+.plan-premium .btn:after{animation:sweep 4.5s 2s ease-in-out infinite}
+.plan-profissional .top nav a:not(.pill),.plan-premium .top nav a:not(.pill){background:linear-gradient(currentColor,currentColor) 0 100%/0 2px no-repeat;padding-bottom:3px;transition:background-size .3s}
+.plan-profissional .top nav a:not(.pill):hover,.plan-premium .top nav a:not(.pill):hover{background-size:100% 2px}
+@supports (animation-timeline:view()){
+ .plan-profissional main .head,.plan-premium main .head,.plan-profissional main .card,.plan-premium main .card,.plan-profissional .prow,.plan-premium .prow,.plan-profissional .dish,.plan-premium .dish,.plan-premium .gallery img,.plan-premium .stats>div,.plan-profissional .about>*,.plan-premium .about>*,.plan-premium .band,.plan-profissional .band{animation:reveal linear both;animation-timeline:view();animation-range:entry 0% cover 26%}
+ .plan-premium .gallery img:nth-child(odd),.plan-premium main .card:nth-child(even){animation-name:reveal-side}
+}
+.plan-premium .hero:not(.has-img):before{content:"";position:absolute;width:60vmax;height:60vmax;right:-18vmax;top:-22vmax;border-radius:50%;background:radial-gradient(circle,${alpha(p, .35)},transparent 62%);animation:orb 14s ease-in-out infinite alternate;pointer-events:none}
+.plan-premium .hero h1{background:linear-gradient(100deg,#fff 0 38%,${alpha(p, 1)} 50%,#fff 62% 100%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:rise .9s cubic-bezier(.2,.75,.25,1) .1s both,shine 7s linear 1.2s infinite}
+.plan-premium main .card{transition:transform .45s cubic-bezier(.2,.75,.25,1),box-shadow .45s,border-color .3s}
+.plan-premium main .card:hover{transform:translateY(-8px) rotateX(3deg);box-shadow:0 0 0 1px ${alpha(p, .5)},0 30px 70px ${alpha(p, .28)}}
+.plan-premium .gallery img:hover{transform:scale(1.06) rotate(-.6deg)}
+.plan-premium .band{position:relative;overflow:hidden}.plan-premium .band:after{content:"";position:absolute;inset:-40%;background:conic-gradient(from 0deg,transparent 0 70%,${alpha(p, .35)} 80%,transparent 90%);animation:spin 9s linear infinite;pointer-events:none}.plan-premium .band>*{position:relative;z-index:1}
+.plan-premium .stats b{animation:pop 1s cubic-bezier(.2,1.4,.4,1) both}
+.plan-premium .perk i,.plan-premium .steps .card:before{animation:glow 3.2s ease-in-out infinite}
+@keyframes reveal{from{opacity:0;translate:0 46px;scale:.97}to{opacity:1;translate:0 0;scale:1}}
+@keyframes reveal-side{from{opacity:0;translate:-46px 0}to{opacity:1;translate:0 0}}
+@keyframes shine{to{background-position:-250% 0}}@keyframes sweep{0%,70%{translate:-130% 0}100%{translate:130% 0}}
+@keyframes drift{to{background-position:100% 100%}}@keyframes orb{to{transform:translate(-8vmax,10vmax) scale(1.15)}}
+@keyframes spin{to{transform:rotate(1turn)}}@keyframes pop{from{scale:.4;opacity:0}to{scale:1;opacity:1}}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 ${alpha(p, .45)}}50%{box-shadow:0 0 0 8px ${alpha(p, 0)}}}
+
+/* ===== Estilo Moderno ===== */
+.style-moderno main .head{flex-direction:column;align-items:center;text-align:center}.style-moderno main .head .lead{max-width:560px}
+.style-moderno .eyebrow{display:inline-block;padding:6px 14px;border-radius:999px;background:var(--p2)}
+.style-moderno .btn,.style-moderno .ghost,.style-moderno .mini{border-radius:999px}
+.style-moderno main .card,.style-moderno .menu{border-radius:calc(var(--r) + 14px);background:linear-gradient(160deg,${alpha(p, dark ? .12 : .07)},transparent 60%),var(--card);border-color:${alpha(p, .22)}}
+.style-moderno .plist{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:14px;border:0}
+.style-moderno .prow{grid-template-columns:auto 1fr auto;border:1px solid ${alpha(p, .22)};border-radius:calc(var(--r) + 14px);padding:20px;background:var(--card)}.style-moderno .prow .mini{grid-column:1/-1;justify-self:start}.style-moderno .prow:hover{padding-inline:20px}
+.style-moderno .about{grid-template-columns:1fr 1.1fr}.style-moderno .about>div:first-child{order:2}.style-moderno .about .photo:before{inset:-18px 18px 18px -18px}
+.style-moderno .stats{background:none;gap:14px;border-radius:0}.style-moderno .stats>div{background:${pattern(look.pattern, p)};border-radius:calc(var(--r) + 14px);border:0!important}
+.style-moderno .gallery{grid-auto-rows:200px}.style-moderno .gallery img{border-radius:calc(var(--r) + 10px)}
+.style-moderno main>section:nth-of-type(even){background:linear-gradient(180deg,transparent,${alpha(p, dark ? .06 : .045)} 30%,transparent)}
+.style-moderno .perks .wrap{border-radius:999px}.style-moderno .faq{margin-inline:auto}.style-moderno .info{text-align:center}.style-moderno .info .card b{justify-content:center}
+
+/* ===== Estilo Ousado ===== */
+.style-ousado h2{font-size:clamp(40px,7.5vw,92px);letter-spacing:-.045em;line-height:.95;text-transform:uppercase}
+.style-ousado .hero h1{font-size:clamp(52px,11vw,132px);letter-spacing:-.05em;line-height:.9}
+.style-ousado .eyebrow{font-size:14px;color:var(--fg);opacity:.6}.style-ousado .eyebrow:before{content:"/ ";color:var(--p)}
+.style-ousado .btn,.style-ousado .ghost{border-radius:0;letter-spacing:.06em;text-transform:uppercase}.style-ousado .btn{box-shadow:6px 6px 0 ${dark ? '#fff' : '#111'}}.style-ousado .btn:hover{box-shadow:10px 10px 0 ${dark ? '#fff' : '#111'}}
+.style-ousado main .card,.style-ousado .menu{border-radius:0;border-width:0 0 0 4px;border-color:var(--p)}
+.style-ousado main .grid:not(.products){grid-template-columns:1fr;gap:12px}
+.style-ousado .svc{display:grid;grid-template-columns:110px 1fr auto;grid-template-areas:"pic name buy" "pic desc buy";align-items:center;column-gap:22px;row-gap:2px;padding:20px 24px}
+.style-ousado .svc>:first-child{grid-area:pic;width:110px;margin:0;justify-self:center}.style-ousado .svc>b{grid-area:name;font-size:clamp(20px,2.4vw,28px)}.style-ousado .svc>p{grid-area:desc}.style-ousado .svc>.buy{grid-area:buy;flex-direction:column;align-items:flex-end;margin:0}
+.style-ousado .svc-img{width:110px!important;aspect-ratio:1;margin:0}.style-ousado .tag{font-size:56px}
+.style-ousado .about .photo:before{inset:26px -26px -26px 26px;border:0;background:var(--p);opacity:.9}
+.style-ousado .stats{border-radius:0;clip-path:polygon(0 0,100% 6%,100% 100%,0 94%)}.style-ousado .band{border-radius:0;clip-path:polygon(0 6%,100% 0,100% 94%,0 100%)}
+:root:has(body.style-ousado),:root:has(body.plan-premium),body.style-ousado,body.plan-premium{overflow-x:clip}
+.style-ousado .marquee{font-size:20px;transform:rotate(-1.5deg) scale(1.02);margin:12px 0}
+.style-ousado main>section{position:relative}.style-ousado main>section:before{content:"";position:absolute;left:0;top:0;width:min(28vw,280px);height:6px;background:var(--p)}
+.style-ousado .faq details{border-radius:0;border-width:0 0 0 4px;border-color:var(--p)}
+@media(max-width:820px){.style-ousado .marquee{transform:none;margin:0}.style-moderno .about{grid-template-columns:1fr}.style-moderno .about>div:first-child{order:0}.style-moderno .stats{grid-template-columns:repeat(2,1fr)}
+.style-ousado .svc{grid-template-columns:72px 1fr;grid-template-areas:"pic name" "pic desc" "buy buy";padding:16px}.style-ousado .svc>:first-child,.style-ousado .svc-img{width:72px!important}.style-ousado .svc>.buy{flex-direction:row;align-items:center;justify-content:space-between;width:100%;margin-top:8px}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}`;
 
   const sticky = plan === PLANS.premium;
@@ -275,7 +342,7 @@ footer{padding:44px 0;border-top:1px solid var(--line);color:var(--mut);font-siz
   const section = (id, eyebrow, title, body, extra = '') => `<section id="${id}"${extra}><div class="wrap"><div class="head"><div><span class="eyebrow">${eyebrow}</span><h2>${title}</h2></div></div>${body}</div></section>`;
   const promo = plan.promo && !niche.noPromo && draft.showPromo && draft.promo ? `<div class="promo">${esc(draft.promo)}</div>` : '';
 
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${name}</title><meta name="description" content="${esc(draft.slogan || '')}"><meta name="theme-color" content="${p}"><style>${css}</style></head><body>
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${name}</title><meta name="description" content="${esc(draft.slogan || '')}"><meta name="theme-color" content="${p}"><style>${css}</style></head><body class="plan-${planKey} style-${siteStyle}">
 ${promo}
 ${sticky ? header : ''}<div style="position:relative">${sticky ? '' : header}${hero}</div>
 ${marquee.length ? `<div class="marquee" aria-hidden="true"><div>${marquee.map(m => `<span>${esc(m)}</span>`).join('')}</div><div>${marquee.map(m => `<span>${esc(m)}</span>`).join('')}</div></div>` : ''}
@@ -314,7 +381,7 @@ export function cleanDraft(raw, { niche: fixedNiche, plan: fixedPlan } = {}) {
   const hide = {};
   for (const key of Object.keys(SECTION_LABELS)) if (input.hide?.[key] === true) hide[key] = true;
   return {
-    version: 3, niche, plan: planKey, palette, customColor: validHex(input.customColor), customBg: validHex(input.customBg), aboutPhoto: photoOf(input.aboutPhoto), heroStyle: plan.heroStyles.includes(input.heroStyle) ? input.heroStyle : 'full', ctaLabel: str(input.ctaLabel, 30),
+    version: 3, niche, plan: planKey, palette, siteStyle: plan.styles.includes(input.siteStyle) ? input.siteStyle : (plan.styles.includes(NICHES[niche].style) ? NICHES[niche].style : plan.styles[0]), customColor: validHex(input.customColor), customBg: validHex(input.customBg), aboutPhoto: photoOf(input.aboutPhoto), heroStyle: plan.heroStyles.includes(input.heroStyle) ? input.heroStyle : 'full', ctaLabel: str(input.ctaLabel, 30),
     name: str(input.name, 60), slogan: str(input.slogan, 120), about: str(input.about, 600), promo: str(input.promo, 120), showPromo: input.showPromo !== false,
     hours: str(input.hours, 300), whatsapp: str(input.whatsapp, 20), instagram: str(input.instagram, 60), address: str(input.address, 160), responsible: str(input.responsible, 100),
     highlights: Array.from({ length: 3 }, (_, i) => str(Array.isArray(input.highlights) ? input.highlights[i] : base.highlights[i], 50)),

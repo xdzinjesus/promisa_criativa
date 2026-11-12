@@ -47,3 +47,14 @@ test('planos: Essencial é enxuto, Premium tem tudo; odontologia sem preços nem
   for (const niche of Object.keys(NICHES)) for (const plan of Object.keys(PLANS)) assert.ok(!/<script/i.test(renderSite(newDraft(niche, plan))));
 });
 
+
+test('estilos de layout por plano e animações só nos planos pagos', async () => {
+  const { PLANS, cleanDraft } = await import('../src/client-site-templates.js');
+  assert.deepEqual(PLANS.essencial.styles, ['classico']); assert.equal(PLANS.premium.styles.length, 3);
+  assert.match(renderSite({ ...newDraft('oficina', 'premium'), siteStyle: 'ousado' }), /<body class="plan-premium style-ousado">/);
+  assert.match(renderSite({ ...newDraft('oficina', 'profissional'), siteStyle: 'ousado' }), /<body class="plan-profissional style-(classico|moderno)">/, 'Profissional não libera o Ousado');
+  assert.match(renderSite({ ...newDraft('barbearia', 'essencial'), siteStyle: 'moderno' }), /style-classico/, 'Essencial fica no Clássico');
+  assert.equal(cleanDraft({ plan: 'profissional', siteStyle: 'ousado' }).siteStyle !== 'ousado', true);
+  const styles = new Set(Object.keys(NICHES).map(k => /<body class="plan-\w+ style-(\w+)"/.exec(renderSite(newDraft(k, 'premium')))[1]));
+  assert.ok(styles.size >= 3, 'cada ramo começa com um estilo, para os sites não ficarem iguais');
+});
