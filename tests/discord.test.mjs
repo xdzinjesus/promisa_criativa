@@ -484,7 +484,7 @@ test('/configurar cria canais que faltam, registra comandos e responde', async (
   assert.match(w.state.patches[0].body.content, /Criei os canais/);
   assert.match(w.state.patches[0].body.content, /Reorganizei/);
   assert.match(w.state.patches[0].body.content, /Comandos atualizados \(8\)/);
-  assert.match(w.state.patches[0].body.content, /22 atualizações no #historico/);
+  assert.match(w.state.patches[0].body.content, /25 atualizações no #historico/);
   assert.match(w.state.patches[0].body.content, /Painel de botões criado no #central/);
 });
 
@@ -871,9 +871,9 @@ const footersOf = posts => posts.flatMap(p => p.body.embeds.map(e => e.footer.te
 test('histórico: agrupa por dia (Brasília), do mais antigo ao mais novo, dentro dos limites do Discord', () => {
   const messages = buildHistoryMessages(RELEASES);
   const embeds = messages.flatMap(m => m.embeds);
-  assert.deepEqual(embeds.map(e => /(\d\d\/\d\d)/.exec(e.title)[1]), ['07/11', '08/11', '08/11', '09/11']);
+  assert.deepEqual(embeds.map(e => /(\d\d\/\d\d)/.exec(e.title)[1]), ['07/11', '08/11', '08/11', '09/11', '11/11', '12/11']);
   assert.match(embeds[2].title, /continuação/);
-  assert.equal(RELEASES.length, 22);
+  assert.equal(RELEASES.length, 25);
   assert.deepEqual(embeds.flatMap(e => e.numbers), RELEASES.map(r => r.n), 'ordem e nenhuma faltando');
   for (const m of messages) {
     assert.ok(m.embeds.length <= 10);
@@ -886,18 +886,18 @@ test('histórico: agrupa por dia (Brasília), do mais antigo ao mais novo, dentr
   const many = Array.from({ length: 300 }, (_, i) => ({ n: 1000 + i, at: new Date(Date.UTC(2026, 0, 1 + i, 15)).toISOString(), kind: 'novidade', t: 'T' + i, why: 'x'.repeat(200) }));
   const split = buildHistoryMessages(many);
   assert.ok(split.length > 1 && split.every(m => m.embeds.length <= 10));
-  const next = addRelease(RELEASES, release(26, '2026-11-10T12:00:00Z', 'correcao', 'Teste', 'Algo foi consertado.'), release(25, '2026-11-10T12:00:00Z', 'novidade', 'dup', 'dup'));
-  assert.equal(next.length, 23); assert.equal(next.at(-1).n, 26);
+  const next = addRelease(RELEASES, release(41, '2026-11-13T12:00:00Z', 'correcao', 'Teste', 'Algo foi consertado.'), release(40, '2026-11-13T12:00:00Z', 'novidade', 'dup', 'dup'));
+  assert.equal(next.length, 26); assert.equal(next.at(-1).n, 41);
   assert.deepEqual([...postedFromFooters(['histórico · #3 #10', 'Promisa · #7', 'histórico · início'])], [3, 10]);
 });
 
 test('setup: posta o histórico uma vez e depois só as novidades (sem duplicar)', async () => {
   const w = make({ channels: allChannels() });
   const first = await w.discord.setupChannels();
-  assert.equal(first.historyPosted, 22);
+  assert.equal(first.historyPosted, 25);
   const posts = historyOf(w);
   assert.equal(posts.filter(p => p.body.embeds[0].title === '📜 Histórico de atualizações da Promisa').length, 1);
-  assert.equal(posts.at(-1).body.embeds.at(-1).title.includes('09/11'), true);
+  assert.equal(posts.at(-1).body.embeds.at(-1).title.includes('12/11'), true);
   const noted = footersOf(posts).join(' ').match(/#\d+/g).map(x => Number(x.slice(1)));
   assert.deepEqual(noted, RELEASES.map(r => r.n));
   assert.ok(w.state.calls.some(c => c.path.endsWith('/messages?limit=50')));
@@ -907,11 +907,11 @@ test('setup: posta o histórico uma vez e depois só as novidades (sem duplicar)
   assert.equal(again.historyPosted, 0);
   assert.equal(historyOf(w).length, count);
   const channel = channelId(w.state, 'historico');
-  for (const m of w.state.messages[channel]) for (const e of m.embeds) if (/#25/.test(e.footer.text)) e.footer = { text: 'histórico · apagado' };
+  for (const m of w.state.messages[channel]) for (const e of m.embeds) if (/#40/.test(e.footer.text)) e.footer = { text: 'histórico · apagado' };
   w.discord.resetChannels();
   assert.equal((await w.discord.setupChannels()).historyPosted, 1);
   assert.equal(historyOf(w).length, count + 1);
-  assert.match(footersOf(historyOf(w).slice(-1)).join(), /histórico · #25/);
+  assert.match(footersOf(historyOf(w).slice(-1)).join(), /histórico · #40/);
   const blind = make({ channels: allChannels() }); blind.state.noHistory = true;
   await blind.discord.setupChannels();
   assert.equal(historyOf(blind).length, 0);
