@@ -426,8 +426,34 @@ button.ctile-btn[aria-pressed=true]{background:#9c6aff33;border-color:#b790ff}
 .ig-open{font-size:12.5px;font-weight:600;color:var(--ac);text-decoration:none;white-space:nowrap}.ig-open:hover{text-decoration:underline}
 @media(max-width:759px){.ig-profile{grid-template-columns:auto 1fr;gap:12px}.ig-stats{grid-column:1/-1;justify-content:space-around;padding-top:10px;border-top:1px solid #ffffff12}.ig-avatar{width:50px;height:50px;font-size:21px}.ig-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.ig-plot{height:170px}.ig-card{padding:15px}.ig-hbar{grid-template-columns:70px 1fr auto}.ig-vbars{height:130px}}
 @media(prefers-reduced-motion:reduce){.ig-prog i,.ig-top-item,.ig-guide{transition:none}}
+
+/* Painel do cliente (demonstração) */
+.ce-intro{margin-bottom:14px}.ce-intro p{margin:6px 0 0}
+.ce-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:18px;align-items:start}
+.ce-form{display:grid;gap:12px;min-width:0}
+.ce-group{border:1px solid #ffffff17;border-radius:18px;padding:14px 16px 16px;margin:0;display:grid;gap:10px;background:linear-gradient(145deg,#ffffff0b,#ffffff04),#121019;min-width:0}
+.ce-group legend{font:600 14px Sora,system-ui,sans-serif;padding:0 6px;color:var(--ac)}
+.ce-field{display:grid;gap:5px}.ce-field span,.ce-label,.ce-photo>span{font-size:12.5px;color:var(--mut);font-weight:600}
+.ce-field input,.ce-field textarea,.ce-item input{width:100%;min-width:0;background:#ffffff08;border:1px solid #ffffff1c;border-radius:11px;color:var(--tx);padding:10px 12px;font:inherit;font-size:14px}
+.ce-field input:focus,.ce-field textarea:focus,.ce-item input:focus{outline:2px solid #9c6aff88;border-color:transparent}
+.ce-niches,.ce-devices{display:flex;flex-wrap:wrap;gap:8px}
+.ce-chip{background:#ffffff0a;border:1px solid #ffffff1c;color:var(--tx);border-radius:999px;padding:8px 13px;font-size:13px;font-weight:600;min-height:38px}
+.ce-chip[aria-pressed="true"]{background:#9c6aff33;border-color:#b78cff;color:#fff}
+.ce-colors{display:flex;gap:10px}.ce-color{width:40px;height:40px;border-radius:50%;border:2px solid #ffffff22;padding:0;min-height:0}.ce-color[aria-pressed="true"]{border-color:#fff;box-shadow:0 0 0 3px #9c6aff88}
+.ce-items{display:grid;gap:10px}.ce-item{display:grid;grid-template-columns:1fr 120px 36px 36px;gap:6px}.ce-item .ce-desc{grid-column:1/-1}
+.ce-del,.ce-mv{min-height:0;padding:0;border-radius:10px;background:#ffffff0a;color:var(--mut);border:1px solid #ffffff1c}.ce-del:hover{color:var(--red)}
+.ce-photo{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ce-photo>span{min-width:90px}
+.ce-thumbs{display:flex;gap:6px;flex-wrap:wrap}.ce-thumb{width:46px;height:46px;border-radius:10px;background:#ffffff10 center/cover no-repeat;border:1px solid #ffffff22;padding:0;min-height:0;cursor:pointer}.ce-thumb:hover{outline:2px solid var(--red)}
+.ce-check{display:flex!important;grid-template-columns:none!important;align-items:center;justify-content:flex-start;gap:10px;font-size:14px}.ce-check input{width:20px!important;height:20px;min-height:0;margin:0;flex:none;accent-color:#9c6aff}.ce-check span{flex:1}
+.ce-preview{position:sticky;top:14px;display:grid;gap:12px;justify-items:center;min-width:0}
+.ce-screen{width:100%;border-radius:22px;overflow:hidden;border:1px solid #ffffff22;background:#000;box-shadow:0 24px 60px #0007;transition:width .35s var(--ease)}
+.ce-preview[data-device="mobile"] .ce-screen{width:min(390px,100%);border-radius:34px;border:8px solid #1d1a26}
+.ce-frame{display:block;width:100%;height:min(74vh,720px);border:0;background:#fff}
+.ce-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.ce-status{font-size:13px;color:var(--mut);margin:0;text-align:center}
+@media(max-width:1000px){.ce-layout{grid-template-columns:1fr}.ce-preview{position:static;order:-1}.ce-frame{height:560px}}
+@media(max-width:480px){.ce-item{grid-template-columns:1fr 90px 34px 34px}}
 </style></head><body>
 <header class="topbar"><a class="tb-brand" href="/admin" aria-label="Promisa, início"><img src="/assets/asset-1.webp" alt="" width="30" height="30"><b>Promisa</b></a><p id="cloud-status" class="tb-status" role="status" aria-live="polite">Conectando ao armazenamento…</p><div class="tb-alerts"><button type="button" id="cloud-conflicts" hidden>Resolver diferenças</button><button type="button" id="cloud-unlock" hidden>Destravar dados</button></div><details class="tb-menu"><summary>⋯ Conta</summary><div class="tb-panel"><a href="/acesso.html">← Escolher área</a><a href="/catalogo">Catálogo dos meus projetos</a><button type="button" id="cloud-sync">Sincronizar agora</button><button type="button" id="cloud-encrypt" hidden>Ativar criptografia</button><button type="button" id="cloud-copy">Cópia de segurança: baixar deste aparelho</button><label class="tb-file">Restaurar cópia<input type="file" id="cloud-restore" accept=".json,application/json"></label><button type="button" id="passkey-open" hidden>🔐 Face ID / chaves de acesso</button><button type="button" id="discord-open">💬 Discord</button><button type="button" class="session-logout" data-logout>Sair</button><button type="button" class="session-logout danger" data-logout data-clear-local>Sair e apagar dados deste aparelho</button><p class="tb-note">Os dados e anexos são compartilhados entre aparelhos quando o indicador mostra Salvo online. Importar arquivos não publica sites na internet. “Sair” mantém a cópia local; em aparelho compartilhado, use “Sair e apagar dados deste aparelho”.</p></div></details></header>
 <main id="app"></main>
 <nav id="nav"></nav>
-<script src="/assets/security.js" defer></script><script src="/assets/briefing-panel.js" defer></script><script src="/assets/plan-prompts.js" defer></script><script src="/assets/instagram-panel.js" defer></script><script src="/assets/site-backup.js" defer></script><script src="/assets/client-helpers.js" defer></script><script src="/api/access?view=panel" defer></script><script src="/assets/private-session.js" defer></script><script src="/assets/cloud.js" defer></script><script src="/assets/passkey-panel.js" defer></script><script src="/assets/discord-panel.js" defer></script></body></html>
+<script src="/assets/security.js" defer></script><script src="/assets/briefing-panel.js" defer></script><script src="/assets/plan-prompts.js" defer></script><script src="/assets/instagram-panel.js" defer></script><script src="/assets/site-backup.js" defer></script><script src="/assets/client-editor.js" defer></script><script src="/assets/client-helpers.js" defer></script><script src="/api/access?view=panel" defer></script><script src="/assets/private-session.js" defer></script><script src="/assets/cloud.js" defer></script><script src="/assets/passkey-panel.js" defer></script><script src="/assets/discord-panel.js" defer></script></body></html>
