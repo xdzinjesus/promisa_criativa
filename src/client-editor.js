@@ -64,7 +64,7 @@ function mount(root) {
       b.addEventListener('click', () => {
         if (draft.niche === key) return;
         if (!confirm(`Trocar para o modelo "${def.label}"? Os textos voltam ao exemplo do ramo (as fotos ficam).`)) return;
-        draft = { ...newDraft(key), logo: draft.logo, cover: draft.cover, gallery: draft.gallery, whatsapp: draft.whatsapp, instagram: draft.instagram, address: draft.address };
+        draft = { ...newDraft(key), logo: draft.logo, cover: draft.cover, gallery: draft.gallery, whatsapp: draft.whatsapp, instagram: draft.instagram, address: draft.address, siteId: draft.siteId };
         draw(); refresh(true);
       });
       niches.append(b);
@@ -159,24 +159,39 @@ function mount(root) {
   const preview = el('div', null, { className: 'ce-preview' }); preview.dataset.device = device;
   const screen = el('div', null, { className: 'ce-screen' }); screen.append(frame);
   const actions = el('div', null, { className: 'ce-actions' });
-  const saveSite = el('button', '💾 Salvar como site de cliente', { type: 'button', id: 'ceSave' });
+  const saveSite = el('button', '💾 Salvar site', { type: 'button', id: 'ceSave', className: 'sec' });
+  const publish = el('button', '🚀 Publicar na Cloudflare', { type: 'button', id: 'cePublish' });
   const download = el('button', '⬇️ Baixar HTML', { type: 'button', className: 'sec' });
   const reset = el('button', '↺ Recomeçar', { type: 'button', className: 'sec' });
+  // Salva (ou atualiza o mesmo site, se já foi salvo antes) no cadastro de sites do painel.
+  async function store() {
+    if (typeof window.promisaSaveGeneratedSite !== 'function') throw new Error('Abra o painel completo para salvar.');
+    const result = await window.promisaSaveGeneratedSite(draft.name || NICHES[draft.niche].label, renderSite(draft), draft.siteId || '');
+    draft.siteId = result.id; save(draft);
+    return result;
+  }
   saveSite.addEventListener('click', async () => {
-    if (typeof window.promisaSaveGeneratedSite !== 'function') { status.textContent = '⚠️ Abra o painel completo para salvar.'; return; }
     saveSite.disabled = true;
-    try { await window.promisaSaveGeneratedSite(draft.name || NICHES[draft.niche].label, renderSite(draft)); status.textContent = '✅ Salvo em Clientes → Sites sem cliente. De lá dá para gerar link de demonstração e publicar.'; }
+    try { const { updated } = await store(); status.textContent = updated ? '✅ Site atualizado no cadastro. Se ele já estiver no ar, toque em "🚀 Publicar na Cloudflare" → "Atualizar site".' : '✅ Salvo em Clientes → Sites sem cliente. De lá dá para gerar link de demonstração.'; }
     catch (error) { status.textContent = '⚠️ Não foi possível salvar: ' + (error.message || 'erro'); }
     saveSite.disabled = false;
+  });
+  publish.addEventListener('click', async () => {
+    if (typeof window.promisaOpenPublish !== 'function') { status.textContent = '⚠️ Abra o painel completo para publicar.'; return; }
+    publish.disabled = true;
+    try { await store(); status.textContent = 'Site salvo. Abrindo a publicação…'; await window.promisaOpenPublish(draft.siteId); }
+    catch (error) { status.textContent = '⚠️ Não foi possível publicar: ' + (error.message || 'erro'); }
+    publish.disabled = false;
   });
   download.addEventListener('click', () => {
     const url = URL.createObjectURL(new Blob([renderSite(draft)], { type: 'text/html' }));
     const a = el('a', null, { href: url, download: (draft.name || 'site').normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '-').toLowerCase() + '.html' });
     document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 5000);
   });
-  reset.addEventListener('click', () => { if (!confirm('Apagar o rascunho e voltar ao exemplo do ramo?')) return; draft = newDraft(draft.niche); draw(); refresh(true); });
-  actions.append(saveSite, download, reset);
-  preview.append(devices, screen, actions, status);
+  reset.addEventListener('click', () => { if (!confirm('Apagar o rascunho e voltar ao exemplo do ramo? (O site já salvo no cadastro continua lá.)')) return; draft = newDraft(draft.niche); draw(); refresh(true); });
+  actions.append(publish, saveSite, download, reset);
+  const guide = el('a', '📘 Como funciona a hospedagem (passo a passo)', { href: 'https://github.com/xdzinjesus/promisa_criativa/blob/main/docs/HOSPEDAGEM.md', target: '_blank', rel: 'noopener noreferrer', className: 'ce-guide' });
+  preview.append(devices, screen, actions, status, guide);
 
   const layout = el('div', null, { className: 'ce-layout' });
   layout.append(form, preview);
