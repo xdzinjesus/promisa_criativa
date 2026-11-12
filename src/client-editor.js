@@ -1,4 +1,4 @@
-import { NICHES, PLANS, SECTION_LABELS, HERO_LABELS, newDraft, renderSite, safeImage, validHex } from './client-site-templates.js';
+import { NICHES, PLANS, SECTION_LABELS, HERO_LABELS, STYLE_LABELS, newDraft, renderSite, safeImage, validHex } from './client-site-templates.js';
 
 // Aba "🧩 Painel do cliente" (demonstração): o que o cliente veria no painel dele.
 // Escolhe o ramo, edita campos guiados e vê o site mudar na hora. O rascunho fica só neste aparelho
@@ -111,6 +111,8 @@ export function mount(root, opts = {}) {
     resetColors.addEventListener('click', () => { draft.customColor = ''; draft.customBg = ''; rerender(); });
     custom.append(picker('Cor principal', 'customColor', baseP), picker('Cor de fundo', 'customBg', baseBg), resetColors);
     if (draft.customColor || draft.customBg) custom.classList.add('is-on');
+    const styleNow = plan.styles.includes(draft.siteStyle) ? draft.siteStyle : plan.styles.includes(niche.style) ? niche.style : plan.styles[0];
+    const siteStyles = plan.styles.length > 1 ? chips(plan.styles.map(k => [k, STYLE_LABELS[k]]), styleNow, key => { draft.siteStyle = key; rerender(); }) : null;
     const heroStyles = plan.heroStyles.length > 1 ? chips(plan.heroStyles.map(k => [k, HERO_LABELS[k]]), plan.heroStyles.includes(draft.heroStyle) ? draft.heroStyle : 'full', key => { draft.heroStyle = key; rerender(); }) : null;
     // fotos
     const photo = (label, key, max = 1) => {
@@ -192,7 +194,7 @@ export function mount(root, opts = {}) {
 
     form.append(
       ...(client ? [] : [group('ramo', '🧭 Ramo e plano', el('span', 'Ramo de atividade', { className: 'ce-label' }), niches, el('span', 'Plano do cliente', { className: 'ce-label' }), plans, planInfo)]),
-      group('identidade', '🎨 Identidade e visual', field('Nome do negócio', 'name', { max: 60 }), field('Frase de destaque', 'slogan', { max: 120 }), field('Texto do botão principal', 'ctaLabel', { max: 30, placeholder: niche.cta }), el('span', 'Cores prontas', { className: 'ce-label' }), colors, el('span', 'Ou escolha qualquer cor', { className: 'ce-label' }), custom, ...(heroStyles ? [el('span', 'Estilo do topo', { className: 'ce-label' }), heroStyles] : []), photo('Logo', 'logo'), photo('📷 Foto da tela principal (topo)', 'cover')),
+      group('identidade', '🎨 Identidade e visual', field('Nome do negócio', 'name', { max: 60 }), field('Frase de destaque', 'slogan', { max: 120 }), field('Texto do botão principal', 'ctaLabel', { max: 30, placeholder: niche.cta }), el('span', 'Cores prontas', { className: 'ce-label' }), colors, el('span', 'Ou escolha qualquer cor', { className: 'ce-label' }), custom, ...(siteStyles ? [el('span', 'Estilo do layout (muda a cara do site inteiro)', { className: 'ce-label' }), siteStyles] : []), ...(heroStyles ? [el('span', 'Estilo do topo', { className: 'ce-label' }), heroStyles] : []), photo('Logo', 'logo'), photo('📷 Foto da tela principal (topo)', 'cover')),
       ...(plan.highlights ? [group('destaques', '✦ Destaques do negócio', perks)] : []),
       group('itens', `📋 ${niche.items}`, ...(niche.noPrices ? [el('p', 'Odontologia: pelas regras do CFO, o site não mostra preços nem promoções.', { className: 'ce-hint' })] : []), el('p', 'Toque em 📷 para colocar uma foto em cada item.', { className: 'ce-hint' }), listEditor('items', itemFields, plan.items, 'Adicionar', { photoKey: 'photo', photoMax: 640 })),
       ...(plan.promo && !niche.noPromo ? [group('promo', '🏷️ Promoção', check('Mostrar faixa de promoção no topo', draft.showPromo, on => set('showPromo', on)), field('Texto da promoção', 'promo', { max: 120 }))] : []),
