@@ -123,6 +123,13 @@ function mount(root) {
       wrap.append(el('span', label), thumbs, pick, input);
       return wrap;
     };
+    const perks = el('div', null, { className: 'ce-perks' });
+    draft.highlights = Array.from({ length: 3 }, (_, i) => draft.highlights?.[i] ?? '');
+    draft.highlights.forEach((text, i) => {
+      const input = el('input', null, { value: text, placeholder: `Destaque ${i + 1} (ex.: Estacionamento grátis)`, maxLength: 50, ariaLabel: `Destaque ${i + 1}` });
+      input.addEventListener('input', () => { draft.highlights[i] = input.value; refresh(); });
+      perks.append(input);
+    });
     const promo = el('label', null, { className: 'ce-check' });
     const promoOn = el('input', null, { type: 'checkbox', checked: draft.showPromo });
     promoOn.addEventListener('change', () => set('showPromo', promoOn.checked));
@@ -131,10 +138,11 @@ function mount(root) {
     form.append(
       group('1. Ramo do negócio', niches),
       group('2. Identidade', field('Nome do negócio', 'name', { max: 60 }), field('Frase de destaque', 'slogan', { max: 120 }), el('span', 'Cores', { className: 'ce-label' }), colors, photo('Logo', 'logo'), photo('Foto de capa', 'cover')),
-      group('3. ' + niche.items, list, add),
-      group('4. Promoção', promo, field('Texto da promoção', 'promo', { max: 120 })),
-      group('5. Sobre e fotos', field('Sobre o negócio', 'about', { area: true, max: 600 }), photo('Galeria (até 8)', 'gallery', true)),
-      group('6. Contato', field('WhatsApp (com DDD)', 'whatsapp', { type: 'tel', placeholder: '49 99999-9999', max: 20 }), field('Instagram', 'instagram', { placeholder: '@seunegocio', max: 60 }), field('Endereço', 'address', { max: 160 }), field('Horários (um por linha)', 'hours', { area: true, max: 300 }))
+      group('3. Destaques do negócio', perks),
+      group('4. ' + niche.items, list, add),
+      group('5. Promoção', promo, field('Texto da promoção', 'promo', { max: 120 })),
+      group('6. Sobre e fotos', field('Sobre o negócio', 'about', { area: true, max: 600 }), photo('Galeria (até 8)', 'gallery', true)),
+      group('7. Contato', field('WhatsApp (com DDD)', 'whatsapp', { type: 'tel', placeholder: '49 99999-9999', max: 20 }), field('Instagram', 'instagram', { placeholder: '@seunegocio', max: 60 }), field('Endereço', 'address', { max: 160 }), field('Horários (um por linha)', 'hours', { area: true, max: 300 }))
     );
   }
 
