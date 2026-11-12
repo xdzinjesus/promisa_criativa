@@ -1,0 +1,50 @@
+/* Editor de site do cliente: painel do dono e página "Meu site" */
+/* Painel do cliente (demonstração) */
+.ce-intro{margin-bottom:14px}.ce-intro p{margin:6px 0 0}
+.ce-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:18px;align-items:start}
+.ce-form{display:grid;gap:12px;min-width:0}
+.ce-group{border:1px solid #ffffff17;border-radius:18px;padding:14px 16px 16px;margin:0;display:grid;gap:10px;background:linear-gradient(145deg,#ffffff0b,#ffffff04),#121019;min-width:0}
+.ce-group legend{font:600 14px Sora,system-ui,sans-serif;padding:0 6px;color:var(--ac)}
+.ce-field{display:grid;gap:5px}.ce-field span,.ce-label,.ce-photo>span{font-size:12.5px;color:var(--mut);font-weight:600}
+.ce-field input,.ce-field textarea,.ce-item input{width:100%;min-width:0;background:#ffffff08;border:1px solid #ffffff1c;border-radius:11px;color:var(--tx);padding:10px 12px;font:inherit;font-size:14px}
+.ce-field input:focus,.ce-field textarea:focus,.ce-item input:focus{outline:2px solid #9c6aff88;border-color:transparent}
+.ce-niches,.ce-devices{display:flex;flex-wrap:wrap;gap:8px}
+.ce-chip{background:#ffffff0a;border:1px solid #ffffff1c;color:var(--tx);border-radius:999px;padding:8px 13px;font-size:13px;font-weight:600;min-height:38px}
+.ce-chip[aria-pressed="true"]{background:#9c6aff33;border-color:#b78cff;color:#fff}
+.ce-colors{display:flex;gap:10px}.ce-color{width:40px;height:40px;border-radius:50%;border:2px solid #ffffff22;padding:0;min-height:0}.ce-color[aria-pressed="true"]{border-color:#fff;box-shadow:0 0 0 3px #9c6aff88}
+.ce-perks{display:grid;gap:8px}.ce-perks input{width:100%;min-width:0;background:#ffffff08;border:1px solid #ffffff1c;border-radius:11px;color:var(--tx);padding:10px 12px;font:inherit;font-size:14px}
+.ce-items{display:grid;gap:10px}.ce-item{display:grid;grid-template-columns:1fr 120px 36px 36px;gap:6px}.ce-item .ce-desc{grid-column:1/-1}
+.ce-del,.ce-mv{min-height:0;padding:0;border-radius:10px;background:#ffffff0a;color:var(--mut);border:1px solid #ffffff1c}.ce-del:hover{color:var(--red)}
+.ce-photo{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.ce-photo>span{min-width:90px}
+.ce-thumbs{display:flex;gap:6px;flex-wrap:wrap}.ce-thumb{width:46px;height:46px;border-radius:10px;background:#ffffff10 center/cover no-repeat;border:1px solid #ffffff22;padding:0;min-height:0;cursor:pointer}.ce-thumb:hover{outline:2px solid var(--red)}
+.ce-check{display:flex!important;grid-template-columns:none!important;align-items:center;justify-content:flex-start;gap:10px;font-size:14px}.ce-check input{width:20px!important;height:20px;min-height:0;margin:0;flex:none;accent-color:#9c6aff}.ce-check span{flex:1}
+.ce-preview{position:sticky;top:14px;display:grid;gap:12px;justify-items:center;min-width:0}
+.ce-screen{width:100%;border-radius:22px;overflow:hidden;border:1px solid #ffffff22;background:#000;box-shadow:0 24px 60px #0007;transition:width .35s var(--ease)}
+.ce-preview[data-device="mobile"] .ce-screen{width:min(390px,100%);border-radius:34px;border:8px solid #1d1a26}
+.ce-frame{display:block;width:100%;height:min(74vh,720px);border:0;background:#fff}
+.ce-guide{font-size:13px;color:var(--ac);font-weight:600}
+.ce-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.ce-status{font-size:13px;color:var(--mut);margin:0;text-align:center}
+@media(max-width:1000px){.ce-layout{grid-template-columns:1fr}.ce-preview{position:static;order:-1}.ce-frame{height:560px}}
+@media(max-width:480px){.ce-item{grid-template-columns:1fr 90px 34px 34px}}
+
+/* Controle de acesso do cliente (painel do dono) */
+.ca-box{width:100%;border:1px solid #ffffff17;border-radius:18px;padding:14px 16px;background:linear-gradient(145deg,#ffffff0b,#ffffff04),#121019;display:grid;gap:10px}
+.ca-box h3{margin:0;font-size:15px}.ca-box>div{display:grid;gap:10px}.ca-msg{margin:0;font-size:13.5px;color:var(--mut)}
+.ca-actions{display:flex;flex-wrap:wrap;gap:8px}.ca-danger{color:var(--red)!important}
+.ca-cred{display:grid;gap:8px;padding:12px;border-radius:14px;background:#5fdca914;border:1px solid #5fdca944}
+.ca-row{display:grid;grid-template-columns:56px 1fr auto;gap:8px;align-items:center}.ca-row span{font-size:12.5px;color:var(--mut);font-weight:700}
+.ca-row input{min-width:0;background:#00000033;border:1px solid #ffffff1c;border-radius:10px;color:var(--tx);padding:9px 10px;font:inherit;font-size:13.5px}
+.ca-wa{justify-self:start;font-weight:700;color:#5fdca9;text-decoration:none}
+.ca-kpis{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+.ca-list{display:grid;gap:10px;margin-bottom:12px}.ca-item{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap}.ca-item>div:first-child{display:grid;gap:3px;min-width:0}
+.ca-item small{color:var(--mut)}.ca-url{color:var(--ac);font-size:13px;word-break:break-all}.ca-item.is-off{opacity:.65}
+/* Página "Meu site" do cliente */
+.mp-page{--bg:#09080e;--card:#121019;--tx:#f3f1f8;--mut:#b3adc1;--ac:#c4a5ff;--red:#ff8590;--grn:#5fdca9;--ease:cubic-bezier(.2,.75,.25,1);margin:0;min-height:100vh;background:radial-gradient(ellipse 60% 40% at 80% -8%,#7c3aed2e,transparent 70%),var(--bg);color:var(--tx);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.mp-page *{box-sizing:border-box}.mp-page .sub{color:var(--mut)}
+.mp-page button{font:inherit;font-weight:700;border:0;border-radius:12px;padding:12px 18px;min-height:46px;cursor:pointer;background:linear-gradient(135deg,#8b5cf6,#6d28d9);color:#fff}
+.mp-page button.sec{background:#ffffff0d;border:1px solid #ffffff1f;color:var(--tx)}.mp-page button:disabled{opacity:.6;cursor:default}
+.mp-page .card{background:linear-gradient(145deg,#ffffff0b,#ffffff04),#121019;border:1px solid #ffffff17;border-radius:20px;padding:18px}
+.mp-top{padding:14px 20px}.mp-brand{display:inline-flex;align-items:center;gap:10px;color:var(--tx);text-decoration:none;font-weight:800;letter-spacing:.04em}.mp-brand small{display:block;font-size:10px;color:var(--mut);letter-spacing:.14em}
+.mp-wrap{width:min(1240px,100% - 32px);margin:0 auto 40px}.mp-card{max-width:420px;margin:8vh auto 0;display:grid;gap:6px}.mp-card h1{margin:0;font-size:26px}
+.mp-card form{display:grid;gap:12px;margin-top:8px}.mp-code{font-size:28px!important;letter-spacing:.4em;text-align:center}.mp-error{color:var(--red);margin:0;min-height:1.2em;font-size:14px}
+.mp-page .ce-intro{margin-bottom:14px}

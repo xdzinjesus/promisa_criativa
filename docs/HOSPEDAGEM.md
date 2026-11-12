@@ -57,7 +57,20 @@ O painel precisa de duas informações da sua Cloudflare, guardadas na Vercel:
 ### Atualizar um site que já está no ar
 Mudou alguma coisa? No Painel do cliente, toque em **🚀 Publicar na Cloudflare** de novo (ele salva por cima do mesmo site) e, na janela, toque em **Atualizar site**. O endereço continua o mesmo. Para tirar do ar: **Tirar do ar**, na mesma janela.
 
-## 4. Ligar o domínio do cliente (ex.: barbearianavalha.com.br)
+## 4. Dar ao cliente acesso para editar o próprio site ("Meu site")
+
+O cliente edita **só o site dele** (textos, preços, fotos, promoção, horários). Ele não vê o seu painel. **Quem controla é você.**
+
+1. Painel → **Mais** → **🧩 Painel do cliente** → monte (ou abra) o site do cliente.
+2. Embaixo da prévia, em **🔑 Acesso do cliente**, toque em **Dar acesso ao cliente**.
+3. Aparecem um **link** e um **código de 6 números**. **Anote o código: ele aparece só nessa hora.** Toque em **📲 Enviar no WhatsApp** para mandar os dois ao cliente.
+4. O cliente abre o link, digita o código e edita. Ao tocar em **Salvar e publicar**, o site dele atualiza sozinho na Cloudflare (no mesmo endereço e domínio). Você recebe um aviso no Discord (`🚀・sites-no-ar`).
+
+**Seu controle (Mais → 🔐 Acessos dos clientes):** lista de todos os clientes com acesso, quando entraram e quantas vezes salvaram, e os botões **⛔ Cortar acesso** (o site continua no ar, só a edição para) e **🔄 Novo link e código** (o antigo para de funcionar). Para trazer as edições do cliente para o seu painel: no editor do mesmo site, **⬇️ Trazer edições do cliente**.
+
+**Segurança:** o link tem uma parte secreta longa; o código fica guardado embaralhado; 5 códigos errados bloqueiam por 15 minutos; a entrada do cliente vale 2 horas; no máximo 30 salvamentos por dia; tudo o que o cliente envia é limpo no servidor antes de publicar.
+
+## 5. Ligar o domínio do cliente (ex.: barbearianavalha.com.br)
 
 1. Na janela **🌐 Publicar site**, em **Domínio do cliente**, digite o domínio (sem `www`) e toque em **Ligar domínio**.
 2. O painel cria o domínio na sua Cloudflare e mostra **dois "servidores DNS"** (parecidos com `ana.ns.cloudflare.com`).
@@ -68,7 +81,7 @@ Mudou alguma coisa? No Painel do cliente, toque em **🚀 Publicar na Cloudflare
 
 Se aparecer o aviso de **"endereços antigos neste domínio"** (por exemplo, um e-mail do cliente já configurado), **não continue sozinho**: peça ajuda, para não derrubar o e-mail dele.
 
-## 5. Por dentro (para agentes)
+## 6. Por dentro (para agentes)
 
 1. O site fica no navegador (IndexedDB) e é enviado ao **Blob privado** da Vercel pela sincronização (`src/cloud-client.js`, chaves `sites:` e `sitefiles:`).
 2. A janela de publicação espera o "Salvo online" e chama `POST /api/publish` (`action: publish`, só com sessão do dono).
@@ -76,5 +89,6 @@ Se aparecer o aviso de **"endereços antigos neste domínio"** (por exemplo, um 
 4. O resultado (endereço `.pages.dev`, domínio) fica em `lib/publish-store.js`. O Discord recebe o aviso em `🚀・sites-no-ar`.
 5. Domínio: cria a *zone* na conta, liga `apex` e `www` ao projeto e cria os CNAME com proxy. Nunca apaga registros que já existem.
 6. A chave da Cloudflare só é lida no servidor: nunca vai para o navegador, para as respostas nem para os registros.
+7. "Meu site": `api/meu-site.js` + `lib/client-access-handler.js` + `lib/client-access-store.js` (Blob `promisa/client-access/v1/`), página `meu-site.html` + `src/client-portal.js`, controle em `src/client-access-ui.js`. O cliente salva o rascunho limpo (`cleanDraft`), o servidor gera o HTML (`renderSite`) e publica no mesmo projeto da Cloudflare do site.
 
 **Custos:** a Cloudflare Pages é grátis no uso da Promisa. Na Vercel, cada publicação gasta poucas leituras do Blob (os arquivos do site). Para vender o "Painel do cliente" para clientes finais, com login próprio, o recomendado é a Vercel **Pro** (o plano grátis não permite uso comercial).

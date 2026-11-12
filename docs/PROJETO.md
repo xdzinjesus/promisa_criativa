@@ -45,6 +45,7 @@ O site e o sistema de gestão da **Promisa Criação Digital**, uma agência de 
 | Formulário de briefing (`/briefing/<token>`) | `api/briefing.js`, `lib/briefing-*` |
 | Diagnóstico grátis de sites (`/diagnostico/<token>`) | `api/diagnostico.js`, `lib/diagnostico-*` |
 | Publicar site de cliente na Cloudflare Pages (com domínio); passo a passo em `docs/HOSPEDAGEM.md` | `api/publish.js`, `lib/cloudflare-pages.js`, `lib/publish-*` |
+| Painel do cliente (modelos por ramo), "Meu site" do cliente (link + código) e controle de acessos | `src/client-*.js`, `api/meu-site.js`, `lib/client-access-*`, `meu-site.html` |
 | Discord: avisos, dashboard, histórico e central de botões | `api/discord.js`, `lib/discord*.js` (ver `docs/DISCORD.md`) |
 | Instagram: métricas, metas e "como conheceu" | `api/instagram.js`, `lib/instagram*.js` (ver `docs/INSTAGRAM.md`) |
 | Entregas, prompts de IA por plano, LGPD, backup e app no iPhone | `private/panel.js`, `src/*` |

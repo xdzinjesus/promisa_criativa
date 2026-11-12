@@ -92,6 +92,48 @@
       ]
     },
     {
+      "source": "/meu-site.html",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    },
+    {
+      "source": "/meu-site/:token",
+      "headers": [
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; frame-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; upgrade-insecure-requests"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "no-referrer"
+        }
+      ]
+    },
+    {
       "source": "/briefing.html",
       "headers": [
         {
@@ -224,6 +266,9 @@
     },
     "api/instagram.js": {
       "maxDuration": 60
+    },
+    "api/meu-site.js": {
+      "maxDuration": 60
     }
   },
   "rewrites": [
@@ -234,6 +279,10 @@
     {
       "source": "/catalogo",
       "destination": "/api/access?view=catalogo"
+    },
+    {
+      "source": "/meu-site/:token",
+      "destination": "/meu-site.html"
     },
     {
       "source": "/briefing/:token",
