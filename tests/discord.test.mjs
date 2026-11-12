@@ -268,7 +268,7 @@ test('setup sem permissão devolve erro claro e register envia os 8 comandos', a
   const status = await make({ channels: allChannels() }).discord.status();
   assert.deepEqual(status.channelsFound.sort(), [...SETUP_CHANNELS].sort());
   assert.equal(status.commandsRegistered, false);
-  assert.equal(status.appId, 'APP1'); assert.equal(status.permissions, 93200);
+  assert.equal(status.appId, 'APP1'); assert.equal(status.permissions, 536964112);
 });
 
 // ---------- dados (cadastros criptografados) ----------
@@ -782,8 +782,8 @@ test('embeds: respeitam os limites do Discord e botões só aceitam https', () =
   assert.deepEqual(linkRow([{ label: 'Abrir', url: 'https://a.test/x' }, { label: 'Ruim', url: 'javascript:alert(1)' }, { label: 'Http', url: 'http://a.test' }]), { type: 1, components: [{ type: 2, style: 5, label: 'Abrir', url: 'https://a.test/x' }] });
   assert.equal(linkRow([{ label: 'x', url: 'http://a.test' }]), null);
   assert.equal(progressBar(32), '▰▰▰▱▱▱▱▱▱▱ 32%');
-  assert.equal(inviteUrl('APP1'), 'https://discord.com/oauth2/authorize?client_id=APP1&permissions=93200&scope=bot+applications.commands');
-  assert.equal(BOT_PERMISSIONS, 1024 + 2048 + 16 + 16384 + 65536 + 8192);
+  assert.equal(inviteUrl('APP1'), 'https://discord.com/oauth2/authorize?client_id=APP1&permissions=536964112&scope=bot+applications.commands');
+  assert.equal(BOT_PERMISSIONS, 1024 + 2048 + 16 + 16384 + 65536 + 8192 + 536870912);
 });
 
 test('dashboard: primeira vez cria e fixa; a segunda EDITA a mesma mensagem (inclusive em outra instância)', async () => {
