@@ -52,3 +52,14 @@
 .mp-wrap{width:min(1240px,100% - 32px);margin:0 auto 40px}.mp-card{max-width:420px;margin:8vh auto 0;display:grid;gap:6px}.mp-card h1{margin:0;font-size:26px}
 .mp-card form{display:grid;gap:12px;margin-top:8px}.mp-code{font-size:28px!important;letter-spacing:.4em;text-align:center}.mp-error{color:var(--red);margin:0;min-height:1.2em;font-size:14px}
 .mp-page .ce-intro{margin-bottom:14px}
+/* Cor livre, foto por item e formulário de acesso */
+.ce-custom{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:10px;border-radius:14px;border:1px dashed #ffffff24}.ce-custom.is-on{border-style:solid;border-color:#b78cff88;background:#9c6aff12}
+.ce-picker{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--tx);cursor:pointer}
+.ce-picker input{width:44px;height:44px;padding:0;border:2px solid #ffffff2a;border-radius:12px;background:none;cursor:pointer}.ce-picker input::-webkit-color-swatch-wrapper{padding:3px}.ce-picker input::-webkit-color-swatch{border:0;border-radius:8px}
+.ce-custom .sec{min-height:36px;padding:6px 12px;font-size:12.5px}
+.ce-rowpic{background:#ffffff0a center/cover no-repeat!important;font-size:16px}
+.ce-guide-note{text-align:center;max-width:520px}
+.ca-new{display:grid;gap:12px;margin-bottom:16px}.ca-two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ca-new input,.ca-new select,.ca-actions select{width:100%;min-width:0;background:#ffffff08;border:1px solid #ffffff1c;border-radius:11px;color:var(--tx);padding:10px 12px;font:inherit;font-size:14px}
+.ca-actions select{width:auto}.ca-new select option,.ca-actions select option{background:#121019;color:#f3f1f8}
+@media(max-width:600px){.ca-two{grid-template-columns:1fr}}

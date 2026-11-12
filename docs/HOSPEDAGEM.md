@@ -71,14 +71,14 @@ O cliente **não consegue trocar de plano nem de ramo**: o servidor confere. Odo
 
 ## 4.1 Dar ao cliente acesso para editar o próprio site ("Meu site")
 
-O cliente edita **só o site dele** (textos, preços, fotos, promoção, horários). Ele não vê o seu painel. **Quem controla é você.**
+O cliente edita **só o site dele** (textos, preços, cores, fotos em qualquer parte, promoção, horários). Ele não vê o seu painel. **Quem controla é você**, numa tela separada do editor:
 
-1. Painel → **Mais** → **🧩 Painel do cliente** → monte (ou abra) o site do cliente.
-2. Embaixo da prévia, em **🔑 Acesso do cliente**, toque em **Dar acesso ao cliente**.
-3. Aparecem um **link** e um **código de 6 números**. **Anote o código: ele aparece só nessa hora.** Toque em **📲 Enviar no WhatsApp** para mandar os dois ao cliente.
-4. O cliente abre o link, digita o código e edita. Ao tocar em **Salvar e publicar**, o site dele atualiza sozinho na Cloudflare (no mesmo endereço e domínio). Você recebe um aviso no Discord (`🚀・sites-no-ar`).
+1. Painel → **Mais** → **🔐 Acessos dos clientes**.
+2. Em **➕ Dar acesso a um cliente**, preencha o nome do negócio, o **ramo**, o **plano** e o WhatsApp do cliente. Se quiser, marque "Começar com o site montado no 🧩 Painel do cliente".
+3. Toque em **🔑 Dar acesso**. Aparecem um **link** e um **código de 6 números**. **Anote o código: ele aparece só nessa hora.** Toque em **📲 Enviar no WhatsApp**.
+4. O cliente abre o link, digita o código e edita. Ao tocar em **Salvar e publicar**, o site dele atualiza sozinho na Cloudflare. Você recebe um aviso no Discord (`🚀・sites-no-ar`).
 
-**Seu controle (Mais → 🔐 Acessos dos clientes):** lista de todos os clientes com acesso, quando entraram e quantas vezes salvaram, e os botões **⛔ Cortar acesso** (o site continua no ar, só a edição para) e **🔄 Novo link e código** (o antigo para de funcionar). Para trazer as edições do cliente para o seu painel: no editor do mesmo site, **⬇️ Trazer edições do cliente**.
+**Seu controle (na mesma aba):** lista de todos os clientes com acesso, quando editaram e quantas vezes salvaram; trocar o **plano** (vale no próximo salvamento); **✏️ Abrir no Painel do cliente** (para você mesmo ajustar o site dele); **⛔ Cortar acesso** (o site continua no ar, só a edição para) e **🔄 Novo link e código** (o antigo para de funcionar).
 
 **Segurança:** o link tem uma parte secreta longa; o código fica guardado embaralhado; 5 códigos errados bloqueiam por 15 minutos; a entrada do cliente vale 2 horas; no máximo 30 salvamentos por dia; tudo o que o cliente envia é limpo no servidor antes de publicar.
 

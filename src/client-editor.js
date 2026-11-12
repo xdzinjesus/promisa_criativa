@@ -1,5 +1,4 @@
-import { NICHES, PLANS, SECTION_LABELS, HERO_LABELS, newDraft, renderSite, safeImage } from './client-site-templates.js';
-import { accessBox } from './client-access-ui.js';
+import { NICHES, PLANS, SECTION_LABELS, HERO_LABELS, newDraft, renderSite, safeImage, validHex } from './client-site-templates.js';
 
 // Aba "🧩 Painel do cliente" (demonstração): o que o cliente veria no painel dele.
 // Escolhe o ramo, edita campos guiados e vê o site mudar na hora. O rascunho fica só neste aparelho
@@ -94,10 +93,24 @@ export function mount(root, opts = {}) {
     niche.palettes.slice(0, plan.palettes).forEach(([p, bg], i) => {
       const b = el('button', null, { type: 'button', className: 'ce-color', ariaLabel: `Cores ${i + 1}` });
       b.style.background = `linear-gradient(135deg,${p} 50%,${bg} 50%)`;
-      b.setAttribute('aria-pressed', String(draft.palette === i));
-      b.addEventListener('click', () => { draft.palette = i; rerender(); });
+      b.setAttribute('aria-pressed', String(draft.palette === i && !draft.customColor && !draft.customBg));
+      b.addEventListener('click', () => { draft.palette = i; draft.customColor = ''; draft.customBg = ''; rerender(); });
       colors.append(b);
     });
+    // Cor livre: qualquer cor para o destaque (botões, títulos) e para o fundo.
+    const [baseP, baseBg] = niche.palettes[Math.min(draft.palette || 0, plan.palettes - 1)] || niche.palettes[0];
+    const custom = el('div', null, { className: 'ce-custom' });
+    const picker = (label, key, fallback) => {
+      const w = el('label', null, { className: 'ce-picker' });
+      const input = el('input', null, { type: 'color', value: validHex(draft[key]) || fallback });
+      input.addEventListener('input', () => { draft[key] = input.value; dirty = true; refresh(); custom.classList.add('is-on'); });
+      w.append(input, el('span', label));
+      return w;
+    };
+    const resetColors = el('button', 'Voltar às cores prontas', { type: 'button', className: 'sec', disabled: !draft.customColor && !draft.customBg });
+    resetColors.addEventListener('click', () => { draft.customColor = ''; draft.customBg = ''; rerender(); });
+    custom.append(picker('Cor principal', 'customColor', baseP), picker('Cor de fundo', 'customBg', baseBg), resetColors);
+    if (draft.customColor || draft.customBg) custom.classList.add('is-on');
     const heroStyles = plan.heroStyles.length > 1 ? chips(plan.heroStyles.map(k => [k, HERO_LABELS[k]]), plan.heroStyles.includes(draft.heroStyle) ? draft.heroStyle : 'full', key => { draft.heroStyle = key; rerender(); }) : null;
     // fotos
     const photo = (label, key, max = 1) => {
@@ -127,7 +140,7 @@ export function mount(root, opts = {}) {
       return wrap;
     };
     // lista genérica (itens, perguntas, depoimentos, equipe): campos + subir + remover + adicionar
-    const listEditor = (key, fields, max, addLabel, { fixed = false, photoKey = '' } = {}) => {
+    const listEditor = (key, fields, max, addLabel, { fixed = false, photoKey = '', photoMax = 360 } = {}) => {
       const box = el('div', null, { className: 'ce-items' });
       draft[key] = Array.isArray(draft[key]) ? draft[key] : [];
       if (fixed) while (draft[key].length < max) draft[key].push(Object.fromEntries(fields.map(f => [f.k, ''])));
@@ -140,10 +153,11 @@ export function mount(root, opts = {}) {
           line.append(input);
         }
         if (photoKey) {
-          const pick = el('button', row[photoKey] ? '🖼️' : '📷', { type: 'button', className: 'ce-mv', ariaLabel: row[photoKey] ? 'Trocar ou remover foto' : 'Adicionar foto', title: row[photoKey] ? 'Trocar ou remover foto' : 'Adicionar foto' });
+          const pick = el('button', row[photoKey] ? '' : '📷', { type: 'button', className: 'ce-mv ce-rowpic', ariaLabel: row[photoKey] ? 'Trocar ou remover foto' : 'Adicionar foto', title: row[photoKey] ? 'Trocar ou remover foto' : 'Adicionar foto' });
+          const shown = safeImage(row[photoKey]); if (shown) pick.style.backgroundImage = `url("${shown}")`;
           const file = el('input', null, { type: 'file', accept: 'image/jpeg,image/png,image/webp', hidden: true });
           pick.addEventListener('click', () => { if (row[photoKey] && confirm('Remover esta foto? (Cancelar = escolher outra)')) { row[photoKey] = ''; rerender(); return; } file.click(); });
-          file.addEventListener('change', async () => { try { row[photoKey] = await shrink(file.files[0], 360, 0.8); rerender(); } catch (error) { status.textContent = '⚠️ ' + error.message; } });
+          file.addEventListener('change', async () => { try { row[photoKey] = await shrink(file.files[0], photoMax, 0.76); rerender(); } catch (error) { status.textContent = '⚠️ ' + error.message; } });
           line.append(pick, file);
         }
         if (!fixed) {
@@ -178,15 +192,15 @@ export function mount(root, opts = {}) {
 
     form.append(
       ...(client ? [] : [group('ramo', '🧭 Ramo e plano', el('span', 'Ramo de atividade', { className: 'ce-label' }), niches, el('span', 'Plano do cliente', { className: 'ce-label' }), plans, planInfo)]),
-      group('identidade', '🎨 Identidade e visual', field('Nome do negócio', 'name', { max: 60 }), field('Frase de destaque', 'slogan', { max: 120 }), field('Texto do botão principal', 'ctaLabel', { max: 30, placeholder: niche.cta }), el('span', 'Cores', { className: 'ce-label' }), colors, ...(heroStyles ? [el('span', 'Estilo do topo', { className: 'ce-label' }), heroStyles] : []), photo('Logo', 'logo'), photo('Foto de capa', 'cover')),
+      group('identidade', '🎨 Identidade e visual', field('Nome do negócio', 'name', { max: 60 }), field('Frase de destaque', 'slogan', { max: 120 }), field('Texto do botão principal', 'ctaLabel', { max: 30, placeholder: niche.cta }), el('span', 'Cores prontas', { className: 'ce-label' }), colors, el('span', 'Ou escolha qualquer cor', { className: 'ce-label' }), custom, ...(heroStyles ? [el('span', 'Estilo do topo', { className: 'ce-label' }), heroStyles] : []), photo('Logo', 'logo'), photo('📷 Foto da tela principal (topo)', 'cover')),
       ...(plan.highlights ? [group('destaques', '✦ Destaques do negócio', perks)] : []),
-      group('itens', `📋 ${niche.items}`, ...(niche.noPrices ? [el('p', 'Odontologia: pelas regras do CFO, o site não mostra preços nem promoções.', { className: 'ce-hint' })] : []), listEditor('items', itemFields, plan.items, 'Adicionar')),
+      group('itens', `📋 ${niche.items}`, ...(niche.noPrices ? [el('p', 'Odontologia: pelas regras do CFO, o site não mostra preços nem promoções.', { className: 'ce-hint' })] : []), el('p', 'Toque em 📷 para colocar uma foto em cada item.', { className: 'ce-hint' }), listEditor('items', itemFields, plan.items, 'Adicionar', { photoKey: 'photo', photoMax: 640 })),
       ...(plan.promo && !niche.noPromo ? [group('promo', '🏷️ Promoção', check('Mostrar faixa de promoção no topo', draft.showPromo, on => set('showPromo', on)), field('Texto da promoção', 'promo', { max: 120 }))] : []),
-      group('sobre', '📖 Sobre e fotos', field('Sobre o negócio', 'about', { area: true, max: 600 }), photo(`Galeria`, 'gallery', plan.gallery)),
+      group('sobre', '📖 Sobre e fotos', field('Sobre o negócio', 'about', { area: true, max: 600 }), photo('📷 Foto do "Sobre"', 'aboutPhoto'), photo(`📷 Galeria`, 'gallery', plan.gallery)),
       ...(has('steps') ? [group('steps', '🪜 Como funciona (3 passos)', listEditor('steps', [{ k: 'title', ph: 'Passo', max: 50 }, { k: 'text', ph: 'Explicação curta', max: 140, wide: true }], 3, '', { fixed: true }))] : []),
       ...(has('stats') ? [group('stats', '🔢 Números do negócio', listEditor('stats', [{ k: 'value', ph: 'Número (ex.: 10+)', max: 12, small: true }, { k: 'label', ph: 'O que significa', max: 40 }], 4, '', { fixed: true }))] : []),
       ...(has('team') ? [group('team', '👥 Equipe', listEditor('team', [{ k: 'name', ph: 'Nome', max: 50 }, { k: 'role', ph: 'Função', max: 50 }], 8, 'Adicionar pessoa', { photoKey: 'photo' }))] : []),
-      ...(has('testimonials') ? [group('depo', '💬 Depoimentos', el('p', 'Use só depoimentos reais de clientes (com autorização).', { className: 'ce-hint' }), listEditor('testimonials', [{ k: 'name', ph: 'Nome do cliente', max: 50 }, { k: 'text', ph: 'O que ele disse', max: 300, wide: true, area: true }], 8, 'Adicionar depoimento'))] : []),
+      ...(has('testimonials') ? [group('depo', '💬 Depoimentos', el('p', 'Use só depoimentos reais de clientes (com autorização).', { className: 'ce-hint' }), listEditor('testimonials', [{ k: 'name', ph: 'Nome do cliente', max: 50 }, { k: 'text', ph: 'O que ele disse', max: 300, wide: true, area: true }], 8, 'Adicionar depoimento', { photoKey: 'photo', photoMax: 200 }))] : []),
       ...(has('faq') ? [group('faq', '❓ Perguntas frequentes', listEditor('faq', [{ k: 'q', ph: 'Pergunta', max: 120, wide: true }, { k: 'a', ph: 'Resposta', max: 400, wide: true, area: true }], 10, 'Adicionar pergunta'))] : []),
       ...(plan.sections.length > 1 ? [group('secoes', '👁️ Mostrar ou esconder seções', sections)] : []),
       group('contato', '📞 Contato', field('WhatsApp (com DDD)', 'whatsapp', { type: 'tel', placeholder: '49 99999-9999', max: 20 }), field('Instagram', 'instagram', { placeholder: '@seunegocio', max: 60 }), field('Endereço', 'address', { max: 160 }), field('Horários (um por linha)', 'hours', { area: true, max: 300 }), ...(niche.responsible ? [field('Responsável técnico e CRO (obrigatório)', 'responsible', { max: 100, placeholder: 'Dr(a). Nome · CRO-SC 00000' })] : []))
@@ -195,8 +209,8 @@ export function mount(root, opts = {}) {
 
   // ---- topo, prévia e ações ----
   const head = el('div', null, { className: 'card ce-intro' });
-  if (client) head.append(el('b', `👋 Aqui você edita o site ${client.siteName ? 'de ' + client.siteName : ''} · plano ${(PLANS[draft.plan] || PLANS.profissional).icon} ${(PLANS[draft.plan] || PLANS.profissional).label}`), el('p', 'Troque textos, preços, fotos e contatos e veja o site mudar na hora. Quando terminar, toque em "Salvar e publicar".', { className: 'sub' }));
-  else head.append(el('b', '🧩 Esta é a tela que o seu cliente teria no painel dele.'), el('p', 'Ele troca textos, preços, fotos e contatos, e o site muda na hora. O design fica protegido: ele não consegue "quebrar" o visual. Para dar acesso a ele, use "🔑 Acesso do cliente" (embaixo da prévia).', { className: 'sub' }));
+  if (client) head.append(el('b', `👋 Aqui você edita o site ${client.siteName ? 'de ' + client.siteName : ''} · plano ${(PLANS[draft.plan] || PLANS.profissional).icon} ${(PLANS[draft.plan] || PLANS.profissional).label}`), el('p', 'Toque em cada bloco para abrir. Troque textos, preços e cores, toque em 📷 para colocar fotos em qualquer parte, e veja o site mudar na hora. Quando terminar, toque em "Salvar e publicar".', { className: 'sub' }));
+  else head.append(el('b', '🧩 Esta é a tela que o seu cliente teria no painel dele.'), el('p', 'Ele troca textos, preços, fotos e contatos, e o site muda na hora. O design fica protegido: ele não consegue "quebrar" o visual. Os acessos dos clientes ficam em Mais → 🔐 Acessos dos clientes.', { className: 'sub' }));
   const devices = el('div', null, { className: 'ce-devices' });
   for (const [key, label] of [['mobile', '📱 Celular'], ['desktop', '🖥️ Computador']]) {
     const b = el('button', label, { type: 'button', className: 'ce-chip' });
@@ -251,11 +265,8 @@ export function mount(root, opts = {}) {
   } else {
     actions.append(publish, saveSite, download, reset);
     const guide = el('a', '📘 Como funciona a hospedagem (passo a passo)', { href: 'https://github.com/xdzinjesus/promisa_criativa/blob/main/docs/HOSPEDAGEM.md', target: '_blank', rel: 'noopener noreferrer', className: 'ce-guide' });
-    const access = accessBox({
-      getDraft: () => draft, ensureSaved: async () => { await store(); return draft.siteId; },
-      useDraft: incoming => { draft = { ...newDraft(incoming.niche), ...incoming, siteId: draft.siteId }; draw(); refresh(true); }
-    });
-    preview.append(devices, screen, actions, status, access, guide);
+    const accessHint = el('p', 'Para dar ao cliente o acesso de edição deste site: Mais → 🔐 Acessos dos clientes → "Dar acesso" (dá para usar este rascunho).', { className: 'ce-hint ce-guide-note' });
+    preview.append(devices, screen, actions, status, accessHint, guide);
   }
 
   const toggles = el('div', null, { className: 'ce-toggles' });

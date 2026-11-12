@@ -118,7 +118,7 @@ export function newDraft(niche = 'barbearia', plan = 'premium') {
     version: 3, niche: key, plan: PLANS[plan] ? plan : 'premium', palette: 0, heroStyle: 'full', ctaLabel: '',
     ...d, steps: d.steps || [], stats: d.stats || [], faq: d.faq || [], testimonials: [], team: [], responsible: d.responsible || '',
     whatsapp: '49999999999', instagram: '', address: 'Rua Principal, 100 - Centro, Concórdia/SC',
-    showPromo: !NICHES[key].noPromo, hide: {}, logo: '', cover: '', gallery: []
+    showPromo: !NICHES[key].noPromo, hide: {}, logo: '', cover: '', aboutPhoto: '', customColor: '', customBg: '', gallery: []
   };
 }
 
@@ -126,6 +126,7 @@ export const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&'
 export const safeImage = src => typeof src === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(src) && src.length < 3_000_000 ? src : '';
 export const phoneDigits = value => { const d = String(value || '').replace(/\D/g, ''); return d.length >= 10 && d.length <= 11 ? '55' + d : d.length >= 12 && d.length <= 13 ? d : ''; };
 export const igHandle = value => String(value || '').trim().replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/[/?#].*$/, '').replace(/[^\w.]/g, '').slice(0, 30);
+export const validHex = value => typeof value === 'string' && /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : '';
 export const priceText = value => { const v = String(value || '').trim(); if (!v) return ''; return /^\d+([.,]\d{1,2})?$/.test(v) ? 'R$ ' + v : v; };
 const rgb = hex => { const n = parseInt(String(hex).slice(1), 16); return [n >> 16 & 255, n >> 8 & 255, n & 255]; };
 const isDarkBg = hex => { const [r, g, b] = rgb(hex); return (r * 299 + g * 587 + b * 114) / 1000 < 128; };
@@ -151,7 +152,8 @@ const filled = (...values) => values.some(v => String(v || '').trim());
 
 export function renderSite(draft) {
   const niche = NICHES[draft.niche] || NICHES.barbearia, look = niche.look, plan = PLANS[draft.plan] || PLANS.profissional;
-  const [p, bg] = niche.palettes[Math.min(Number(draft.palette) || 0, plan.palettes - 1)] || niche.palettes[0];
+  const [p0, bg0] = niche.palettes[Math.min(Number(draft.palette) || 0, plan.palettes - 1)] || niche.palettes[0];
+  const p = validHex(draft.customColor) || p0, bg = validHex(draft.customBg) || bg0; // cor livre escolhida pelo dono ou pelo cliente
   const dark = isDarkBg(bg);
   const fg = dark ? '#f5f1ea' : '#1c1915', mut = dark ? '#b8b0a3' : '#615a50', card = dark ? 'rgba(255,255,255,.045)' : '#ffffff', line = dark ? 'rgba(255,255,255,.09)' : 'rgba(20,10,0,.08)';
   const phone = phoneDigits(draft.whatsapp), ig = igHandle(draft.instagram);
@@ -172,10 +174,11 @@ export function renderSite(draft) {
   const priceOf = item => prices && item.price ? `<span class="price">${esc(priceText(item.price))}</span>` : '';
 
   let itemsHtml = '';
-  if (look.layout === 'menu') itemsHtml = `<div class="menu">${items.map(item => `<div class="dish"><div class="dish-top"><b>${esc(item.name)}</b><i aria-hidden="true"></i>${priceOf(item)}</div>${item.desc ? `<p>${esc(item.desc)}</p>` : ''}</div>`).join('')}</div>`;
-  else if (look.layout === 'list') itemsHtml = `<div class="plist">${items.map((item, i) => `<div class="prow"><span class="num">${String(i + 1).padStart(2, '0')}</span><div><b>${esc(item.name)}</b>${item.desc ? `<p>${esc(item.desc)}</p>` : ''}</div>${priceOf(item) || '<span></span>'}${itemAction(item)}</div>`).join('')}</div>`;
-  else if (look.layout === 'products') itemsHtml = `<div class="grid products">${items.map((item, i) => `<article class="card product"><div class="thumb" style="--h:${(i * 47) % 360}deg">${gallery[i + 1] ? `<img src="${gallery[i + 1]}" alt="" loading="lazy">` : `<span aria-hidden="true">${esc(String(item.name).trim().charAt(0).toUpperCase())}</span>`}</div><b>${esc(item.name)}</b>${item.desc ? `<p>${esc(item.desc)}</p>` : ''}<div class="buy">${priceOf(item)}${itemAction(item)}</div></article>`).join('')}</div>`;
-  else itemsHtml = `<div class="grid">${items.map((item, i) => `<article class="card svc">${look.layout === 'cards' ? `<span class="tag">${String(i + 1).padStart(2, '0')}</span>` : `<span class="dot" aria-hidden="true"></span>`}<b>${esc(item.name)}</b>${item.desc ? `<p>${esc(item.desc)}</p>` : ''}<div class="buy">${priceOf(item)}${itemAction(item)}</div></article>`).join('')}</div>`;
+  const pic = item => safeImage(item?.photo);
+  if (look.layout === 'menu') itemsHtml = `<div class="menu">${items.map(item => `<div class="dish${pic(item) ? ' has-pic' : ''}">${pic(item) ? `<img class="dish-pic" src="${pic(item)}" alt="" loading="lazy">` : ''}<div><div class="dish-top"><b>${esc(item.name)}</b><i aria-hidden="true"></i>${priceOf(item)}</div>${item.desc ? `<p>${esc(item.desc)}</p>` : ''}</div></div>`).join('')}</div>`;
+  else if (look.layout === 'list') itemsHtml = `<div class="plist">${items.map((item, i) => `<div class="prow">${pic(item) ? `<img class="num pic" src="${pic(item)}" alt="" loading="lazy">` : `<span class="num">${String(i + 1).padStart(2, '0')}</span>`}<div><b>${esc(item.name)}</b>${item.desc ? `<p>${esc(item.desc)}</p>` : ''}</div>${priceOf(item) || '<span></span>'}${itemAction(item)}</div>`).join('')}</div>`;
+  else if (look.layout === 'products') itemsHtml = `<div class="grid products">${items.map((item, i) => `<article class="card product"><div class="thumb" style="--h:${(i * 47) % 360}deg">${pic(item) || gallery[i + 1] ? `<img src="${pic(item) || gallery[i + 1]}" alt="" loading="lazy">` : `<span aria-hidden="true">${esc(String(item.name).trim().charAt(0).toUpperCase())}</span>`}</div><b>${esc(item.name)}</b>${item.desc ? `<p>${esc(item.desc)}</p>` : ''}<div class="buy">${priceOf(item)}${itemAction(item)}</div></article>`).join('')}</div>`;
+  else itemsHtml = `<div class="grid">${items.map((item, i) => `<article class="card svc">${pic(item) ? `<img class="svc-img" src="${pic(item)}" alt="" loading="lazy">` : look.layout === 'cards' ? `<span class="tag">${String(i + 1).padStart(2, '0')}</span>` : `<span class="dot" aria-hidden="true"></span>`}<b>${esc(item.name)}</b>${item.desc ? `<p>${esc(item.desc)}</p>` : ''}<div class="buy">${priceOf(item)}${itemAction(item)}</div></article>`).join('')}</div>`;
 
   const steps = show('steps') ? list(draft.steps, 3).filter(s => filled(s?.title, s?.text)) : [];
   const stats = show('stats') ? list(draft.stats, 4).filter(s => filled(s?.value, s?.label)) : [];
@@ -258,6 +261,9 @@ footer{padding:44px 0;border-top:1px solid var(--line);color:var(--mut);font-siz
 .quotes{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px}.quote{position:relative}.quote:before{content:"“";font-family:Georgia,serif;font-size:90px;line-height:.6;color:var(--p);opacity:.5;height:34px}.quote p{font-size:16px;color:var(--fg)}.quote b{font-size:15px;color:var(--mut);font-family:var(--body);text-transform:none}
 .faq{display:grid;gap:12px;max-width:820px}.faq details{background:var(--card);border:1px solid var(--line);border-radius:calc(var(--r) * .8);padding:4px 22px}.faq summary{cursor:pointer;list-style:none;font-weight:700;font-size:17px;padding:16px 0;display:flex;justify-content:space-between;gap:12px}.faq summary::-webkit-details-marker{display:none}.faq summary:after{content:"+";color:var(--p);font-size:24px;line-height:1;transition:transform .25s}.faq details[open] summary:after{transform:rotate(45deg)}.faq details p{margin:0 0 18px;color:var(--mut)}
 .legal{font-size:12.5px;opacity:.8}
+.svc-img{width:calc(100% + 20px);margin:-10px -10px 8px;aspect-ratio:16/10;object-fit:cover;border-radius:calc(var(--r) - 4px)}.prow .pic{width:56px;height:56px;border-radius:50%;object-fit:cover}
+.dish.has-pic{display:flex;gap:16px;align-items:flex-start}.dish.has-pic>div{flex:1;min-width:0}.dish-pic{width:64px;height:64px;border-radius:14px;object-fit:cover;flex:none}
+.who{display:flex;align-items:center;gap:10px}.q-face{width:44px;height:44px;border-radius:50%;object-fit:cover}
 @keyframes slide{to{transform:translateX(-100%)}}@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
 @media(max-width:820px){.hero.split .wrap{grid-template-columns:1fr;padding:110px 0 70px;gap:36px}.art{aspect-ratio:4/3;transform:none}.steps{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.stats div:nth-child(3){border-left:0}.stats div:nth-child(n+3){border-top:1px solid rgba(255,255,255,.12)}}
 @media(max-width:820px){.top nav a:not(.pill){display:none}.perks .wrap{grid-template-columns:1fr}.perk+.perk{border-left:0;border-top:1px solid var(--line)}.about{grid-template-columns:1fr;gap:40px}.about .photo:before{inset:12px -10px -12px 10px}
@@ -278,10 +284,10 @@ ${highlights.length && !marquee.length ? `<div class="perks"><div class="wrap">$
 ${items.length ? `<section id="itens"><div class="wrap"><div class="head"><div><span class="eyebrow">${esc(niche.items)}</span><h2>${look.layout === 'menu' ? 'Nosso cardápio' : look.layout === 'products' ? 'Destaques da loja' : 'O que fazemos'}</h2></div><p class="lead">${look.layout === 'products' ? 'Gostou de algo? Toque em "Quero este" e fale direto com a gente.' : prices ? 'Preços claros, sem surpresa. Escolha e fale com a gente pelo WhatsApp.' : 'Fale com a gente pelo WhatsApp e agende sua avaliação.'}</p></div>${itemsHtml}</div></section>` : ''}
 ${steps.length ? section('como-funciona', 'Como funciona', 'Simples assim', `<div class="steps">${steps.map(s => `<div class="card"><b>${esc(s.title)}</b><p>${esc(s.text)}</p></div>`).join('')}</div>`, ' style="padding-top:0"') : ''}
 ${stats.length ? `<section style="padding-top:0"><div class="wrap"><div class="stats">${stats.map(s => `<div><b>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`).join('')}</div></div></section>` : ''}
-${show('about') && draft.about ? `<section id="sobre"><div class="wrap about"><div><span class="eyebrow">Sobre nós</span><h2>${name}</h2><p>${esc(draft.about)}</p>${link(wa, WA_SVG + 'Fale com a gente', 'btn')}</div>${gallery[0] ? `<div class="photo"><img src="${gallery[0]}" alt="" loading="lazy"></div>` : `<div class="photo empty" aria-hidden="true"><span>${niche.icon}</span><small>${esc(niche.kicker)}</small></div>`}</div></section>` : ''}
+${show('about') && draft.about ? `<section id="sobre"><div class="wrap about"><div><span class="eyebrow">Sobre nós</span><h2>${name}</h2><p>${esc(draft.about)}</p>${link(wa, WA_SVG + 'Fale com a gente', 'btn')}</div>${safeImage(draft.aboutPhoto) || gallery[0] ? `<div class="photo"><img src="${safeImage(draft.aboutPhoto) || gallery[0]}" alt="" loading="lazy"></div>` : `<div class="photo empty" aria-hidden="true"><span>${niche.icon}</span><small>${esc(niche.kicker)}</small></div>`}</div></section>` : ''}
 ${team.length ? section('equipe', 'Equipe', 'Quem cuida de você', `<div class="team">${team.map(m => { const face = safeImage(m.photo); return `<div class="card member">${face ? `<img class="face" src="${face}" alt="" loading="lazy">` : `<span class="face" aria-hidden="true">${esc(String(m.name).trim().charAt(0).toUpperCase())}</span>`}<b>${esc(m.name)}</b>${m.role ? `<small>${esc(m.role)}</small>` : ''}</div>`; }).join('')}</div>`, ' style="padding-top:0"') : ''}
 ${show('gallery') && gallery.length > 1 && look.layout !== 'products' ? section('fotos', 'Galeria', 'Nosso dia a dia', `<div class="gallery">${gallery.slice(1).map(src => `<img src="${src}" alt="" loading="lazy">`).join('')}</div>`, ' style="padding-top:0"') : ''}
-${testimonials.length ? section('depoimentos', 'Depoimentos', 'Quem conhece, recomenda', `<div class="quotes">${testimonials.map(t => `<div class="card quote"><p>${esc(t.text)}</p>${t.name ? `<b>— ${esc(t.name)}</b>` : ''}</div>`).join('')}</div>`, ' style="padding-top:0"') : ''}
+${testimonials.length ? section('depoimentos', 'Depoimentos', 'Quem conhece, recomenda', `<div class="quotes">${testimonials.map(t => `<div class="card quote"><p>${esc(t.text)}</p>${t.name || safeImage(t.photo) ? `<div class="who">${safeImage(t.photo) ? `<img class="q-face" src="${safeImage(t.photo)}" alt="" loading="lazy">` : ''}${t.name ? `<b>— ${esc(t.name)}</b>` : ''}</div>` : ''}</div>`).join('')}</div>`, ' style="padding-top:0"') : ''}
 ${faqs.length ? section('duvidas', 'Dúvidas', 'Perguntas frequentes', `<div class="faq">${faqs.map((f, i) => `<details${i === 0 ? ' open' : ''}><summary>${esc(f.q)}</summary>${f.a ? `<p>${esc(f.a)}</p>` : ''}</details>`).join('')}</div>`, ' style="padding-top:0"') : ''}
 ${plan.cta && wa ? `<section style="padding-top:0"><div class="wrap"><div class="band"><h2>${esc(niche.band)}</h2>${link(wa, WA_SVG + esc(ctaLabel), 'btn')}</div></div></section>` : ''}
 <section id="contato" style="padding-top:0"><div class="wrap"><div class="head"><div><span class="eyebrow">Contato</span><h2>Venha nos visitar</h2></div></div><div class="info">
@@ -304,18 +310,19 @@ export function cleanDraft(raw, { niche: fixedNiche, plan: fixedPlan } = {}) {
   const planKey = PLANS[fixedPlan] ? fixedPlan : PLANS[input.plan] ? input.plan : 'profissional', plan = PLANS[planKey];
   const base = newDraft(niche);
   const palette = Number.isInteger(input.palette) && input.palette >= 0 && input.palette < plan.palettes ? input.palette : 0;
+  const photoOf = value => safeImage(value);
   const hide = {};
   for (const key of Object.keys(SECTION_LABELS)) if (input.hide?.[key] === true) hide[key] = true;
   return {
-    version: 3, niche, plan: planKey, palette, heroStyle: plan.heroStyles.includes(input.heroStyle) ? input.heroStyle : 'full', ctaLabel: str(input.ctaLabel, 30),
+    version: 3, niche, plan: planKey, palette, customColor: validHex(input.customColor), customBg: validHex(input.customBg), aboutPhoto: photoOf(input.aboutPhoto), heroStyle: plan.heroStyles.includes(input.heroStyle) ? input.heroStyle : 'full', ctaLabel: str(input.ctaLabel, 30),
     name: str(input.name, 60), slogan: str(input.slogan, 120), about: str(input.about, 600), promo: str(input.promo, 120), showPromo: input.showPromo !== false,
     hours: str(input.hours, 300), whatsapp: str(input.whatsapp, 20), instagram: str(input.instagram, 60), address: str(input.address, 160), responsible: str(input.responsible, 100),
     highlights: Array.from({ length: 3 }, (_, i) => str(Array.isArray(input.highlights) ? input.highlights[i] : base.highlights[i], 50)),
-    items: list(input.items, plan.items).map(item => ({ name: str(item?.name, 60), price: str(item?.price, 30), desc: str(item?.desc, 120) })),
+    items: list(input.items, plan.items).map(item => ({ name: str(item?.name, 60), price: str(item?.price, 30), desc: str(item?.desc, 120), photo: photoOf(item?.photo) })),
     steps: list(input.steps, 3).map(s => ({ title: str(s?.title, 50), text: str(s?.text, 140) })),
     stats: list(input.stats, 4).map(s => ({ value: str(s?.value, 12), label: str(s?.label, 40) })),
     faq: list(input.faq, 10).map(f => ({ q: str(f?.q, 120), a: str(f?.a, 400) })),
-    testimonials: list(input.testimonials, 8).map(t => ({ name: str(t?.name, 50), text: str(t?.text, 300) })),
+    testimonials: list(input.testimonials, 8).map(t => ({ name: str(t?.name, 50), text: str(t?.text, 300), photo: photoOf(t?.photo) })),
     team: list(input.team, 8).map(m => ({ name: str(m?.name, 50), role: str(m?.role, 50), photo: safeImage(m?.photo) })),
     hide, logo: safeImage(input.logo), cover: safeImage(input.cover), gallery: list(input.gallery, plan.gallery).map(safeImage).filter(Boolean)
   };
