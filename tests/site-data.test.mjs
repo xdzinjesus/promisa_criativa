@@ -120,3 +120,13 @@ test('revisão 2: nova senha mantém as chaves apagadas; falha ao consultar a pu
   const [status, body] = await actions.publicSave({ siteId: 'z', password: p.password, changes: { a: '1' } });
   assert.equal(status, 502); assert.equal(body.saved, true);
 });
+
+test('revisão 3: desligado com só chaves apagadas continua aplicando as exclusões', async () => {
+  const w = world();
+  const [, on] = await w.actions.admin('admin-data-enable', { siteId: 'd' });
+  await w.actions.publicSave({ siteId: 'd', password: on.password, changes: { promo: 'x' } });
+  await w.actions.publicSave({ siteId: 'd', password: on.password, changes: { promo: null } });
+  await w.actions.admin('admin-data-disable', { siteId: 'd' });
+  const read = withSiteData(async () => ({ site: site() }), w.store, { api: 'x' });
+  assert.match((await read('sites:d')).site.files[0].data, /"removed":\["promo"\]/);
+});
