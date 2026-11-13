@@ -2,6 +2,8 @@ import { createPublishStore } from '../lib/publish-store.js';
 import { createPublishHandler } from '../lib/publish-handler.js';
 import { createCloudflare, configured } from '../lib/cloudflare-pages.js';
 import { readSiteInfo } from '../lib/site-cache.js';
+import { createSiteDataStore, withSiteData } from '../lib/site-data.js';
+import { siteBase } from '../lib/discord-events.js';
 import { events } from '../lib/discord-events.js';
 import { settings, authorized, sameOrigin } from './access.js';
 
@@ -13,7 +15,7 @@ const store = createPublishStore();
 export default createPublishHandler({
   store,
   cloudflare: () => configured() ? createCloudflare({ token: process.env.CLOUDFLARE_API_TOKEN, accountId: process.env.CLOUDFLARE_ACCOUNT_ID }) : null,
-  readSiteInfo,
+  readSiteInfo: withSiteData(readSiteInfo, createSiteDataStore(), { api: siteBase() + '/api/meu-site' }), // embute os "dados ao vivo" quando ligados
   authorized: async req => { const admin = settings(); return Boolean(admin) && Boolean(await authorized(req, admin)); },
   sameOrigin,
   onPublished: info => events.sitePublished(info),
