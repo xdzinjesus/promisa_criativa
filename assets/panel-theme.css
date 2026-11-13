@@ -128,3 +128,8 @@ body.is-partner #cloud-copy,body.is-partner .tb-file,body.is-partner #passkey-op
 /* Responsável pelo cliente */
 .cowner{margin-bottom:8px}.cowner-badge{font-weight:600}
 .pt-me{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:center}.pt-me small{grid-column:1/-1;font-size:12px;opacity:.8}
+.pt-activity summary{cursor:pointer;font-weight:700}.pt-activity select{margin:10px 0;max-width:240px}
+.pt-log{display:grid;gap:2px}.pt-log-row{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid rgba(127,127,127,.12);font-size:13.5px}
+.pt-log-row small{opacity:.7}.pt-log-row.is-del span{color:#fca5a5}
+.charge-row{display:inline-flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:flex-end}.charge-btn{display:inline-flex;align-items:center;padding:8px 12px;border-radius:10px;text-decoration:none;font-weight:600;font-size:13px}
+.charge-btn{background:#16a34a!important;color:#fff!important;border:0!important}.charge-btn:hover{filter:brightness(1.1)}

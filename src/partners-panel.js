@@ -64,6 +64,7 @@ async function draw(root) {
   me.addEventListener('submit', async e => { e.preventDefault(); meSave.disabled = true; try { await api('partner-owner-name', { name: meInput.value }); meSave.textContent = 'Salvo ✓'; setTimeout(() => { meSave.textContent = 'Salvar'; meSave.disabled = false; }, 1500); } catch (error) { alert(error.message); meSave.disabled = false; } });
   root.append(me);
   if (ui.fresh) root.append(credentialsBox(...ui.fresh));
+  root.append(activityCard());
 
   // Novo sócio
   const add = el('details', null, { className: 'card pt-new', open: !partners.length });
@@ -117,6 +118,53 @@ async function draw(root) {
     }
     root.append(card);
   }
+}
+
+// ---- Atividade (quem fez o quê) ----
+const KIND = { sales: 'cliente', exp: 'despesa', projects: 'projeto', bank: 'extrato', products: 'produto', sites: 'site', attachments: 'anexo', settings: 'configuração' };
+const ACT = { create: 'criou', update: 'alterou', delete: 'apagou' };
+function describe(key) {
+  const i = key.indexOf(':'), kind = key.slice(0, i), id = decodeURIComponent(key.slice(i + 1)), S = window.promisaAdapter?.getState?.() || {};
+  const find = (list, field) => (S[list] || []).find(x => String(x.id) === id)?.[field];
+  if (kind === 'sales') { const n = find('sales', 'client'); return n ? `o cliente "${n}"` : 'um cliente'; }
+  if (kind === 'products') { const n = find('products', 'name'); return n ? `o produto "${n}"` : 'um produto'; }
+  if (kind === 'projects') { const n = find('projects', 'title') || find('projects', 'name'); return n ? `o projeto "${n}"` : 'um projeto'; }
+  if (kind === 'exp') { const n = find('exp', 'desc'); return n ? `a despesa "${n}"` : 'uma despesa'; }
+  if (kind === 'bank') return `o extrato de ${id.split('-').reverse().join('/')}`;
+  if (kind === 'settings') return { plan: 'o plano', prospectNotes: 'as anotações', bankRules: 'as regras dos extratos', siteHostingBaseUrl: 'o endereço dos sites', demoMessage: 'a mensagem de demonstração' }[id] || 'uma configuração';
+  return `um ${KIND[kind] || 'registro'}`;
+}
+function activityCard() {
+  const card = el('details', null, { className: 'card pt-activity' });
+  card.append(el('summary', '🕓 Atividade recente (quem fez o quê)'));
+  const body = el('div'); card.append(body);
+  let loaded = false;
+  card.addEventListener('toggle', async () => {
+    if (!card.open || loaded) return; loaded = true;
+    body.replaceChildren(el('p', 'Carregando…', { className: 'sub' }));
+    try {
+      const [h, t] = await Promise.all([fetch('/api/cloud?action=history', { credentials: 'same-origin', cache: 'no-store' }).then(r => r.json().then(d => { if (!r.ok) throw new Error(d.error || 'Não foi possível carregar.'); return d; })), fetch('/api/access?action=team', { credentials: 'same-origin', cache: 'no-store' }).then(r => r.ok ? r.json() : { team: [] })]);
+      const team = t.team || [], name = e => team.find(x => x.id === e.by)?.name || e.name || (e.by === 'owner' ? 'Dono' : 'Sócio');
+      const list = (h.history || []).slice().reverse();
+      body.replaceChildren();
+      if (!list.length) { body.append(el('p', 'Nada registrado ainda. A partir de agora, cada alteração salva online aparece aqui.', { className: 'sub' })); return; }
+      const filter = el('select', null, { ariaLabel: 'Filtrar por pessoa' });
+      filter.append(el('option', 'Todos', { value: '' }), ...team.map(x => el('option', x.name, { value: x.id })));
+      const rows = el('div', null, { className: 'pt-log' });
+      const draw = () => {
+        rows.replaceChildren();
+        for (const e of list.filter(e => !filter.value || e.by === filter.value).slice(0, 150)) {
+          const row = el('div', null, { className: 'pt-log-row' + (e.act === 'delete' ? ' is-del' : '') });
+          row.append(el('small', new Date(e.at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })), el('span', `${name(e)} ${ACT[e.act] || 'alterou'} ${describe(e.key)}`));
+          rows.append(row);
+        }
+        if (!rows.children.length) rows.append(el('p', 'Nada dessa pessoa ainda.', { className: 'sub' }));
+      };
+      filter.addEventListener('change', draw);
+      body.append(filter, rows, el('p', 'Mostra as últimas 300 alterações salvas online.', { className: 'sub' })); draw();
+    } catch (error) { body.replaceChildren(el('p', '⚠️ ' + error.message, { className: 'pub-warn' })); loaded = false; }
+  });
+  return card;
 }
 
 export function mount(root) { if (root) draw(root); }

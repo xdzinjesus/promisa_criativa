@@ -87,7 +87,13 @@ export default async function handler(req, res) {
     if (req.method === 'GET' && action === 'manifest') {
       const { manifest } = await loadManifest();
       if (!access) return json(res, 200, manifest);
-      return json(res, 200, { ...manifest, records: Object.fromEntries(Object.entries(manifest.records || {}).filter(([key]) => access.allowKey(key))) });
+      return json(res, 200, { ...manifest, history: undefined, records: Object.fromEntries(Object.entries(manifest.records || {}).filter(([key]) => access.allowKey(key))) });
+    }
+    // Histórico de quem fez o quê (só o dono): últimas 300 alterações.
+    if (req.method === 'GET' && action === 'history') {
+      if (access) return deny();
+      const { manifest } = await loadManifest();
+      return json(res, 200, { history: Array.isArray(manifest.history) ? manifest.history : [] });
     }
     if (req.method === 'GET' && action === 'vault') {
       const keyring = await vault.get();
@@ -118,7 +124,12 @@ export default async function handler(req, res) {
         });
         return json(res, 200, result);
       }
-      if (action === 'commit') return json(res, 200, await commitOperations(body?.operations));
+      if (action === 'commit') {
+        const by = user.owner ? { id: 'owner' } : { id: user.id, name: user.name };
+        const next = await commitOperations(body?.operations, by);
+        // O histórico é só do dono: o sócio recebe o índice sem ele (e só com os registros liberados).
+        return json(res, 200, access ? { ...next, history: undefined, records: Object.fromEntries(Object.entries(next.records || {}).filter(([key]) => access.allowKey(key))) } : next);
+      }
       // Links de demonstração: criar, listar e desativar (somente com a sessão administrativa).
       if (action === 'share-list' || action === 'share-create') {
         if (!validId(body?.siteId)) return json(res, 400, { error: 'Site inválido.' });
