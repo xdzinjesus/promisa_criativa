@@ -72,7 +72,7 @@ function balanceLine(points) {
   const t0 = Date.parse(points[0].d), t1 = Date.parse(points.at(-1).d), tspan = t1 - t0 || 1;
   const X = d => L + (W - L - 6) * (Date.parse(d) - t0) / tspan, Y = v => T + (H - B - T) * (hi - v) / span;
   const s = svg('svg', { viewBox: `0 0 ${W} ${H}`, class: 'bd-svg', role: 'img', 'aria-label': 'Linha do resultado acumulado' });
-  for (const v of [lo, (lo + hi) / 2, hi]) { s.append(svg('line', { x1: L, x2: W, y1: Y(v), y2: Y(v), class: 'bd-grid' })); const t = svg('text', { x: L - 6, y: Y(v) + 4, class: 'bd-axis', 'text-anchor': 'end' }); t.textContent = Rk(v); s.append(t); }
+  for (const v of [...new Set([lo, 0, hi])]) { /* mínimo, zero e máximo */ s.append(svg('line', { x1: L, x2: W, y1: Y(v), y2: Y(v), class: 'bd-grid' })); const t = svg('text', { x: L - 6, y: Y(v) + 4, class: 'bd-axis', 'text-anchor': 'end' }); t.textContent = Rk(v); s.append(t); }
   s.append(svg('line', { x1: L, x2: W, y1: Y(0), y2: Y(0), class: 'bd-zero' }));
   const line = points.map((p, i) => `${i ? 'L' : 'M'}${X(p.d).toFixed(1)},${Y(p.v).toFixed(1)}`).join('');
   const last = points.at(-1).v >= 0 ? 'in' : 'out';
@@ -130,7 +130,7 @@ export function renderDashboard(root, d, { onCategory, onSearch } = {}) {
   const lists = el('div', null, { className: 'grid bank-grid' });
   lists.append(
     barList('Gastos por categoria', d.categorias, { empty: 'Nenhuma saída no período.', onPick: x => onCategory?.(x.cat) }),
-    barList('Onde você mais gastou', d.topSaidas, { empty: 'Nenhuma saída no período.', label: x => x.label, detail: x => `· ${x.count}x`, onPick: x => onSearch?.(x.key) }),
-    barList('De onde mais entrou dinheiro', d.topEntradas, { empty: 'Nenhuma entrada no período.', label: x => x.label, detail: x => `· ${x.count}x`, onPick: x => onSearch?.(x.key) }));
+    barList('Onde você mais gastou', d.topSaidas, { empty: 'Nenhuma saída no período.', label: x => x.label, detail: x => `· ${x.count}x`, onPick: x => onSearch?.(x.key, x.label) }),
+    barList('De onde mais entrou dinheiro', d.topEntradas, { empty: 'Nenhuma entrada no período.', label: x => x.label, detail: x => `· ${x.count}x`, onPick: x => onSearch?.(x.key, x.label) }));
   root.append(lists);
 }

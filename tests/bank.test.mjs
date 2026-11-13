@@ -135,3 +135,14 @@ test('Nubank real: Pix no Crédito (mesmo Identificador), OFX e CSV do mesmo mê
   const d = dashboard(months, { period: 'tudo', today: '2026-10-31' });
   assert.equal(d.summary.entradas, 1000, 'Pix no crédito e aplicação ficam fora'); assert.equal(d.summary.saidas, 8); assert.equal(d.summary.neutros, 2);
 });
+
+test('revisão: gastos por categoria só com saídas; contas diferentes no CSV não se misturam', async () => {
+  const { summary: sum } = await import('../src/bank.js');
+  const s = sum([{ v: -100, cat: 'Pessoal' }, { v: 200, cat: 'Pessoal' }]);
+  assert.deepEqual(s.gastosPorCategoria, [{ cat: 'Pessoal', total: 100 }]);
+  const csv = 'Data;Descrição;Valor\n03/11/2026;Tarifa mensal;-10,00';
+  const a = parseCSV(csv, 'Conta A'), b = parseCSV(csv, 'Conta B');
+  assert.notEqual(a.tx[0].id, b.tx[0].id);
+  let { months } = mergeImport([], a); assert.equal(mergeImport(months, b).added, 1);
+  assert.equal(parseCSV(csv, 'Conta A').tx[0].id, a.tx[0].id, 'mesmo nome = mesma conta');
+});

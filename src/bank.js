@@ -117,8 +117,8 @@ export function parseCSV(text, account = '') {
   for (const t of list) if (t.fitid) count.set(t.fitid, (count.get(t.fitid) || 0) + 1);
   for (const t of list) if (t.fitid && count.get(t.fitid) > 1 && t.v < 0) t.fitid += ':reversal';
   const acc = clean(account, 60) || (nuConta ? 'Nubank' : nuCartao ? 'Nubank cartão' : 'Conta');
-  // O nome da conta não entra no identificador: importar o mesmo período com outro nome não duplica.
-  return { account: acc, tx: withIds(list, nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : acc, { byAccount: false }), balance: null, kind: nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : 'csv' };
+  // Identidade da conta: o nome que você digitou (contas diferentes não se misturam); sem nome, uma identidade fixa (o nome do arquivo nunca entra).
+  return { account: acc, tx: withIds(list, nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : clean(account) ? 'conta:' + norm(account) : 'csv'), balance: null, kind: nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : 'csv' };
 }
 export function parseStatement(name, text, account) {
   if (/\.ofx$/i.test(name) || /<OFX>/i.test(text)) { const r = parseOFX(text); if (account) { r.account = clean(account, 60); } return r; }
@@ -191,15 +191,17 @@ export function applyRule(months, word, cat) {
 
 export function summary(tx = []) {
   let entradas = 0, saidas = 0; const cats = new Map();
-  let neutros = 0;
+  let neutros = 0; const gastos = new Map();
   for (const t of tx) {
     if (NEUTRAL.has(t.cat)) { neutros++; continue; }
-    if (t.v > 0) entradas += t.v; else saidas += -t.v;
+    if (t.v > 0) entradas += t.v; else { saidas += -t.v; gastos.set(t.cat, (gastos.get(t.cat) || 0) - t.v); }
     cats.set(t.cat, (cats.get(t.cat) || 0) + t.v);
   }
   const round = n => Math.round(n * 100) / 100;
   return { entradas: round(entradas), saidas: round(saidas), resultado: round(entradas - saidas), count: tx.length, neutros,
-    porCategoria: [...cats.entries()].map(([cat, total]) => ({ cat, total: round(total) })).sort((a, b) => Math.abs(b.total) - Math.abs(a.total)) };
+    porCategoria: [...cats.entries()].map(([cat, total]) => ({ cat, total: round(total) })).sort((a, b) => Math.abs(b.total) - Math.abs(a.total)),
+    // Só as saídas de cada categoria (uma entrada na mesma categoria não esconde o gasto).
+    gastosPorCategoria: [...gastos.entries()].map(([cat, total]) => ({ cat, total: round(total) })).sort((a, b) => b.total - a.total) };
 }
 // Recebimento que bate com uma venda fechada e ainda não paga (mesmo valor, até 60 dias depois da venda).
 export function matchSale(t, sales = []) {
@@ -305,7 +307,7 @@ export function dashboard(months, { period = 'mes', acc = '', today }) {
     delta: { entradas: prev.length ? change(s.entradas, p.entradas) : null, saidas: prev.length ? change(s.saidas, p.saidas) : null },
     gastoPorDia: Math.round(s.saidas / days * 100) / 100,
     series: monthlySeries(tx, r.from, r.to), saldo: cumulative(tx),
-    categorias: s.porCategoria.filter(c => c.total < 0).map(c => ({ cat: c.cat, total: -c.total })),
+    categorias: s.gastosPorCategoria,
     topSaidas: topGroups(tx, 'out'), topEntradas: topGroups(tx, 'in'),
   };
 }
