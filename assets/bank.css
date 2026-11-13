@@ -1,0 +1,21 @@
+/* Aba 🏦 Extratos */
+.bank-import .row,.bank-top,.bank-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bank-import input[type=file]{flex:1;min-width:220px}
+.bank-import details{margin-top:8px}.bank-import details p{margin:6px 0}
+.bank-note{white-space:pre-wrap;font:inherit;font-size:13px;margin:10px 0 0;padding:10px;border-radius:10px;background:rgba(37,99,235,.08)}
+.bank-top{margin:4px 0 12px}.bank-top select{max-width:260px}
+.bank-bars{display:flex;align-items:flex-end;gap:10px;height:120px;margin-top:10px;overflow-x:auto}
+.bank-bar{flex:1;min-width:42px;text-align:center}.bank-bar small{display:block;margin-top:4px;font-size:11px}
+.bank-pair{display:flex;align-items:flex-end;justify-content:center;gap:3px;height:92px}
+.bank-pair span{width:12px;border-radius:4px 4px 0 0;min-height:2px}.bank-pair .in{background:var(--grn,#16a34a)}.bank-pair .out{background:var(--red,#dc2626)}
+.bank-cat{position:relative;display:flex;justify-content:space-between;gap:8px;width:100%;margin-top:8px;padding:8px 10px;border:0;border-radius:10px;background:rgba(127,127,127,.08);color:inherit;font:inherit;text-align:left;cursor:pointer;overflow:hidden}
+.bank-cat span,.bank-cat b{position:relative;z-index:1}.bank-cat i{position:absolute;left:0;top:0;bottom:0;background:rgba(220,38,38,.16)}
+.bank-filters{margin:10px 0}.bank-filters input{flex:1;min-width:180px}
+.bank-item{gap:10px;align-items:flex-start}.bank-item>div:first-child{min-width:0;overflow-wrap:anywhere}
+.bank-right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}.bank-right select{max-width:190px;font-size:13px}
+.bank-match{margin-top:6px;font-size:13px}
+.bank-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+@media (max-width:600px){.bank-item{flex-direction:column}.bank-right{flex-direction:row;align-items:center;width:100%;justify-content:space-between}}
+#bankRoot .bank-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+#bankRoot .bank-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+#bankRoot .bank-kpis b{overflow-wrap:anywhere}
