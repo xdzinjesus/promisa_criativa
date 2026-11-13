@@ -91,7 +91,7 @@ O cliente edita **só o site dele** (textos, preços, cores, fotos em qualquer p
 Para o site que **você fez** (um `index.html` ou uma pasta) e que tem **uma área administrativa própria** (ex.: cardápio do dia). Sem isso, o que o cliente salva fica só no navegador dele.
 
 1. Anexe o site no painel (HTML ou pasta) e abra **🌐 Publicar**.
-2. Publique (se ainda não publicou) e, no bloco **⚡ Dados ao vivo**, toque em **Ligar dados ao vivo**.
+2. O painel **descobre sozinho** se o site tem área administrativa, onde ela abre (`#admin`, `#painel`, `admin.html`…) e como ela salva. Se for compatível, **liga sozinho** na primeira vez (se você tocar em **⛔ Desligar**, fica desligado). Se não for, ele explica o motivo (sem área, servidor próprio como Firebase, ou IndexedDB) e você ainda pode tocar em **Ligar dados ao vivo** para testar.
 3. Anote a **senha** (aparece só nessa hora) e toque em **📲 Enviar instruções no WhatsApp**.
 4. Toque em **Atualizar site** uma vez (o modo edição entra no ar).
 5. O cliente abre o endereço de edição (`endereço-do-site/#admin` se o site já usa `#admin`, senão `endereço-do-site/#promisa-admin`; o painel mostra o certo), usa a área administrativa do site normalmente e salva. Se o site salva **baixando um `index.html` novo** (ex.: o site do padel), o sistema não baixa nada: publica direto. Se não, ele toca em **🚀 Publicar para todos**. A senha é pedida uma vez. Em até 1 minuto, todo mundo vê.
