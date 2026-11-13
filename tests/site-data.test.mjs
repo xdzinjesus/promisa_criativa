@@ -87,3 +87,23 @@ test('dados ao vivo: site que salva gerando um index.html novo (bloco <script ty
   assert.ok(html.includes('const re=/<script type="application\\/json" id="dados">/;'), 'código do site intacto');
   assert.equal(injectSiteData({ files: [{ path: 'index.html', data: html }] }, { siteId: 'p', embedded: { dados: '{"quadras":[]}' }, api: 'x' }).files[0].data.match(/__PROMISA_DADOS__=/g).length, 1, 'sem duplicar');
 });
+
+test('revisão: lote grande demais dá erro, aspas simples no bloco, chaves apagadas chegam aos visitantes, falha de leitura interrompe', async () => {
+  const w = world();
+  const [, on] = await w.actions.admin('admin-data-enable', { siteId: 'r' });
+  const many = Object.fromEntries(Array.from({ length: 501 }, (_, i) => ['k' + i, 'v']));
+  assert.equal((await w.actions.publicSave({ siteId: 'r', password: on.password, changes: many }))[0], 400, 'não descarta em silêncio');
+  assert.equal((await w.actions.publicSave({ siteId: 'r', password: on.password, embedded: { a: '1', b: '1', c: '1', d: '1', e: '1', f: '1' } }))[0], 400);
+  await w.actions.publicSave({ siteId: 'r', password: on.password, changes: { menu: 'x', velho: 'y' } });
+  await w.actions.publicSave({ siteId: 'r', password: on.password, changes: { velho: null }, embedded: { dados: '{"n":2}' } });
+  assert.deepEqual((await w.store.get('r')).removed, ['velho']);
+  const page = "<html><head></head><body><script id='dados' type='application/json'>{\"n\":1}</script></body></html>";
+  const read = withSiteData(async () => ({ site: { htmlPath: 'index.html', files: [{ path: 'index.html', data: page }] } }), w.store, { api: 'x' });
+  const html = (await read('sites:r')).site.files[0].data;
+  assert.ok(html.includes(`<script id='dados' type='application/json'>{"n":2}</script>`), 'aspas simples trocadas');
+  assert.match(html, /"removed":\["velho"\]/);
+  await w.actions.publicSave({ siteId: 'r', password: on.password, changes: { velho: 'de volta' } });
+  assert.deepEqual((await w.store.get('r')).removed, [], 'chave recriada sai da lista');
+  const broken = withSiteData(async () => ({ site: { files: [] } }), { get: async () => { throw new Error('blob fora'); } }, { api: 'x' });
+  await assert.rejects(broken('sites:r'), /blob fora/);
+});

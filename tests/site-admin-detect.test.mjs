@@ -33,3 +33,8 @@ test('o modo edição publicado já sabe o endereço da área administrativa', (
   const html = injectSiteData(site, { siteId: 's', api: 'x' }).files[0].data;
   assert.match(html, /"admin":"#adm"/);
 });
+
+test('detecta bloco com aspas simples e atributos em outra ordem', () => {
+  const d = detectAdmin([f('index.html', "<script id='dados' type='application/json'>{}</script><script>if(location.hash==='#admin')a();URL.createObjectURL(b)</script>")]);
+  assert.deepEqual(d.blocks, ['dados']); assert.equal(d.ok, true);
+});
