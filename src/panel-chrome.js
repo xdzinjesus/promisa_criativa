@@ -29,14 +29,15 @@ const ACTIONS = [
 // ---- busca rápida ----
 let open = null;
 function palette(mode = 'all') {
-  if (open) { open.remove(); open = null; }
+  if (open) open.close();
   const overlay = el('div', null, { className: 'pc-overlay', role: 'dialog', ariaLabel: 'Busca rápida', ariaModal: 'true' });
   const box = el('div', null, { className: 'pc-box' });
   const input = el('input', null, { type: 'search', placeholder: mode === 'new' ? 'O que você quer criar?' : 'Ir para… (digite: clientes, instagram, backup…)', ariaLabel: 'Buscar', autocomplete: 'off' });
   const list = el('div', null, { className: 'pc-list', role: 'listbox' });
   box.append(input, list); overlay.append(box);
   let items = [], index = 0;
-  const close = () => { overlay.remove(); open = null; document.removeEventListener('keydown', onKey, true); };
+  // Toda forma de fechar passa por aqui: tira a janela e para de escutar o teclado.
+  const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey, true); if (open?.overlay === overlay) open = null; };
   const run = item => { close(); item?.run(); };
   const norm = text => String(text).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   function draw() {
@@ -63,14 +64,15 @@ function palette(mode = 'all') {
   }
   function onKey(event) {
     if (event.key === 'Escape') { event.preventDefault(); close(); }
+    else if (!overlay.contains(event.target) && event.target !== document.body) return;
     else if (event.key === 'ArrowDown') { event.preventDefault(); index = Math.min(items.length - 1, index + 1); draw(); }
     else if (event.key === 'ArrowUp') { event.preventDefault(); index = Math.max(0, index - 1); draw(); }
-    else if (event.key === 'Enter') { event.preventDefault(); run(items[index]); }
+    else if (event.key === 'Enter' && event.target === input) { event.preventDefault(); run(items[index]); } // num resultado focado (Tab), o Enter abre aquele botão
   }
   input.addEventListener('input', () => { index = 0; draw(); });
   overlay.addEventListener('click', event => { if (event.target === overlay) close(); });
   document.addEventListener('keydown', onKey, true);
-  document.body.append(overlay); open = overlay;
+  document.body.append(overlay); open = { overlay, close };
   draw(); input.focus();
 }
 
@@ -99,6 +101,6 @@ function mountTopbar() {
 }
 
 document.addEventListener('keydown', event => {
-  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); open ? (open.remove(), open = null) : palette('all'); }
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') { event.preventDefault(); open ? open.close() : palette('all'); }
 });
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mountTopbar); else mountTopbar();
