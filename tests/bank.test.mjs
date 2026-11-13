@@ -21,7 +21,7 @@ test('lê valores e datas nos formatos dos bancos', () => {
 
 test('OFX (SGML): lançamentos, conta, saldo e categorias automáticas', () => {
   const r = parseOFX(OFX);
-  assert.equal(r.account, 'Banco 0341 · conta 3456-7'); assert.equal(r.balance, 2097.6); assert.equal(r.tx.length, 4);
+  assert.equal(r.account, 'Itaú · conta 3456-7'); assert.equal(r.balance, 2097.6); assert.equal(r.tx.length, 4);
   assert.deepEqual(r.tx.map(t => [t.d, t.v]), [['2026-11-03', 1500], ['2026-11-05', -89.9], ['2026-11-05', -12.5], ['2026-10-20', -300]]);
   const { months, added } = mergeImport([], r, {}, Date.parse('2026-11-30'));
   assert.equal(added, 4); assert.deepEqual(months.map(m => m.id), ['2026-11', '2026-10']);
@@ -78,4 +78,28 @@ test('sincronização online aceita o registro mensal do extrato', async () => {
   const { validKey } = await import('../lib/cloud-store.js');
   assert.equal(validKey('bank:2026-11'), true);
   assert.equal(validKey('banco:2026-11'), false);
+});
+
+test('dashboard: período, comparação justa, séries, maiores gastos e Nubank', async () => {
+  const { periodRange, dashboard, cleanName, keywordOf: kw } = await import('../src/bank.js');
+  assert.deepEqual(periodRange('mes', '2026-11-13'), { from: '2026-11-01', to: '2026-11-30', prevFrom: '2026-10-01', prevTo: '2026-10-13', months: 1 });
+  assert.deepEqual(periodRange('mespassado', '2026-11-13'), { from: '2026-10-01', to: '2026-10-31', prevFrom: '2026-09-01', prevTo: '2026-09-30', months: 1 });
+  const r3 = periodRange('3m', '2026-03-31'); assert.equal(r3.from, '2026-01-01'); assert.equal(r3.prevFrom, '2025-10-01');
+  const ano = periodRange('ano', '2026-11-13'); assert.equal(ano.prevFrom, '2025-01-01'); assert.equal(ano.prevTo, '2025-11-13');
+  assert.equal(cleanName('Transferência recebida pelo Pix - CLIENTE ANA'), 'CLIENTE ANA');
+  assert.equal(kw('Transferência recebida pelo Pix - CLIENTE ANA'), 'cliente ana');
+  assert.notEqual(kw('Transferência recebida pelo Pix - CLIENTE ANA'), kw('Transferência recebida pelo Pix - CLIENTE BRUNO'));
+  const conta = parseCSV('Data,Valor,Identificador,Descrição\n02/10/2026,500.00,6512aa00-1,Transferência recebida pelo Pix - CLIENTE ANA\n03/11/2026,1000.00,6512aa00-2,Transferência recebida pelo Pix - CLIENTE ANA\n05/11/2026,-200.00,6512aa00-3,Pagamento de fatura\n20/11/2026,-50.00,6512aa00-4,Compra no débito - CANVA');
+  assert.equal(conta.account, 'Nubank'); assert.equal(conta.tx[0].id.startsWith('o:'), true, 'usa o Identificador do Nubank');
+  const cartao = parseCSV('date,title,amount\n2026-11-02,Ifood,58.90\n2026-11-06,Pagamento recebido,-500.00');
+  assert.equal(cartao.account, 'Nubank cartão'); assert.deepEqual(cartao.tx.map(t => t.v), [-58.9], 'compras viram saídas; pagamento da fatura é ignorado');
+  let { months } = mergeImport([], conta); ({ months } = mergeImport(months, cartao));
+  const d = dashboard(months, { period: 'mes', today: '2026-11-13' });
+  assert.equal(d.summary.entradas, 1000); assert.equal(d.summary.saidas, 308.9, 'o mês inteiro que já está no extrato');
+  assert.equal(d.delta.entradas, 100, 'comparado com 1 a 13/10');
+  assert.deepEqual(d.series.map(s => s.id), ['2026-11']);
+  assert.equal(d.topEntradas[0].label, 'CLIENTE ANA');
+  assert.equal(d.categorias.find(c => c.cat === 'Fatura do cartão').total, 200);
+  const all = dashboard(months, { period: 'tudo', today: '2026-11-13' });
+  assert.deepEqual(all.series.map(s => s.id), ['2026-10', '2026-11']); assert.equal(all.saldo.at(-1).v, 1191.1);
 });

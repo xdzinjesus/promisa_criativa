@@ -1,12 +1,14 @@
 // Aba "🏦 Extratos" do painel: importar extrato (OFX/CSV), ver entradas e saídas por mês e por categoria.
 // Os dados ficam no estado do painel (S.bank, 1 registro por mês) e sincronizam como o resto (criptografados se o cofre estiver ligado).
-import { CATEGORIES, parseStatement, mergeImport, summary, categorize, keywordOf, applyRule, matchSale, toCSV } from './bank.js';
+import { CATEGORIES, PERIODS, parseStatement, mergeImport, summary, categorize, keywordOf, applyRule, matchSale, toCSV, dashboard } from './bank.js';
+import { renderDashboard } from './bank-dashboard.js';
 
 const el = (tag, text, props = {}) => Object.assign(document.createElement(tag), text == null ? {} : { textContent: text }, props);
 const R = n => (+n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 const monthName = id => `${MES[+id.slice(5) - 1]}/${id.slice(0, 4)}`;
-const ui = { month: '', acc: '', kind: '', cat: '', q: '', note: '' };
+const ui = { view: 'dash', period: 'mes', month: '', acc: '', kind: '', cat: '', q: '', note: '' };
+const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
 const state = () => window.promisaAdapter?.getState?.();
 function months() { const s = state(); if (s && !Array.isArray(s.bank)) s.bank = []; return s?.bank || []; }
@@ -57,15 +59,15 @@ function draw(root) {
   const all = months(), s = state();
   root.replaceChildren();
   // Importar
-  const imp = el('div', null, { className: 'card bank-import' });
-  imp.append(el('b', '📥 Importar extrato'), el('p', 'No app ou site do seu banco, baixe o extrato em OFX (melhor) ou CSV e escolha o arquivo aqui. Pode escolher vários de uma vez. Lançamentos repetidos são ignorados.', { className: 'sub' }));
+  const imp = el(all.length ? 'details' : 'div', null, { className: 'card bank-import', open: Boolean(ui.note) });
+  imp.append(all.length ? el('summary', '📥 Importar extrato (OFX ou CSV)') : el('b', '📥 Importar extrato'), el('p', 'No app ou site do seu banco, baixe o extrato em OFX (melhor) ou CSV e escolha o arquivo aqui. Pode escolher vários de uma vez. Lançamentos repetidos são ignorados.', { className: 'sub' }));
   const row = el('div', null, { className: 'row' });
   const acc = el('input', null, { placeholder: 'Nome da conta (opcional, ex.: Nubank PJ)', ariaLabel: 'Nome da conta', maxLength: 60 });
   const file = el('input', null, { type: 'file', accept: '.ofx,.csv,.txt', multiple: true, ariaLabel: 'Arquivo do extrato' });
   file.addEventListener('change', () => { if (file.files?.length) importFiles([...file.files], acc.value.trim(), root); });
   row.append(acc, file); imp.append(row);
   const how = el('details'); how.append(el('summary', 'Como baixar o extrato no meu banco?'));
-  for (const [bank, path] of [['Nubank', 'App → Conta → ícone de extrato (canto de cima) → Exportar extrato → escolha o período → OFX ou CSV.'], ['Inter', 'App → Extrato → Exportar (ícone de compartilhar) → OFX ou CSV.'], ['Itaú', 'Internet Banking → Extrato → "Salvar em" → OFX (Money).'], ['Banco do Brasil', 'Internet Banking → Conta corrente → Extrato → "Salvar como" OFX.'], ['Caixa', 'Internet Banking → Extrato → Exportar → OFX.'], ['Bradesco / Santander / C6 / Mercado Pago', 'Procure "Extrato" → "Exportar" ou "Baixar" → OFX (ou CSV / Excel salvo como CSV).']]) how.append(el('p', `${bank}: ${path}`, { className: 'sub' }));
+  for (const [bank, path] of [['Nubank (conta)', 'No app, toque na área da Conta → procure "Exportar extrato" (ou digite "extrato" na busca do app) → escolha o período e o formato OFX ou CSV → o arquivo chega no seu e-mail. Baixe e escolha aqui.'], ['Nubank (cartão)', 'No app, toque em Cartão de crédito → Faturas → escolha a fatura → Exportar fatura (CSV). O painel acerta os sinais sozinho e ignora o pagamento da fatura, que já aparece na conta.'], ['Inter', 'App → Extrato → Exportar (ícone de compartilhar) → OFX ou CSV.'], ['Itaú', 'Internet Banking → Extrato → "Salvar em" → OFX (Money).'], ['Banco do Brasil', 'Internet Banking → Conta corrente → Extrato → "Salvar como" OFX.'], ['Caixa', 'Internet Banking → Extrato → Exportar → OFX.'], ['Bradesco / Santander / C6 / Mercado Pago', 'Procure "Extrato" → "Exportar" ou "Baixar" → OFX (ou CSV / Excel salvo como CSV).']]) how.append(el('p', `${bank}: ${path}`, { className: 'sub' }));
   imp.append(how);
   if (ui.note) imp.append(el('pre', ui.note, { className: 'bank-note' }));
   root.append(imp);
@@ -73,10 +75,30 @@ function draw(root) {
 
   if (!all.some(m => m.id === ui.month)) ui.month = all[0].id;
   const accounts = [...new Set(all.flatMap(m => m.tx.map(t => t.acc || 'Conta')))];
+  if (ui.acc && !accounts.includes(ui.acc)) ui.acc = '';
   const byAcc = t => !ui.acc || (t.acc || 'Conta') === ui.acc;
+  const sel = (label, value, options, on) => { const x = el('select', null, { ariaLabel: label }); for (const [v, t] of options) x.append(el('option', t, { value: v, selected: v === value })); x.addEventListener('change', () => on(x.value)); return x; };
+  // Abas: Dashboard | Lançamentos
+  const tabs = el('div', null, { className: 'bank-tabs', role: 'tablist' });
+  for (const [id, label] of [['dash', '📊 Dashboard'], ['list', '📄 Lançamentos']]) {
+    const b = el('button', label, { type: 'button', role: 'tab', className: ui.view === id ? 'on' : '', ariaSelected: String(ui.view === id) });
+    b.addEventListener('click', () => { ui.view = id; draw(root); }); tabs.append(b);
+  }
+  root.append(tabs);
+  if (ui.view === 'dash') {
+    const top = el('div', null, { className: 'row bank-top' });
+    top.append(sel('Período', ui.period, PERIODS, v => { ui.period = v; draw(root); }));
+    if (accounts.length > 1) top.append(sel('Conta', ui.acc, [['', 'Todas as contas'], ...accounts.map(a => [a, a])], v => { ui.acc = v; draw(root); }));
+    root.append(top);
+    const box = el('div', null, { className: 'bank-dash' }); root.append(box);
+    renderDashboard(box, dashboard(all, { period: ui.period, acc: ui.acc, today: today() }), {
+      onCategory: cat => { ui.view = 'list'; ui.cat = cat; ui.q = ''; draw(root); },
+      onSearch: q => { ui.view = 'list'; ui.q = q; ui.cat = ''; draw(root); },
+    });
+    return;
+  }
   // Filtros do topo
   const top = el('div', null, { className: 'row bank-top' });
-  const sel = (label, value, options, on) => { const x = el('select', null, { ariaLabel: label }); for (const [v, t] of options) x.append(el('option', t, { value: v, selected: v === value })); x.addEventListener('change', () => on(x.value)); return x; };
   top.append(sel('Mês', ui.month, all.map(m => [m.id, monthName(m.id)]), v => { ui.month = v; draw(root); }));
   if (accounts.length > 1) top.append(sel('Conta', ui.acc, [['', 'Todas as contas'], ...accounts.map(a => [a, a])], v => { ui.acc = v; draw(root); }));
   root.append(top);
