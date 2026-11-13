@@ -3,6 +3,9 @@
 
 export const MOVE_TYPES = ['in', 'out', 'adj']; // in = comprei/recebi · out = vendi · adj = ajuste (perda, brinde, contagem)
 export const MAX_MOVES = 5000;
+// Fotos: até 3 por produto, já reduzidas no navegador (JPEG/WebP/PNG em data URL, até ~220 KB cada).
+export const MAX_IMAGES = 3, MAX_IMAGE_CHARS = 300_000;
+export const validImage = i => typeof i === 'string' && i.length <= MAX_IMAGE_CHARS && /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/]+={0,2}$/.test(i);
 const DAY = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
 const round = n => Math.round(n * 100) / 100;
 const clean = (text, max) => String(text ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max);
@@ -69,7 +72,8 @@ export function newMove(type, { d, qty, total = 0, client = '', link = '', paid 
 
 // Validação do registro (usada também pelo servidor de sincronização).
 export function validateProduct(value) {
-  const keys = ['id', 'name', 'emoji', 'kind', 'price', 'minStock', 'supplier', 'notes', 'moves', 'createdAt', 'updatedAt', 'archived'];
+  const keys = ['id', 'name', 'emoji', 'kind', 'price', 'minStock', 'supplier', 'notes', 'moves', 'createdAt', 'updatedAt', 'archived', 'images'];
+  if (value.images !== undefined && (!Array.isArray(value.images) || value.images.length > MAX_IMAGES || value.images.some(i => !validImage(i)))) throw new Error('Fotos do produto inválidas.');
   if (Object.keys(value).some(k => !keys.includes(k))) throw new Error('Campo inesperado no produto.');
   if (typeof value.name !== 'string' || !value.name.trim() || value.name.length > 80) throw new Error('Nome do produto inválido.');
   if (value.emoji !== undefined && (typeof value.emoji !== 'string' || value.emoji.length > 8)) throw new Error('Ícone do produto inválido.');
