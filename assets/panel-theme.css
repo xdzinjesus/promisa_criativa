@@ -96,3 +96,6 @@ input:focus,select:focus,textarea:focus{border-color:#3b82f6!important;box-shado
 #app svg polyline,#app svg path[stroke]{stroke:#60a5fa}
 dialog::backdrop{background:#020617b3;backdrop-filter:blur(4px)}
 @media(prefers-reduced-motion:reduce){#nav,.pc-overlay,.pc-box{transition:none!important;animation:none!important}.tb-status:before{animation:none}}
+
+/* A barra do topo ocupa a largura toda em telas largas (antes parava em 1440px). */
+.topbar{max-width:none!important;width:auto}
