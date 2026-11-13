@@ -161,3 +161,15 @@ test('revisão: o que já foi importado na 1ª versão não duplica; filtro usa 
   const tx = [{ desc: 'Pagamento de 12345', v: -5, cat: 'Outras saídas' }];
   assert.equal(topGroups(tx)[0].key, groupKey(tx[0].desc)); assert.ok(groupKey(tx[0].desc));
 });
+
+test('revisão: CSV de outro banco com Identificador mantém o mesmo código da versão publicada', () => {
+  const csv = 'Data;Descrição;Valor;Identificador\n03/11/2026;Tarifa;-10,00;abc12345';
+  // 1ª versão: o: + resumo do nome mostrado da conta ("Conta" sem nome) + Identificador
+  const semNome = parseCSV(csv), comNome = parseCSV(csv, 'Itaú PJ');
+  assert.equal(semNome.account, 'Conta');
+  let { months } = mergeImport([], semNome);
+  assert.equal(mergeImport(months, parseCSV(csv)).added, 0, 'mesmo arquivo sem nome não duplica');
+  ({ months } = mergeImport([], comNome));
+  assert.equal(mergeImport(months, parseCSV(csv, 'Itaú PJ')).added, 0, 'mesmo arquivo com o mesmo nome não duplica');
+  assert.notEqual(semNome.tx[0].id, comNome.tx[0].id, 'contas com nomes diferentes continuam separadas');
+});
