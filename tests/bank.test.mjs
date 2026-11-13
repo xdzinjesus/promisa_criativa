@@ -112,3 +112,26 @@ test('revisão: FITIDs diferentes nunca viram o mesmo lançamento; nome do arqui
   const csv = 'Data;Descrição;Valor\n03/11/2026;Mercado;-10,00';
   assert.equal(parseStatement('extrato-01-10.csv', csv).tx[0].id, parseStatement('extrato-01-30.csv', csv).tx[0].id);
 });
+
+test('Nubank real: Pix no Crédito (mesmo Identificador), OFX e CSV do mesmo mês sem duplicar, aplicações fora dos totais', async () => {
+  const { NEUTRAL, cleanName, dashboard } = await import('../src/bank.js');
+  const id = 'aaaa1111-2222-3333-4444-555566667777';
+  const csv = `Data,Valor,Identificador,Descrição\n01/10/2026,8.00,${id},Valor adicionado na conta por cartão de crédito - Valor adicionado para Pix no Crédito\n01/10/2026,-8.00,${id},Transferência enviada pelo Pix - LANCHONETE EXEMPLO LTDA - 02.000.000/0001-00 - COOP EXEMPLO Agência: 1 Conta: 1-0\n02/10/2026,-350.00,bbbb1111-2222-3333-4444-555566667777,Aplicação RDB\n02/10/2026,1000.00,cccc1111-2222-3333-4444-555566667777,Transferência recebida pelo Pix - FULANO DE TAL - •••.000.000-•• - BANCO EXEMPLO Agência: 1 Conta: 1-1`;
+  const ofx = `<OFX><BANKACCTFROM><BANKID>0260<ACCTID>123-4</BANKACCTFROM><BANKTRANLIST>
+<STMTTRN><DTPOSTED>20261001000000[-3:BRT]<TRNAMT>8.00<FITID>${id}<MEMO>Valor adicionado na conta por cartão de crédito - Valor adicionado para Pix no Crédito
+<STMTTRN><DTPOSTED>20261001000000[-3:BRT]<TRNAMT>-8.00<FITID>${id}:reversal<MEMO>Transferência enviada pelo Pix - LANCHONETE EXEMPLO LTDA - 02.000.000/0001-00 - COOP EXEMPLO Agência: 1 Conta: 1-0
+<STMTTRN><DTPOSTED>20261002000000[-3:BRT]<TRNAMT>-350.00<FITID>bbbb1111-2222-3333-4444-555566667777<MEMO>Aplicação RDB
+<STMTTRN><DTPOSTED>20261002000000[-3:BRT]<TRNAMT>1000.00<FITID>cccc1111-2222-3333-4444-555566667777<MEMO>Transferência recebida pelo Pix - FULANO DE TAL - •••.000.000-•• - BANCO EXEMPLO Agência: 1 Conta: 1-1
+</BANKTRANLIST></OFX>`;
+  const c = parseCSV(csv), o = parseOFX(ofx);
+  assert.equal(c.tx.length, 4, 'as duas linhas do Pix no Crédito ficam');
+  assert.deepEqual(c.tx.map(t => t.id).sort(), o.tx.map(t => t.id).sort(), 'CSV e OFX geram os mesmos identificadores');
+  let { months } = mergeImport([], c); const again = mergeImport(months, o);
+  assert.equal(again.added, 0); assert.equal(again.dup, 4);
+  const cats = Object.fromEntries(months[0].tx.map(t => [cleanName(t.desc), t.cat]));
+  assert.equal(cats['LANCHONETE EXEMPLO LTDA'], 'Mercado e alimentação', 'categoria pelo nome, sem o banco do outro lado');
+  assert.equal(cats['Aplicação RDB'], 'Aplicações e resgates'); assert.ok(NEUTRAL.has('Aplicações e resgates'));
+  assert.equal(cats['FULANO DE TAL'], 'Recebimentos');
+  const d = dashboard(months, { period: 'tudo', today: '2026-10-31' });
+  assert.equal(d.summary.entradas, 1000, 'Pix no crédito e aplicação ficam fora'); assert.equal(d.summary.saidas, 8); assert.equal(d.summary.neutros, 2);
+});

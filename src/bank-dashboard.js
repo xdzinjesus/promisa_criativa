@@ -119,6 +119,7 @@ export function renderDashboard(root, d, { onCategory, onSearch } = {}) {
     kpi('Saídas', R(s.saidas), 'dinheiro que saiu', d.delta.saidas, false),
     kpi('Resultado', R(s.resultado), s.resultado >= 0 ? 'sobrou no período' : 'faltou no período', null),
     kpi('Gasto médio por dia', R(d.gastoPorDia), `${s.count} lançamento(s)`, null));
+  if (s.neutros) root.append(el('p', `ℹ️ ${s.neutros} movimento(s) ficaram fora das contas: guardar/resgatar dinheiro (RDB, caixinhas), Pix pago com o cartão de crédito e transferências entre suas próprias contas. Eles aparecem em Lançamentos.`, { className: 'sub bd-note' }));
   kpis.children[2].querySelector('b').className = s.resultado >= 0 ? 'pos' : 'neg';
   root.append(kpis);
   if (!s.count) { root.append(el('div', 'Nenhum lançamento neste período. Escolha outro período ou importe o extrato.', { className: 'card sub' })); return; }

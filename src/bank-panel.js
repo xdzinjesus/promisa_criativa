@@ -1,6 +1,6 @@
 // Aba "🏦 Extratos" do painel: importar extrato (OFX/CSV), ver entradas e saídas por mês e por categoria.
 // Os dados ficam no estado do painel (S.bank, 1 registro por mês) e sincronizam como o resto (criptografados se o cofre estiver ligado).
-import { CATEGORIES, PERIODS, parseStatement, mergeImport, summary, categorize, keywordOf, applyRule, matchSale, toCSV, dashboard } from './bank.js';
+import { CATEGORIES, NEUTRAL, PERIODS, cleanName, parseStatement, mergeImport, summary, categorize, keywordOf, applyRule, matchSale, toCSV, dashboard } from './bank.js';
 import { renderDashboard } from './bank-dashboard.js';
 
 const el = (tag, text, props = {}) => Object.assign(document.createElement(tag), text == null ? {} : { textContent: text }, props);
@@ -154,7 +154,7 @@ function draw(root) {
     for (const t of shown.slice(0, 400)) {
       const item = el('div', null, { className: 'item bank-item' });
       const left = el('div');
-      left.append(el('span', t.desc), el('br'), el('small', `${t.d.split('-').reverse().join('/')}${accounts.length > 1 ? ' · ' + (t.acc || 'Conta') : ''}`));
+      left.append(el('span', cleanName(t.desc), { title: t.desc }), el('br'), el('small', `${t.d.split('-').reverse().join('/')}${accounts.length > 1 ? ' · ' + (t.acc || 'Conta') : ''}`));
       const sale = matchSale(t, s.sales || []);
       if (sale) {
         const b = el('button', `✅ É o pagamento de ${sale.client || 'cliente'}? Marcar pago`, { type: 'button', className: 'sec bank-match' });
@@ -173,7 +173,8 @@ function draw(root) {
         }
         persist(); draw(root);
       });
-      right.append(el('b', R(t.v), { className: t.v >= 0 ? 'pos' : 'neg' }), cat);
+      right.append(el('b', R(t.v), { className: NEUTRAL.has(t.cat) ? 'bank-neutral' : t.v >= 0 ? 'pos' : 'neg', title: NEUTRAL.has(t.cat) ? 'Fora dos totais' : '' }), cat);
+      if (NEUTRAL.has(t.cat)) right.append(el('small', 'fora dos totais', { className: 'sub' }));
       item.append(left, right); rows.append(item);
     }
     if (shown.length > 400) rows.append(el('p', `Mostrando 400 de ${shown.length}. Use a busca ou os filtros para achar o resto.`, { className: 'sub' }));

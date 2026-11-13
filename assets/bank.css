@@ -44,3 +44,4 @@ button.bd-row{cursor:pointer}button.bd-row:hover .bd-track i{filter:brightness(1
 .bd-row-top{display:flex;justify-content:space-between;gap:10px}.bd-row-top span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .bd-track{height:8px;margin:5px 0 2px;border-radius:4px;background:rgba(127,127,127,.12)}.bd-track i{display:block;height:100%;border-radius:4px;background:var(--ac,#2563eb)}
 @media (max-width:600px){.bd-axis{font-size:20px}}
+.bank-neutral{opacity:.6}.bd-note{margin:2px 0 10px}

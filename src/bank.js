@@ -1,7 +1,9 @@
 // Extratos bancários: leitura de arquivos OFX/CSV, categorias e resumos. Módulo puro (sem DOM): roda no navegador e nos testes.
 // Os lançamentos ficam agrupados por mês (1 registro por mês), para a sincronização online gastar pouco.
 
-export const CATEGORIES = ['Recebimentos', 'Vendas no cartão', 'Transferências recebidas', 'Outras entradas', 'Impostos', 'Tarifas bancárias', 'Anúncios', 'Ferramentas e hospedagem', 'Fornecedores', 'Salários e pró-labore', 'Fatura do cartão', 'Transferências enviadas', 'Pessoal', 'Outras saídas'];
+export const CATEGORIES = ['Recebimentos', 'Vendas no cartão', 'Transferências recebidas', 'Outras entradas', 'Impostos', 'Tarifas bancárias', 'Anúncios', 'Ferramentas e hospedagem', 'Fornecedores', 'Salários e pró-labore', 'Fatura do cartão', 'Empréstimos', 'Mercado e alimentação', 'Combustível e transporte', 'Saúde', 'Transferências enviadas', 'Pessoal', 'Outras saídas', 'Aplicações e resgates', 'Pix no crédito (cartão)', 'Entre minhas contas'];
+// Movimentos que não são ganho nem gasto de verdade (guardar/resgatar dinheiro, crédito do cartão usado para pagar um Pix): ficam na lista, mas fora dos totais.
+export const NEUTRAL = new Set(['Aplicações e resgates', 'Pix no crédito (cartão)', 'Entre minhas contas']);
 export const INCOME = new Set(['Recebimentos', 'Vendas no cartão', 'Transferências recebidas', 'Outras entradas']);
 export const MAX_TX_PER_MONTH = 3000;
 export const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -66,7 +68,9 @@ export function parseOFX(text) {
     list.push({ d, v, desc, fitid: tag(b, 'FITID') });
   }
   const balance = parseMoney(tag(src.split(/<LEDGERBAL>/i)[1] || '', 'BALAMT'));
-  return { account, tx: withIds(list, account), balance: Number.isFinite(balance) ? balance : null };
+  // Nubank: mesma identidade do CSV (os códigos do Nubank são únicos), para importar OFX e CSV do mesmo mês sem duplicar.
+  const nubank = bank.replace(/^0+/, '') === '260';
+  return { account, tx: withIds(list, nubank ? 'nubank' : account), balance: Number.isFinite(balance) ? balance : null };
 }
 
 // CSV: acha sozinho as colunas de data, descrição e valor (ou crédito/débito). Separador ; , ou tab.
@@ -108,6 +112,10 @@ export function parseCSV(text, account = '') {
     list.push({ d, v, desc, fitid: col.id >= 0 && /^[\w-]{8,80}$/.test(cols[col.id] || '') ? cols[col.id] : '' });
   }
   if (!list.length) throw new Error('Não encontrei lançamentos neste CSV.');
+  // Nubank "Pix no Crédito": crédito e débito vêm com o MESMO Identificador. No OFX o débito vem como "<id>:reversal"; aqui fazemos igual.
+  const count = new Map();
+  for (const t of list) if (t.fitid) count.set(t.fitid, (count.get(t.fitid) || 0) + 1);
+  for (const t of list) if (t.fitid && count.get(t.fitid) > 1 && t.v < 0) t.fitid += ':reversal';
   const acc = clean(account, 60) || (nuConta ? 'Nubank' : nuCartao ? 'Nubank cartão' : 'Conta');
   // O nome da conta não entra no identificador: importar o mesmo período com outro nome não duplica.
   return { account: acc, tx: withIds(list, nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : acc, { byAccount: false }), balance: null, kind: nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : 'csv' };
@@ -119,20 +127,28 @@ export function parseStatement(name, text, account) {
 
 // Categorias: primeiro as regras que você criou (palavra → categoria), depois as automáticas.
 const AUTO = [
+  [/aplicacao rdb|resgate rdb|aplicacao (cdb|poupanca)|resgate (cdb|poupanca)|caixinha|dinheiro guardado|porquinho|resgate de investimento|aplicacao em investimento/, 'Aplicações e resgates', 'any'],
+  [/valor adicionado na conta por cartao de credito|pix no credito/, 'Pix no crédito (cartão)', 'in'],
+  [/resgate de emprestimo|pagamento de emprestimo|parcela (do )?emprestimo|emprestimo pessoal/, 'Empréstimos', 'out'],
   [/tarifa|iof\b|juros|anuidade|cesta de servicos|manutencao de conta|encargo/, 'Tarifas bancárias', 'out'],
   [/\bdarf\b|\bdas\b|simples nacional|\binss\b|imposto|receita federal|\biss\b|\bgps\b|sefaz|prefeitura/, 'Impostos', 'out'],
   [/facebk|facebook|meta ads|meta platforms|instagram|google ads|googleads|tiktok ads|linkedin ads/, 'Anúncios', 'out'],
   [/vercel|cloudflare|hostinger|hostgator|locaweb|registro\.?br|godaddy|github|google (one|workspace|cloud|storage)|canva|adobe|openai|chatgpt|anthropic|claude|notion|figma|microsoft|spotify|apple\.com|icloud|zoom|dropbox|wix|shopify|nuvemshop/, 'Ferramentas e hospedagem', 'out'],
   [/salario|pro-?labore|folha/, 'Salários e pró-labore', 'out'],
+  [/supermercad|mercado(?! ?pago)|atacad|padaria|acougue|hortifruti|lanchonete|churrascaria|restaurante|pizzaria|subway|mcdonald|burger|ifood|kalzone|conveniencia|lancheria/, 'Mercado e alimentação', 'out'],
+  [/posto |combustive|abastecedora|uber|99 ?app|99pop|estacionamento|pedagio|ipiranga|shell/, 'Combustível e transporte', 'out'],
+  [/farmacia|drogaria|droga ?raia|panvel|clinica|hospital|laboratorio|odonto|medic/, 'Saúde', 'out'],
   [/pagamento de fatura|fatura (do )?cartao|pagto fatura|pgto fatura/, 'Fatura do cartão', 'out'],
   [/cielo|stone|rede\b|getnet|pagseguro|pagbank|mercado ?pago|sumup|infinitepay|ton\b|vendas? (no )?cartao|antecipacao/, 'Vendas no cartão', 'in'],
   [/pix recebido|pix - recebido|recebimento|transf(erencia)?\.? recebida|ted recebida|doc recebido|deposito|credito em conta|boleto recebido|liquidacao de boleto/, 'Recebimentos', 'in'],
   [/pix enviado|pix - enviado|transf(erencia)?\.? (enviada|realizada)|ted enviada|doc enviado|pagamento de boleto|pagto|pagamento/, 'Transferências enviadas', 'out'],
 ];
+// Parte útil da descrição: corta o CPF/CNPJ e os dados do banco do outro lado (" - 02.035.896/0001-70 - ITAÚ… Agência…").
+export const coreDesc = desc => clean(desc).split(/\s+-\s+(?=[•\d])/)[0];
 export function categorize(desc, v, rules = {}) {
-  const text = norm(desc);
+  const text = norm(coreDesc(desc));
   for (const [word, cat] of Object.entries(rules || {})) if (word && text.includes(word) && CATEGORIES.includes(cat)) return cat;
-  for (const [re, cat, side] of AUTO) if (re.test(text) && (side === 'in' ? v > 0 : v < 0)) return cat;
+  for (const [re, cat, side] of AUTO) if (re.test(text) && (side === 'any' || (side === 'in' ? v > 0 : v < 0))) return cat;
   if (v > 0 && /pix|transf|ted|doc/.test(text)) return 'Transferências recebidas';
   return v > 0 ? 'Outras entradas' : 'Outras saídas';
 }
@@ -140,7 +156,8 @@ export function categorize(desc, v, rules = {}) {
 const PREFIX = /^(transferencias? (recebidas?|enviadas?)( pelo pix)?|pix (recebido|enviado)|compra no debito( via nupay)?|compra no credito|pagamento de boleto efetuado|pagamento efetuado|pagamento de|debito automatico|ted (recebida|enviada)|doc (recebido|enviado))\s*[-–:]\s*/;
 export function cleanName(desc) {
   const text = clean(desc), n = norm(text), m = PREFIX.exec(n);
-  return m ? text.slice(m[0].length).trim() || text : text;
+  const out = m ? text.slice(m[0].length).trim() || text : text;
+  return coreDesc(out) || out;
 }
 // Palavra-chave para "sempre que aparecer…" e para agrupar: o nome limpo, sem números, datas e códigos.
 export function keywordOf(desc) {
@@ -174,12 +191,14 @@ export function applyRule(months, word, cat) {
 
 export function summary(tx = []) {
   let entradas = 0, saidas = 0; const cats = new Map();
+  let neutros = 0;
   for (const t of tx) {
+    if (NEUTRAL.has(t.cat)) { neutros++; continue; }
     if (t.v > 0) entradas += t.v; else saidas += -t.v;
     cats.set(t.cat, (cats.get(t.cat) || 0) + t.v);
   }
   const round = n => Math.round(n * 100) / 100;
-  return { entradas: round(entradas), saidas: round(saidas), resultado: round(entradas - saidas), count: tx.length,
+  return { entradas: round(entradas), saidas: round(saidas), resultado: round(entradas - saidas), count: tx.length, neutros,
     porCategoria: [...cats.entries()].map(([cat, total]) => ({ cat, total: round(total) })).sort((a, b) => Math.abs(b.total) - Math.abs(a.total)) };
 }
 // Recebimento que bate com uma venda fechada e ainda não paga (mesmo valor, até 60 dias depois da venda).
@@ -253,14 +272,14 @@ export function monthlySeries(tx, from, to) {
   const end = to.slice(0, 7);
   for (let guard = 0; guard < 240; guard++) { const id = `${y}-${String(m).padStart(2, '0')}`; if (id > end) break; list.push({ id, entradas: 0, saidas: 0 }); [y, m] = addMonths(y, m, 1); }
   const by = new Map(list.map(x => [x.id, x]));
-  for (const t of tx) { const x = by.get(t.d.slice(0, 7)); if (!x) continue; if (t.v > 0) x.entradas += t.v; else x.saidas -= t.v; }
+  for (const t of tx) { const x = by.get(t.d.slice(0, 7)); if (!x || NEUTRAL.has(t.cat)) continue; if (t.v > 0) x.entradas += t.v; else x.saidas -= t.v; }
   for (const x of list) { x.entradas = Math.round(x.entradas * 100) / 100; x.saidas = Math.round(x.saidas * 100) / 100; x.resultado = Math.round((x.entradas - x.saidas) * 100) / 100; }
   return list;
 }
 // Resultado acumulado dia a dia (quanto sobrou desde o começo do período).
 export function cumulative(tx) {
   const days = new Map();
-  for (const t of tx) days.set(t.d, (days.get(t.d) || 0) + t.v);
+  for (const t of tx) if (!NEUTRAL.has(t.cat)) days.set(t.d, (days.get(t.d) || 0) + t.v);
   let acc = 0;
   return [...days.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([d, v]) => { acc = Math.round((acc + v) * 100) / 100; return { d, v: acc }; });
 }
@@ -268,7 +287,7 @@ export function cumulative(tx) {
 export function topGroups(tx, side = 'out', n = 5) {
   const groups = new Map();
   for (const t of tx) {
-    if (side === 'out' ? t.v >= 0 : t.v <= 0) continue;
+    if (NEUTRAL.has(t.cat) || (side === 'out' ? t.v >= 0 : t.v <= 0)) continue;
     const key = keywordOf(t.desc) || norm(t.desc).slice(0, 40);
     const g = groups.get(key) || { key, label: cleanName(t.desc), total: 0, count: 0 };
     g.total += Math.abs(t.v); g.count++; groups.set(key, g);
