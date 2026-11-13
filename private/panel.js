@@ -593,7 +593,7 @@ async function openPublish(key){
  const head=el('div','demo-links-head');head.append(el('h2','','🌐 Publicar site'),el('p','demo-links-site',site.name||'Site'));
  const box=el('div','pub-box');
  const close=el('button','sec demo-links-close','Fechar');close.type='button';close.addEventListener('click',()=>dialog.close());
- const dataBox=el('div','pub-data');dialog.append(head,box,dataBox,close);document.body.append(dialog);dialog.showModal();window.promisaSiteData?.mount(dataBox,String(site.id),()=>publishedMap?.get(String(site.id))?.url||'');
+ const dataBox=el('div','pub-data');dialog.append(head,box,dataBox,close);document.body.append(dialog);dialog.showModal();(async()=>{let hash='#promisa-admin';try{const files=site.files||[],main=files.find(f=>f.path===site.htmlPath)||files.find(f=>/\.html?$/i.test(f.path||''));if(main){const text=await siteBlob(main.data,main.type).text();if(/['"]#admin['"]/.test(text))hash='#admin'}}catch{}window.promisaSiteData?.mount(dataBox,String(site.id),()=>publishedMap?.get(String(site.id))?.url||'',hash)})();
  const note=(text,cls='demo-help')=>{const p=el('p',cls,text);p.setAttribute('role','status');return p};
  const copyRow=(value,label)=>{const row=el('div','demo-link-row');const input=el('input');input.readOnly=true;input.value=value;input.setAttribute('aria-label',label);input.addEventListener('focus',()=>input.select());const actions=el('div','demo-link-actions');actions.append(btn('Copiar','',()=>copy(value)));row.append(input,actions);return row};
  const show=(...nodes)=>box.replaceChildren(...nodes);

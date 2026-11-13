@@ -70,3 +70,20 @@ test('dados ao vivo: senha errada bloqueia em 5 tentativas; limite por dia; nova
   assert.equal((await w.actions.publicSave({ siteId: 's', password: on.password, changes: { a: '3' } }))[0], 401, 'senha antiga não vale');
   assert.equal((await w.store.get('s')).keys.a, '1', 'dados mantidos ao gerar nova senha');
 });
+
+test('dados ao vivo: site que salva gerando um index.html novo (bloco <script type="application/json" id="dados">)', async () => {
+  const page = '<!doctype html><html><head></head><body><script type="application/json" id="dados">{"quadras":["A"]}</script><script>const re=/<script type="application\\/json" id="dados">/;</script></body></html>';
+  const padel = () => ({ name: 'Padel', htmlPath: 'index.html', files: [{ path: 'index.html', type: 'text/html', data: page }] });
+  const w = world();
+  const [, on] = await w.actions.admin('admin-data-enable', { siteId: 'p' });
+  assert.equal((await w.actions.publicSave({ siteId: 'p', password: on.password, embedded: { dados: 'não é json' } }))[0], 400, 'bloco precisa ser JSON');
+  assert.equal((await w.actions.publicSave({ siteId: 'p', password: on.password, embedded: { 'a b': '{}' } }))[0], 400, 'nome do bloco limpo');
+  assert.equal((await w.actions.publicSave({ siteId: 'p', password: on.password, embedded: { dados: '{"quadras":["A","B"],"x":"</script><b>"}' } }))[0], 200);
+  const [, st] = await w.actions.admin('admin-data-status', { siteId: 'p' });
+  assert.equal(st.keys, 1);
+  const read = withSiteData(async () => ({ site: padel(), filesHash: 'h' }), w.store, { api: 'https://x/api' });
+  const html = (await read('sites:p')).site.files[0].data;
+  assert.ok(html.includes('<script type="application/json" id="dados">{"quadras":["A","B"],"x":"\\u003c/script>\\u003cb>"}</script>'), 'bloco trocado e protegido');
+  assert.ok(html.includes('const re=/<script type="application\\/json" id="dados">/;'), 'código do site intacto');
+  assert.equal(injectSiteData({ files: [{ path: 'index.html', data: html }] }, { siteId: 'p', embedded: { dados: '{"quadras":[]}' }, api: 'x' }).files[0].data.match(/__PROMISA_DADOS__=/g).length, 1, 'sem duplicar');
+});

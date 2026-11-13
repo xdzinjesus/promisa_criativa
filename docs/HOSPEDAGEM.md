@@ -94,9 +94,9 @@ Para o site que **você fez** (um `index.html` ou uma pasta) e que tem **uma ár
 2. Publique (se ainda não publicou) e, no bloco **⚡ Dados ao vivo**, toque em **Ligar dados ao vivo**.
 3. Anote a **senha** (aparece só nessa hora) e toque em **📲 Enviar instruções no WhatsApp**.
 4. Toque em **Atualizar site** uma vez (o modo edição entra no ar).
-5. O cliente abre `endereço-do-site/#promisa-admin`, usa a área administrativa do site normalmente e toca em **🚀 Publicar para todos** (pede a senha uma vez). Em até 1 minuto, todo mundo vê.
+5. O cliente abre o endereço de edição (`endereço-do-site/#admin` se o site já usa `#admin`, senão `endereço-do-site/#promisa-admin`; o painel mostra o certo), usa a área administrativa do site normalmente e salva. Se o site salva **baixando um `index.html` novo** (ex.: o site do padel), o sistema não baixa nada: publica direto. Se não, ele toca em **🚀 Publicar para todos**. A senha é pedida uma vez. Em até 1 minuto, todo mundo vê.
 
-Como funciona: a área administrativa do site continua igual; o sistema captura o que ela grava no navegador (`localStorage`) e publica de novo o site com esses dados dentro do HTML. Quem visita recebe os dados junto com a página (nenhuma leitura extra na Vercel). Limites: 40 publicações por dia por site; até 3 MB de dados; 5 senhas erradas bloqueiam por 15 min. Áreas administrativas que guardam em outro lugar (IndexedDB, servidor próprio) não são capturadas.
+Como funciona: a área administrativa do site continua igual; o sistema captura o que ela grava no navegador (`localStorage`) ou o bloco de dados `<script type="application/json" id="...">` do `index.html` que ela gera para baixar, e publica de novo o site com esses dados dentro do HTML. Quem visita recebe os dados junto com a página (nenhuma leitura extra na Vercel). Limites: 40 publicações por dia por site; até 3 MB de dados; 5 senhas erradas bloqueiam por 15 min. Áreas administrativas que guardam em outro lugar (IndexedDB, servidor próprio) não são capturadas.
 
 ## 5. Ligar o domínio do cliente (ex.: barbearianavalha.com.br)
 

@@ -12,7 +12,8 @@ async function copy(text, button) {
   try { await navigator.clipboard.writeText(text); const old = button.textContent; button.textContent = 'Copiado ✓'; setTimeout(() => { button.textContent = old; }, 1500); } catch { prompt('Copie:', text); }
 }
 
-export function mount(root, siteId, getUrl = () => '') {
+export function mount(root, siteId, getUrl = () => '', adminHash = '#promisa-admin') {
+  const hash = adminHash === '#admin' ? '#admin' : '#promisa-admin';
   if (!root || !siteId) return;
   root.className = 'pub-data';
   const draw = async (fresh = null) => {
@@ -25,13 +26,13 @@ export function mount(root, siteId, getUrl = () => '') {
     root.append(help);
     if (fresh) {
       const url = getUrl();
-      const editUrl = url ? url.replace(/\/$/, '') + '/#promisa-admin' : '';
+      const editUrl = url ? url.replace(/\/$/, '') + '/' + hash : '';
       const box = el('div', null, { className: 'pub-steps' });
       box.append(el('p', '✅ Ligado. Anote a senha: ela aparece só agora.'));
       const row = (label, value) => { const r = el('div', null, { className: 'demo-link-row' }); const input = el('input', null, { value, readOnly: true, ariaLabel: label }); const b = el('button', 'Copiar', { type: 'button', className: 'sec' }); b.addEventListener('click', () => copy(value, b)); r.append(input, b); return r; };
       box.append(row('Senha de edição', fresh));
       if (editUrl) box.append(row('Endereço de edição', editUrl));
-      const text = `Olá! Para atualizar o seu site sozinho:\n\n1) Abra: ${editUrl || '(o endereço do seu site) + #promisa-admin'}\n2) Use a área administrativa do site normalmente\n3) Toque em "🚀 Publicar para todos" e digite a senha: ${fresh}\n\nEm até 1 minuto aparece para todo mundo.`;
+      const text = `Olá! Para atualizar o seu site sozinho:\n\n1) Abra: ${editUrl || '(o endereço do seu site) + ' + hash}\n2) Use a área administrativa do site normalmente e salve como sempre\n3) Se aparecer "🚀 Publicar para todos", toque nele. Quando pedir, digite a senha: ${fresh}\n\nEm até 1 minuto aparece para todo mundo.`;
       box.append(el('a', '📲 Enviar instruções no WhatsApp', { href: 'https://wa.me/?text=' + encodeURIComponent(text), target: '_blank', rel: 'noopener noreferrer' }));
       box.append(el('p', url ? 'Importante: toque em "Atualizar site" acima uma vez, para o modo edição entrar no ar.' : 'Importante: publique o site acima. O modo edição entra junto.', { className: 'demo-help' }));
       root.append(box);
