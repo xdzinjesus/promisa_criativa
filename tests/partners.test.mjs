@@ -72,3 +72,21 @@ test('login do sócio: só os módulos dele, nada do dono, e o acesso cai quando
   assert.equal((await call(accessHandler, { query: { action: 'session' }, cookie: owner })).json.role, 'owner');
   assert.deepEqual(await who(reqOf({ cookie: owner }), { password: process.env.ADMIN_PASSWORD, secret: process.env.ADMIN_SESSION_SECRET }), { owner: true });
 });
+
+test('responsável pelo cliente: equipe (dono + sócios), nome do dono e validação do campo', async () => {
+  const { validateRecord } = await import('../src/data-validation.js');
+  assert.doesNotThrow(() => validateRecord('sales', { id: 's1', client: 'X', owner: 'u0123456789ab' }));
+  assert.doesNotThrow(() => validateRecord('sales', { id: 's2', client: 'X' }));
+  assert.throws(() => validateRecord('sales', { id: 's3', client: 'X', owner: 'qualquer' }), /Responsável/);
+  const owner = cookieOf(await call(accessHandler, { method: 'POST', query: { action: 'login' }, body: { password: process.env.ADMIN_PASSWORD } }));
+  assert.equal((await call(accessHandler, { method: 'POST', query: { action: 'partner-owner-name' }, body: { name: 'Alexandre' }, cookie: owner })).status, 200);
+  await call(accessHandler, { method: 'POST', query: { action: 'partner-create' }, body: { name: 'Filipe', user: 'filipe', password: 'senha-do-filipe', modules: ['clients'] }, cookie: owner });
+  const partner = cookieOf(await call(accessHandler, { method: 'POST', query: { action: 'login' }, body: { user: 'filipe', password: 'senha-do-filipe' } }));
+  const team = (await call(accessHandler, { query: { action: 'team' }, cookie: partner })).json.team;
+  assert.deepEqual(team.slice(0, 1), [{ id: 'owner', name: 'Alexandre' }]); assert.ok(team.some(t => t.name === 'Filipe' && /^u[a-f0-9]{12}$/.test(t.id)));
+  assert.ok(!JSON.stringify(team).includes('hash'), 'equipe sem segredos');
+  const s = (await call(accessHandler, { query: { action: 'session' }, cookie: partner })).json;
+  assert.equal(s.id, team.find(t => t.name === 'Filipe').id, 'o sócio sabe o próprio id (para ser o responsável do que criar)');
+  assert.equal((await call(accessHandler, { method: 'POST', query: { action: 'partner-owner-name' }, body: { name: 'Hacker' }, cookie: partner })).status, 401, 'só o dono muda o nome do dono');
+  assert.equal((await call(accessHandler, { query: { action: 'team' } })).status, 401);
+});

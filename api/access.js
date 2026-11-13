@@ -101,7 +101,7 @@ function setCookie(res, value) {
 // ---- Chaves de acesso (WebAuthn) ----
 // Dependências trocáveis nos testes.
 export const passkeyDeps = { store: passkeyStore, generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse, used: createUsedChallenges() };
-const partnerAdminActions = ['partner-list', 'partner-create', 'partner-update', 'partner-delete'];
+const partnerAdminActions = ['partner-list', 'partner-create', 'partner-update', 'partner-delete', 'partner-owner-name'];
 const passkeyActions = ['passkey-register-options', 'passkey-register-verify', 'passkey-auth-options', 'passkey-auth-verify', 'passkey-list', 'passkey-delete'];
 const failureMessage = 'Não foi possível confirmar a chave de acesso.';
 const tooMany = 'Muitas tentativas. Aguarde antes de tentar novamente.';
@@ -310,7 +310,8 @@ export default async function handler(req, res) {
       // Só o dono cria, muda ou apaga sócios.
       if (!await authorized(req, config)) return json(res, 401, { error: 'Só o dono do painel pode mexer nos sócios.' });
       try {
-        if (action === 'partner-list') return json(res, 200, { partners: await partners.list() });
+        if (action === 'partner-list') return json(res, 200, { partners: await partners.list(), ownerName: await partners.ownerName() });
+        if (action === 'partner-owner-name') return json(res, 200, await partners.setOwnerName(body?.name));
         if (action === 'partner-create') return json(res, 200, { partner: await partners.create(body || {}) });
         if (action === 'partner-update') return json(res, 200, { partner: await partners.update(String(body?.id || ''), { name: body?.name, modules: body?.modules, active: body?.active, password: body?.password }) });
         if (action === 'partner-delete') return json(res, 200, await partners.remove(String(body?.id || '')));
@@ -342,7 +343,9 @@ export default async function handler(req, res) {
     return json(res, 200, { ok: true });
   }
   const user = await who(req, config), authenticated = Boolean(user);
-  if (action === 'session') return json(res, authenticated ? 200 : 401, { authenticated, role: user?.owner ? 'owner' : user ? 'partner' : null, ...(user?.partner ? { name: user.name, modules: user.modules } : {}) });
+  if (action === 'session') return json(res, authenticated ? 200 : 401, { authenticated, role: user?.owner ? 'owner' : user ? 'partner' : null, ...(user?.partner ? { id: user.id, name: user.name, modules: user.modules } : {}) });
+  // Equipe (dono + sócios, só id e nome) para o "Responsável" de cada cliente.
+  if (action === 'team') { if (!user) return json(res, 401, { error: 'Sua sessão terminou. Entre novamente.' }); return json(res, 200, { team: await partners.team() }); }
   if (!['admin', 'catalogo', 'panel'].includes(view)) return json(res, 404, { error: 'Página não encontrada.' });
   if (view === 'catalogo' && user?.partner && !user.modules.includes('mySites')) { res.statusCode = 303; res.setHeader('Location', '/admin'); return res.end(); }
   if (!authenticated) {
