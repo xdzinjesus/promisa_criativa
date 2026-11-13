@@ -23,6 +23,7 @@ const waitFor = (selector, ms = 2500) => new Promise(resolve => {
 const ACTIONS = [
   { label: 'Novo cliente', icon: '👤', hint: 'Clientes', run: async () => { go('clients'); (await waitFor('[data-click="toggleClientForm"]'))?.click(); } },
   { label: 'Montar site no Painel do cliente', icon: '🧩', hint: 'Sites', run: () => go('clientPanel') },
+  { label: 'Registrar venda de produto (placas)', icon: '📦', hint: 'Produtos', run: () => go('products') },
   { label: 'Importar extrato bancário', icon: '🏦', hint: 'Financeiro', run: () => go('bank') },
   { label: 'Dar acesso a um cliente', icon: '🔑', hint: 'Acessos', run: async () => { go('clientAccess'); (await waitFor('.ca-new input'))?.focus(); } },
 ];
