@@ -1,6 +1,6 @@
 // Aba "🏦 Extratos" do painel: importar extrato (OFX/CSV), ver entradas e saídas por mês e por categoria.
 // Os dados ficam no estado do painel (S.bank, 1 registro por mês) e sincronizam como o resto (criptografados se o cofre estiver ligado).
-import { CATEGORIES, NEUTRAL, PERIODS, cleanName, parseStatement, mergeImport, summary, categorize, keywordOf, applyRule, matchSale, toCSV, dashboard } from './bank.js';
+import { CATEGORIES, NEUTRAL, PERIODS, cleanName, groupKey, parseStatement, mergeImport, summary, categorize, keywordOf, applyRule, matchSale, toCSV, dashboard } from './bank.js';
 import { renderDashboard } from './bank-dashboard.js';
 
 const el = (tag, text, props = {}) => Object.assign(document.createElement(tag), text == null ? {} : { textContent: text }, props);
@@ -152,7 +152,7 @@ function draw(root) {
 
   function visible() {
     const w = ui.q.trim().toLowerCase();
-    return tx.filter(t => (!ui.group || keywordOf(t.desc) === ui.group) && (!ui.kind || (ui.kind === 'in' ? t.v > 0 : t.v < 0)) && (!ui.cat || t.cat === ui.cat) && (!w || `${t.desc} ${t.cat} ${t.note || ''}`.toLowerCase().includes(w)));
+    return tx.filter(t => (!ui.group || groupKey(t.desc) === ui.group) && (!ui.kind || (ui.kind === 'in' ? t.v > 0 : t.v < 0)) && (!ui.cat || t.cat === ui.cat) && (!w || `${t.desc} ${t.cat} ${t.note || ''}`.toLowerCase().includes(w)));
   }
   function drawRows() {
     rows.replaceChildren();

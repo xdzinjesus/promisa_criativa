@@ -45,9 +45,10 @@ function withIds(list, account, { byAccount = true } = {}) {
   const seen = new Map();
   return list.map(t => {
     const base = `${t.d}|${t.v}|${norm(t.desc)}`, n = (seen.get(base) || 0) + 1; seen.set(base, n);
-    const id = t.fitid ? `o:${hash(account)}:${fitKey(t.fitid)}` : safeId(`h:${byAccount ? hash(account) : 'csv'}:${hash(base + '|' + n)}`);
+    const legacy = safeId(`h:csv:${hash(base + '|' + n)}`); // formato da 1ª versão (sem a conta): reconhecido para não duplicar o que já foi importado
+    const id = t.fitid ? `o:${hash(account)}:${fitKey(t.fitid)}` : byAccount ? safeId(`h:${hash(account)}:${hash(base + '|' + n)}`) : legacy;
     const { fitid, ...rest } = t;
-    return { ...rest, id };
+    return t.fitid || !byAccount ? { ...rest, id } : { ...rest, id, legacyId: legacy };
   });
 }
 
@@ -118,7 +119,7 @@ export function parseCSV(text, account = '') {
   for (const t of list) if (t.fitid && count.get(t.fitid) > 1 && t.v < 0) t.fitid += ':reversal';
   const acc = clean(account, 60) || (nuConta ? 'Nubank' : nuCartao ? 'Nubank cartão' : 'Conta');
   // Identidade da conta: o nome que você digitou (contas diferentes não se misturam); sem nome, uma identidade fixa (o nome do arquivo nunca entra).
-  return { account: acc, tx: withIds(list, nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : clean(account) ? 'conta:' + norm(account) : 'csv'), balance: null, kind: nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : 'csv' };
+  return { account: acc, tx: (nuConta ? withIds(list, 'nubank') : clean(account) && !nuCartao ? withIds(list, 'conta:' + norm(account)) : withIds(list, 'csv', { byAccount: false })), balance: null, kind: nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : 'csv' };
 }
 export function parseStatement(name, text, account) {
   if (/\.ofx$/i.test(name) || /<OFX>/i.test(text)) { const r = parseOFX(text); if (account) { r.account = clean(account, 60); } return r; }
@@ -171,7 +172,7 @@ export function mergeImport(months, parsed, rules = {}, now = Date.now()) {
   const known = new Set();
   for (const m of byMonth.values()) for (const t of m.tx) known.add(t.id);
   for (const t of parsed.tx) {
-    if (known.has(t.id)) { dup++; continue; }
+    if (known.has(t.id) || (t.legacyId && known.has(t.legacyId))) { dup++; continue; }
     const id = t.d.slice(0, 7);
     const m = byMonth.get(id) || { id, month: id, tx: [] };
     if (m.tx.length >= MAX_TX_PER_MONTH) { full++; continue; }
@@ -286,11 +287,13 @@ export function cumulative(tx) {
   return [...days.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([d, v]) => { acc = Math.round((acc + v) * 100) / 100; return { d, v: acc }; });
 }
 // Maiores destinos (saídas) ou origens (entradas), agrupando descrições parecidas.
+// Chave de agrupamento do dashboard (a mesma usada no filtro da lista).
+export const groupKey = desc => keywordOf(desc) || norm(desc).slice(0, 40);
 export function topGroups(tx, side = 'out', n = 5) {
   const groups = new Map();
   for (const t of tx) {
     if (NEUTRAL.has(t.cat) || (side === 'out' ? t.v >= 0 : t.v <= 0)) continue;
-    const key = keywordOf(t.desc) || norm(t.desc).slice(0, 40);
+    const key = groupKey(t.desc);
     const g = groups.get(key) || { key, label: cleanName(t.desc), total: 0, count: 0 };
     g.total += Math.abs(t.v); g.count++; groups.set(key, g);
   }
