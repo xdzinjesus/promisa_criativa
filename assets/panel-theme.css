@@ -124,3 +124,4 @@ body.is-partner #cloud-copy,body.is-partner .tb-file,body.is-partner #passkey-op
 .pt-fresh{border:1px solid rgba(34,197,94,.45)}.pt-row{display:grid;grid-template-columns:80px 1fr auto;gap:8px;align-items:center;margin-top:8px}
 .pt-row input{font-family:ui-monospace,monospace}.pt-wa{display:inline-block;margin-top:12px;font-weight:700}
 @media (max-width:600px){.pt-row{grid-template-columns:1fr auto}.pt-row small{grid-column:1/-1}}
+.pt-quick{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}

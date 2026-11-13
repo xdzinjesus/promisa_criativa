@@ -22,6 +22,9 @@ export function strongPassword() {
 function moduleChecks(selected = []) {
   const box = el('fieldset', null, { className: 'pt-mods' });
   box.append(el('legend', 'O que ele pode ver e usar'));
+  const quick = el('div', null, { className: 'pt-quick' });
+  for (const [t, on] of [['✅ Marcar todos', true], ['Desmarcar todos', false]]) { const b = el('button', t, { type: 'button', className: 'sec' }); b.addEventListener('click', () => box.querySelectorAll('input[type=checkbox]').forEach(i => { i.checked = on; })); quick.append(b); }
+  box.append(quick);
   for (const m of MODULES) {
     const lab = el('label', null, { className: 'pt-check' });
     lab.append(el('input', null, { type: 'checkbox', value: m.id, checked: selected.includes(m.id) }), el('span', m.label));
