@@ -65,8 +65,9 @@ function palette(mode = 'all') {
   function onKey(event) {
     if (event.key === 'Escape') { event.preventDefault(); close(); }
     else if (!overlay.contains(event.target) && event.target !== document.body) return;
-    else if (event.key === 'ArrowDown') { event.preventDefault(); index = Math.min(items.length - 1, index + 1); draw(); }
-    else if (event.key === 'ArrowUp') { event.preventDefault(); index = Math.max(0, index - 1); draw(); }
+    // As setas redesenham a lista: o foco volta para o campo, e o Enter abre o item destacado.
+    else if (event.key === 'ArrowDown') { event.preventDefault(); index = Math.min(items.length - 1, index + 1); draw(); input.focus(); }
+    else if (event.key === 'ArrowUp') { event.preventDefault(); index = Math.max(0, index - 1); draw(); input.focus(); }
     else if (event.key === 'Enter' && event.target === input) { event.preventDefault(); run(items[index]); } // num resultado focado (Tab), o Enter abre aquele botão
   }
   input.addEventListener('input', () => { index = 0; draw(); });
