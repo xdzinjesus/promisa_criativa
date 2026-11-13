@@ -6,7 +6,7 @@ import { saveKeys, loadKeys } from './vault-keys.js';
 import { buildSiteEntries, canSplit, resolveSiteDownloads, withSitePairs, conflictLabels, batchOperations, siteFilesKey, legacyBaselineHints, deferSitePairs } from './site-split.js';
 
 const adapter = window.promisaAdapter;
-const collections = ['sales', 'exp', 'projects'];
+const collections = ['sales', 'exp', 'projects', 'bank'];
 const defaults = { prospectNotes: '', siteHostingBaseUrl: '', demoMessage: '', plan: { meta: '', ticket: '', conv: '20', pacotes: '', publico: '', dif: '', obs: '' } };
 let paused = false;
 let busy = false, applying = false, generation = 0, timer, dirty = false, storageReady = false;
@@ -349,7 +349,7 @@ async function restoreLocalCopy(file) {
     if (backup.format !== 'promisa-cloud-local-copy' || backup.version !== 1 || !backup.entries || Object.keys(backup.entries).length > 5000) throw new Error('Cópia local inválida.');
     const changes = new Map();
     for (const [key, entry] of Object.entries(backup.entries)) {
-      if (!/^(sales|exp|projects|settings|sites|attachments):[A-Za-z0-9%_.~-]{1,180}$/.test(key) || entry?.version !== 1) throw new Error('Cópia local inválida.');
+      if (!/^(sales|exp|projects|bank|settings|sites|attachments):[A-Za-z0-9%_.~-]{1,180}$/.test(key) || entry?.version !== 1) throw new Error('Cópia local inválida.');
       changes.set(key, validateEntry(key, decodeValue(entry.value)));
     }
     if (!confirm('Restaurar os registros desta cópia no aparelho? Registros com o mesmo identificador serão substituídos.')) return;

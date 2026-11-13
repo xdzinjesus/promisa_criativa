@@ -22,6 +22,7 @@ await build({ entryPoints: ['src/vault-login.js'], bundle: true, minify: true, p
 await build({ entryPoints: ['src/passkey-login.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/passkey.js' });
 await build({ entryPoints: ['src/passkey-panel.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/passkey-panel.js' });
 await build({ entryPoints: ['src/discord-panel.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/discord-panel.js' });
+await build({ entryPoints: ['src/bank-panel.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/bank-panel.js' });
 await build({ entryPoints: ['src/client-helpers-panel.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/client-helpers.js' });
 await build({ entryPoints: ['src/panel-chrome.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/panel-chrome.js' });
 await build({ entryPoints: ['src/client-portal.js'], bundle: true, minify: true, platform: 'browser', target: ['es2022'], outfile: 'public/assets/client-portal.js' });
