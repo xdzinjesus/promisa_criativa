@@ -65,9 +65,9 @@ export function plateLink(kind, raw) {
   return '';
 }
 
-export function newMove(type, { d, qty, total = 0, client = '', link = '', paid = true, note = '' }, id) {
+export function newMove(type, { d, qty, total = 0, client = '', link = '', paid = true, note = '', saleId = '' }, id) {
   const q = Math.trunc(Number(qty));
-  return { id, type, d, qty: type === 'adj' ? q : Math.abs(q), total: round(Math.max(0, Number(total) || 0)), ...(client ? { client: clean(client, 120) } : {}), ...(link ? { link: clean(link, 500) } : {}), ...(type === 'out' ? { paid: Boolean(paid) } : {}), ...(note ? { note: clean(note, 300) } : {}) };
+  return { id, type, d, qty: type === 'adj' ? q : Math.abs(q), total: round(Math.max(0, Number(total) || 0)), ...(client ? { client: clean(client, 120) } : {}), ...(link ? { link: clean(link, 500) } : {}), ...(type === 'out' ? { paid: Boolean(paid) } : {}), ...(note ? { note: clean(note, 300) } : {}), ...(saleId && /^[\w.~-]{1,180}$/.test(String(saleId)) ? { saleId: String(saleId) } : {}) };
 }
 
 // Validação do registro (usada também pelo servidor de sincronização).
@@ -86,7 +86,7 @@ export function validateProduct(value) {
   const ids = new Set();
   for (const m of value.moves) {
     if (!m || typeof m !== 'object' || Array.isArray(m)) throw new Error('Movimento inválido.');
-    if (Object.keys(m).some(k => !['id', 'type', 'd', 'qty', 'total', 'client', 'link', 'paid', 'note'].includes(k))) throw new Error('Campo inesperado no movimento.');
+    if (Object.keys(m).some(k => !['id', 'type', 'd', 'qty', 'total', 'client', 'link', 'paid', 'note', 'saleId'].includes(k))) throw new Error('Campo inesperado no movimento.');
     if (typeof m.id !== 'string' || !/^[\w.-]{1,60}$/.test(m.id) || ids.has(m.id)) throw new Error('Identificador de movimento inválido.');
     ids.add(m.id);
     if (!MOVE_TYPES.includes(m.type) || !DAY.test(m.d)) throw new Error('Tipo ou data do movimento inválido.');
@@ -95,6 +95,7 @@ export function validateProduct(value) {
     if (m.link !== undefined && (typeof m.link !== 'string' || m.link.length > 500 || !/^https:\/\//i.test(m.link))) throw new Error('Link inválido.');
     for (const k of ['client', 'note']) if (m[k] !== undefined && (typeof m[k] !== 'string' || m[k].length > 300)) throw new Error('Campo do movimento inválido.');
     if (m.paid !== undefined && typeof m.paid !== 'boolean') throw new Error('Situação de pagamento inválida.');
+    if (m.saleId !== undefined && (typeof m.saleId !== 'string' || !/^[\w.~-]{1,180}$/.test(m.saleId))) throw new Error('Cliente do movimento inválido.');
   }
   return value;
 }

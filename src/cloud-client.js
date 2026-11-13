@@ -502,13 +502,13 @@ document.getElementById('cloud-copy')?.addEventListener('click', () => downloadL
 document.getElementById('cloud-restore')?.addEventListener('change', event => { restoreLocalCopy(event.target.files[0]); event.target.value = ''; });
 window.addEventListener('online', () => sync());
 let lastFocusSync = 0;
-window.addEventListener('focus', () => { if (Date.now() - lastFocusSync < 45_000) return; lastFocusSync = Date.now(); sync(); });
+window.addEventListener('focus', () => { if (Date.now() - lastFocusSync < 120_000) return; lastFocusSync = Date.now(); sync(); });
 // Ao sair da aba/fechar com alterações pendentes, envia na hora (não espera o agrupamento).
 document.addEventListener('visibilitychange', () => { if (document.hidden && dirty) { clearTimeout(timer); sync(true); } });
 window.addEventListener('beforeunload', event => { if (dirty || busy) { event.preventDefault(); event.returnValue = ''; } });
-// Economia da cota: confere a nuvem a cada 3 min e para depois de 10 min sem uso;
+// Economia da cota do Blob (plano grátis: 10 mil leituras/mês): confere a nuvem a cada 5 min e para depois de 5 min sem uso;
 // volta a conferir assim que a pessoa mexe no painel. Alterações locais são enviadas na hora.
-const IDLE_MS = 10 * 60_000;
+const IDLE_MS = 5 * 60_000;
 let lastActivity = Date.now(), idle = false;
 const wake = () => { lastActivity = Date.now(); if (idle) { idle = false; sync(); } };
 ['pointerdown', 'keydown', 'touchstart', 'wheel'].forEach(type => window.addEventListener(type, wake, { passive: true }));
@@ -517,5 +517,5 @@ setInterval(() => {
   if (document.hidden) return;
   if (!dirty && Date.now() - lastActivity > IDLE_MS) { idle = true; return; }
   sync();
-}, 180_000);
+}, 300_000);
 sync();

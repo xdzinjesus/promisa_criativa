@@ -99,8 +99,14 @@ function productCard(p, root) {
       const link = plateLink(p.kind, v.link);
       if (v.link && !link) { alert('Esse link não parece certo. Para Instagram, digite o @; para Google, cole o link de avaliação (começa com https://).'); return; }
       if (Number(v.qty) > s.stock && !confirm(`O estoque é ${s.stock}. Registrar mesmo assim?`)) return;
-      p.moves.push(newMove('out', { ...v, link }, uid())); touch(p); ui.open = ''; persist(root);
+      // Liga a venda ao cliente da aba Clientes (mesmo nome), para aparecer na ficha dele.
+      const sale = (state()?.sales || []).find(x => String(x.client || '').trim().toLowerCase() === v.client.trim().toLowerCase());
+      p.moves.push(newMove('out', { ...v, link, saleId: sale?.id || '' }, uid())); touch(p); ui.open = ''; persist(root);
     });
+    // Sugere os clientes já cadastrados na aba Clientes.
+    const dl = el('datalist', null, { id: 'pr-clients-' + p.id });
+    for (const name of [...new Set((state()?.sales || []).map(x => String(x.client || '').trim()).filter(Boolean))].slice(0, 300)) dl.append(el('option', null, { value: name }));
+    inputs.client.setAttribute('list', dl.id); f.append(dl);
     inputs.qty.addEventListener('input', () => { if (p.price) inputs.total.value = (p.price * (Number(inputs.qty.value) || 0)).toFixed(2); });
     box.append(f);
     if (p.kind === 'google') box.append(el('p', 'Para achar o link de avaliação: no Google, busque a empresa → "Pedir avaliações" (no Perfil da Empresa) → copie o link. Ou use o Place ID.', { className: 'sub' }));

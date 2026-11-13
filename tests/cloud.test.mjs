@@ -75,3 +75,15 @@ test('cloud API requires login and reports missing storage without pretending to
   req.method = 'POST'; req.headers.origin = 'https://other.example';
   const csrf = response(); await cloudHandler(req, csrf); assert.equal(csrf.statusCode, 403);
 });
+
+test('histórico: quem criou, alterou e apagou fica no índice (sem gravação extra), no máximo 300', async () => {
+  const { MAX_HISTORY } = await import('../lib/cloud-store.js');
+  let m = { version: 1, records: { 'sales:a': { hash: A, path } } };
+  m = mergeOperations(m, [{ key: 'sales:a', baseHash: A, hash: B, path }, { key: 'sales:b', baseHash: null, hash: C, path }], { id: 'u0123456789ab', name: 'Filipe' });
+  m = mergeOperations(m, [{ key: 'sales:a', baseHash: B, hash: null }, { key: 'sitefiles:x', baseHash: null, hash: A, path }], { id: 'owner' });
+  assert.deepEqual(m.history.map(e => [e.by, e.act, e.key]), [['u0123456789ab', 'update', 'sales:a'], ['u0123456789ab', 'create', 'sales:b'], ['owner', 'delete', 'sales:a']]);
+  assert.equal(m.history[0].name, 'Filipe');
+  for (let i = 0; i < 200; i++) m = mergeOperations(m, [{ key: 'sales:c' + i, baseHash: null, hash: A, path }, { key: 'sales:d' + i, baseHash: null, hash: A, path }], { id: 'owner' });
+  assert.equal(m.history.length, MAX_HISTORY);
+  assert.equal(mergeOperations({ version: 1, records: {} }, [{ key: 'sales:z', baseHash: null, hash: A, path }]).history, undefined, 'sem autor, nada registrado');
+});
