@@ -41,14 +41,14 @@ function hash(text) { let h = 2166136261; for (let i = 0; i < text.length; i++) 
 // Código do banco usado como está quando já é seguro; senão vira um resumo do código inteiro (nada é cortado ou removido).
 const fitKey = f => /^[\w.-]{1,90}$/.test(f) ? f : 'x' + hash(f) + hash('~' + f) + f.length.toString(36);
 const safeId = text => String(text).replace(/[^\w.:-]/g, '').slice(0, 120);
-function withIds(list, account, { byAccount = true, fitAccount = account } = {}) {
+function withIds(list, account, { byAccount = true, fitAccount = account, legacy = false } = {}) {
   const seen = new Map();
   return list.map(t => {
     const base = `${t.d}|${t.v}|${norm(t.desc)}`, n = (seen.get(base) || 0) + 1; seen.set(base, n);
-    const legacy = safeId(`h:csv:${hash(base + '|' + n)}`); // formato da 1ª versão (sem a conta): reconhecido para não duplicar o que já foi importado
-    const id = t.fitid ? `o:${hash(fitAccount)}:${fitKey(t.fitid)}` : byAccount ? safeId(`h:${hash(account)}:${hash(base + '|' + n)}`) : legacy;
+    const old = safeId(`h:csv:${hash(base + '|' + n)}`); // formato da 1ª versão (sem a conta): reconhecido para não duplicar o que já foi importado
+    const id = t.fitid ? `o:${hash(fitAccount)}:${fitKey(t.fitid)}` : byAccount ? safeId(`h:${hash(account)}:${hash(base + '|' + n)}`) : old;
     const { fitid, ...rest } = t;
-    return t.fitid || !byAccount ? { ...rest, id } : { ...rest, id, legacyId: legacy };
+    return t.fitid || !byAccount || !legacy ? { ...rest, id } : { ...rest, id, legacyId: old };
   });
 }
 
@@ -119,7 +119,7 @@ export function parseCSV(text, account = '') {
   for (const t of list) if (t.fitid && count.get(t.fitid) > 1 && t.v < 0) t.fitid += ':reversal';
   const acc = clean(account, 60) || (nuConta ? 'Nubank' : nuCartao ? 'Nubank cartão' : 'Conta');
   // Identidade da conta: o nome que você digitou (contas diferentes não se misturam); sem nome, uma identidade fixa (o nome do arquivo nunca entra).
-  return { account: acc, tx: (nuConta ? withIds(list, 'nubank') : clean(account) && !nuCartao ? withIds(list, 'conta:' + norm(account), { fitAccount: acc }) : withIds(list, 'csv', { byAccount: false, fitAccount: acc })), balance: null, kind: nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : 'csv' };
+  return { account: acc, tx: (nuConta ? withIds(list, 'nubank') : clean(account) && !nuCartao ? withIds(list, 'conta:' + norm(account), { fitAccount: acc, legacy: true }) : withIds(list, 'csv', { byAccount: false, fitAccount: acc })), balance: null, kind: nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : 'csv' };
 }
 export function parseStatement(name, text, account) {
   if (/\.ofx$/i.test(name) || /<OFX>/i.test(text)) { const r = parseOFX(text); if (account) { r.account = clean(account, 60); } return r; }
@@ -170,9 +170,11 @@ export function mergeImport(months, parsed, rules = {}, now = Date.now()) {
   const byMonth = new Map((months || []).map(m => [m.id, { ...m, tx: [...(m.tx || [])] }]));
   let added = 0, dup = 0, full = 0;
   const known = new Set();
-  for (const m of byMonth.values()) for (const t of m.tx) known.add(t.id);
+  const knownAcc = new Map();
+  for (const m of byMonth.values()) for (const t of m.tx) { known.add(t.id); knownAcc.set(t.id, t.acc); }
   for (const t of parsed.tx) {
-    if (known.has(t.id) || (t.legacyId && known.has(t.legacyId))) { dup++; continue; }
+    // Código antigo (1ª versão) só conta como repetido dentro da MESMA conta.
+    if (known.has(t.id) || (t.legacyId && knownAcc.get(t.legacyId) === parsed.account)) { dup++; continue; }
     const id = t.d.slice(0, 7);
     const m = byMonth.get(id) || { id, month: id, tx: [] };
     if (m.tx.length >= MAX_TX_PER_MONTH) { full++; continue; }

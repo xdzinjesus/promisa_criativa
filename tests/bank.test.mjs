@@ -153,6 +153,7 @@ test('revisão: o que já foi importado na 1ª versão não duplica; filtro usa 
   // 1ª versão: sem FITID, o ID era sempre "h:csv:…", com ou sem nome de conta
   const v1 = parseCSV(csv); assert.match(v1.tx[0].id, /^h:csv:/, 'sem nome: mesmo formato da 1ª versão');
   const cartao = parseCSV('date,title,amount\n2026-11-02,Ifood,58.90'); assert.match(cartao.tx[0].id, /^h:csv:/, 'fatura do Nubank também');
+  v1.account = 'Conta A'; // na 1ª versão o nome digitado ficava na conta, mas não entrava no código
   let { months } = mergeImport([], v1);
   const comNome = parseCSV(csv, 'Conta A');
   assert.equal(comNome.tx[0].legacyId, v1.tx[0].id);
@@ -172,4 +173,15 @@ test('revisão: CSV de outro banco com Identificador mantém o mesmo código da 
   ({ months } = mergeImport([], comNome));
   assert.equal(mergeImport(months, parseCSV(csv, 'Itaú PJ')).added, 0, 'mesmo arquivo com o mesmo nome não duplica');
   assert.notEqual(semNome.tx[0].id, comNome.tx[0].id, 'contas com nomes diferentes continuam separadas');
+});
+
+test('revisão: a compatibilidade com a 1ª versão só vale dentro da mesma conta (OFX de outro banco não some)', () => {
+  const csv = 'Data;Descrição;Valor\n03/11/2026;Tarifa;-10,00';
+  const v1 = parseCSV(csv); v1.account = 'Inter'; // como a 1ª versão salvava: id h:csv:… com a conta "Inter"
+  let { months } = mergeImport([], v1);
+  const ofx = parseOFX('<OFX><BANKACCTFROM><BANKID>0341<ACCTID>9</BANKACCTFROM><BANKTRANLIST><STMTTRN><DTPOSTED>20261103<TRNAMT>-10,00<MEMO>Tarifa</BANKTRANLIST></OFX>');
+  assert.equal(ofx.tx[0].legacyId, undefined, 'OFX não usa o código antigo');
+  assert.equal(mergeImport(months, ofx).added, 1, 'tarifa do Itaú entra');
+  assert.equal(mergeImport(months, parseCSV(csv, 'Itaú')).added, 1, 'CSV de outra conta entra');
+  assert.equal(mergeImport(months, parseCSV(csv, 'Inter')).added, 0, 'mesma conta: reconhece o antigo');
 });
