@@ -36,12 +36,14 @@ export function parseDate(raw) {
 
 // Identificador estável: o FITID do banco (OFX) ou um resumo de data + valor + descrição + ordem no dia.
 function hash(text) { let h = 2166136261; for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0).toString(36); }
+// Código do banco usado como está quando já é seguro; senão vira um resumo do código inteiro (nada é cortado ou removido).
+const fitKey = f => /^[\w.-]{1,90}$/.test(f) ? f : 'x' + hash(f) + hash('~' + f) + f.length.toString(36);
 const safeId = text => String(text).replace(/[^\w.:-]/g, '').slice(0, 120);
 function withIds(list, account, { byAccount = true } = {}) {
   const seen = new Map();
   return list.map(t => {
     const base = `${t.d}|${t.v}|${norm(t.desc)}`, n = (seen.get(base) || 0) + 1; seen.set(base, n);
-    const id = t.fitid ? safeId(`o:${hash(account)}:${t.fitid}`) : safeId(`h:${byAccount ? hash(account) : 'csv'}:${hash(base + '|' + n)}`);
+    const id = t.fitid ? `o:${hash(account)}:${fitKey(t.fitid)}` : safeId(`h:${byAccount ? hash(account) : 'csv'}:${hash(base + '|' + n)}`);
     const { fitid, ...rest } = t;
     return { ...rest, id };
   });

@@ -103,3 +103,12 @@ test('dashboard: período, comparação justa, séries, maiores gastos e Nubank'
   const all = dashboard(months, { period: 'tudo', today: '2026-11-13' });
   assert.deepEqual(all.series.map(s => s.id), ['2026-10', '2026-11']); assert.equal(all.saldo.at(-1).v, 1191.1);
 });
+
+test('revisão: FITIDs diferentes nunca viram o mesmo lançamento; nome do arquivo não muda o identificador', () => {
+  const ofx = f => `<OFX><BANKACCTFROM><BANKID>0260<ACCTID>1</BANKACCTFROM><BANKTRANLIST>${f.map(id => `<STMTTRN><DTPOSTED>20261103<TRNAMT>-10.00<FITID>${id}<MEMO>X`).join('')}</BANKTRANLIST></OFX>`;
+  const r = parseOFX(ofx(['AB/123', 'AB123', 'A'.repeat(130) + '1', 'A'.repeat(130) + '2']));
+  assert.equal(new Set(r.tx.map(t => t.id)).size, 4);
+  for (const t of r.tx) assert.match(t.id, /^[\w.:-]{1,120}$/);
+  const csv = 'Data;Descrição;Valor\n03/11/2026;Mercado;-10,00';
+  assert.equal(parseStatement('extrato-01-10.csv', csv).tx[0].id, parseStatement('extrato-01-30.csv', csv).tx[0].id);
+});
