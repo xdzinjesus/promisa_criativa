@@ -38,3 +38,10 @@ test('detecta bloco com aspas simples e atributos em outra ordem', () => {
   const d = detectAdmin([f('index.html', "<script id='dados' type='application/json'>{}</script><script>if(location.hash==='#admin')a();URL.createObjectURL(b)</script>")]);
   assert.deepEqual(d.blocks, ['dados']); assert.equal(d.ok, true);
 });
+
+test('endereço da página admin conta a partir da pasta publicada (ZIP com pasta)', () => {
+  const files = [f('bundle/index.html', '<p>oi</p>'), f('bundle/admin.html', '<input type="password"><script>localStorage.a=1</script>')];
+  assert.equal(detectAdmin(files, { root: 'bundle/' }).entry, '/admin.html');
+  const html = injectSiteData({ htmlPath: 'bundle/index.html', files }, { siteId: 's', api: 'x' }).files[0].data;
+  assert.match(html, /"admin":"\/admin\.html"/);
+});

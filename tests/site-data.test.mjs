@@ -107,3 +107,16 @@ test('revisão: lote grande demais dá erro, aspas simples no bloco, chaves apag
   const broken = withSiteData(async () => ({ site: { files: [] } }), { get: async () => { throw new Error('blob fora'); } }, { api: 'x' });
   await assert.rejects(broken('sites:r'), /blob fora/);
 });
+
+test('revisão 2: nova senha mantém as chaves apagadas; falha ao consultar a publicação vira erro', async () => {
+  const w = world();
+  const [, on] = await w.actions.admin('admin-data-enable', { siteId: 'q' });
+  await w.actions.publicSave({ siteId: 'q', password: on.password, changes: { promo: null } });
+  await w.actions.admin('admin-data-enable', { siteId: 'q' });
+  assert.deepEqual((await w.store.get('q')).removed, ['promo']);
+  const store = createSiteDataStore({ token: () => '', memory: () => true });
+  const actions = createSiteDataActions({ store, publish: async () => { throw new Error('consulta falhou'); } });
+  const [, p] = await actions.admin('admin-data-enable', { siteId: 'z' });
+  const [status, body] = await actions.publicSave({ siteId: 'z', password: p.password, changes: { a: '1' } });
+  assert.equal(status, 502); assert.equal(body.saved, true);
+});

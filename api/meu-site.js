@@ -21,7 +21,7 @@ const siteData = createSiteDataActions({
   store: dataStore,
   // Só republica sites que já estão publicados (o dono publica pela 1ª vez no painel).
   publish: async siteId => {
-    const client = cloudflare(), entry = await publishStore.get(siteId).catch(() => null);
+    const client = cloudflare(), entry = await publishStore.get(siteId); // falha na consulta vira erro: o cliente mantém as alterações e tenta de novo
     if (!client || !entry?.project) return { published: false };
     await publishSite({ store: publishStore, client, readSiteInfo: readWithData }, siteId, null, entry);
     return { published: true };
