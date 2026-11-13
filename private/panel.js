@@ -40,7 +40,7 @@ function render(){
  if(tab==='projects') drawProjects();
  if(tab==='clients') drawClients();
  if(tab==='entregas') drawEntregas();
- if(tab==='dash') drawDemoLeads();
+ if(tab==='dash'){drawDemoLeads();mountModule('promisaVercelUsage','/assets/vercel-usage.js','vercelUsage')}
  if(tab==='backup'){drawBackupSummary();window.promisaSiteBackup?.mount(document.getElementById('discordBackupCard'))}
  if(tab==='instagram') drawInstagram();
  if(tab==='clientPanel') window.promisaClientEditor?.mount(document.getElementById('ceRoot'));
@@ -82,6 +82,7 @@ function dash(){
  <div class="card"><b>Meta do mês</b> <small>${meta?R(recM)+' de '+R(meta):'defina a meta na aba Plano'}</small><div class="prog"><i style="width:${pct}%"></i></div></div>
  <div class="card"><b>Últimos 6 meses</b> <small>🟩 recebido · 🟥 despesas</small><div class="bars">${data.map(d=>`<div><span style="height:${d[1]/mx*90}px;background:var(--grn)"></span><span style="height:${d[2]/mx*90}px;background:var(--red)"></span><br>${d[0].slice(5)}</div>`).join('')}</div></div>
  <h2>Pendentes de pagamento</h2><div class="card">${pend.length?pend.map(s=>`<div class="item"><div>${esc(s.client)}<br><small>${esc(s.service)} · ${R(s.value)}</small></div><button class="sec" data-click="pay" data-click-args="${esc(JSON.stringify([s.id]))}">Marcar pago</button></div>`).join(''):'<small>Nenhum pagamento pendente.</small>'}</div>
+ <div id="vercelUsage"></div>
  <h2>Funil</h2><div class="card">${STAGES.map(st=>{const l=S.sales.filter(s=>s.stage===st);return `<div class="item"><span>${st}</span><span><b>${l.length}</b> <small>${R(sum(l))}</small></span></div>`}).join('')}</div>`;
 }
 function nextStepsHtml(){

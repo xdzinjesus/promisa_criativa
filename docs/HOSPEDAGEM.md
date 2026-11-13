@@ -98,6 +98,17 @@ Para o site que **você fez** (um `index.html` ou uma pasta) e que tem **uma ár
 
 Como funciona: a área administrativa do site continua igual; o sistema captura o que ela grava no navegador (`localStorage`) ou o bloco de dados `<script type="application/json" id="...">` do `index.html` que ela gera para baixar, e publica de novo o site com esses dados dentro do HTML. Quem visita recebe os dados junto com a página (nenhuma leitura extra na Vercel). Limites: 40 publicações por dia por site; até 3 MB de dados; 5 senhas erradas bloqueiam por 15 min. Áreas administrativas que guardam em outro lugar (IndexedDB, servidor próprio) não são capturadas.
 
+## 4.3 Ver o uso da Vercel no painel (cartão "☁️ Uso da Vercel" no Início)
+
+O painel mostra os mesmos números da tela **Usage** da Vercel (últimos 30 dias, com o limite do plano grátis). Precisa de uma chave de leitura, criada uma vez:
+
+1. Abra https://vercel.com/account/settings/tokens → **Create Token**.
+2. Nome: `Promisa painel uso`. Em **Scope**, escolha a sua conta (a mesma do projeto). Validade: **No expiration** (ou 1 ano). Toque em **Create** e copie. **Não cole no chat.**
+3. Abra https://vercel.com/dashboard → **promisa_criativa** → **Settings** → **Environment Variables** → crie `VERCEL_API_TOKEN` com a chave, marcado em **Production** → **Save**.
+4. **Deployments** → ⋯ da primeira linha → **Redeploy**. Pronto: o cartão aparece no Início (atualiza a cada 30 min, ou no 🔄).
+
+A chave só é usada no servidor (nunca vai para o navegador). Se o cartão disser que a Vercel não devolveu dados, a consulta oficial pode não trazer o plano grátis; nesse caso, o uso continua em vercel.com → Usage.
+
 ## 5. Ligar o domínio do cliente (ex.: barbearianavalha.com.br)
 
 1. Na janela **🌐 Publicar site**, em **Domínio do cliente**, digite o domínio (sem `www`) e toque em **Ligar domínio**.

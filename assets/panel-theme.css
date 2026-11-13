@@ -99,3 +99,11 @@ dialog::backdrop{background:#020617b3;backdrop-filter:blur(4px)}
 
 /* A barra do topo ocupa a largura toda em telas largas (antes parava em 1440px). */
 .topbar{max-width:none!important;width:auto}
+/* Cartão de uso da Vercel (Início) */
+.vu-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.vu-refresh{padding:4px 10px!important}
+.vu-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:4px 18px;margin-top:8px}
+.vu-row{padding:8px 0}.vu-top{display:flex;justify-content:space-between;gap:8px;font-size:13.5px}.vu-top b{white-space:nowrap}
+.vu-track{height:6px;margin:6px 0 3px;border-radius:3px;background:rgba(127,127,127,.15)}.vu-track i{display:block;height:100%;border-radius:3px;background:var(--ac,#2563eb)}
+.vu-row.is-warn .vu-track i{background:#eab308}.vu-row.is-red .vu-track i{background:#dc2626}
+.vu-row small{font-size:11.5px;opacity:.75}.vu-note{font-size:12px}
