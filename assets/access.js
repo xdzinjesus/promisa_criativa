@@ -35,6 +35,13 @@ document.getElementById('toggle-password').addEventListener('click', event => {
   event.currentTarget.setAttribute('aria-label', visible ? 'Ocultar senha' : 'Mostrar senha');
   event.currentTarget.setAttribute('aria-pressed', String(visible));
 });
+// "Sou sócio": mostra o campo de usuário (o dono entra só com a senha, como sempre).
+const partnerBox = document.getElementById('partner-user'), partnerInput = document.getElementById('partner-login'), partnerToggle = document.getElementById('partner-toggle');
+partnerToggle?.addEventListener('click', () => {
+  const show = partnerBox.hidden; partnerBox.hidden = !show; partnerToggle.setAttribute('aria-expanded', String(show));
+  partnerToggle.textContent = show ? 'Sou o dono: entrar só com a senha' : 'Sou sócio: entrar com usuário';
+  partnerInput.required = show; (show ? partnerInput : document.getElementById('admin-password')).focus();
+});
 form.addEventListener('submit', async event => {
   event.preventDefault();
   if (!await gateReady && !await lockGate(false)) return;
@@ -44,11 +51,14 @@ form.addEventListener('submit', async event => {
   button.disabled = true;
   button.textContent = 'Verificando…';
   try {
-    const response = await fetch('/api/access?action=login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify({ password: input.value }) });
+    const partnerUser = partnerBox.hidden ? '' : partnerInput.value.trim();
+    const response = await fetch('/api/access?action=login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'same-origin', body: JSON.stringify(partnerUser ? { user: partnerUser, password: input.value } : { password: input.value }) });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'Não foi possível entrar.');
     const password = input.value;
     input.value = '';
+    // Sócio: vai direto para a gestão (só com os módulos liberados pelo dono).
+    if (partnerUser) { location.replace('/admin'); return; }
     // Destrava os dados protegidos com a mesma senha; nunca impede nem atrasa o login por mais de 15 s.
     try { await Promise.race([Promise.resolve(window.promisaVault?.afterLogin(password)).catch(() => {}), new Promise(resolve => setTimeout(resolve, 15_000))]); } catch {}
     showChoice();

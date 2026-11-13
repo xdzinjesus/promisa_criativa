@@ -26,3 +26,17 @@ test('consulta a Vercel com a chave só no servidor; sem chave, avisa', async ()
   const denied = await vercelUsage({ env: { VERCEL_API_TOKEN: 'x' }, fetchFn: async () => new Response('', { status: 403 }) });
   assert.match(denied.error, /recusou a chave/);
 });
+
+test('sem time configurado: em 404 descobre o time da conta e tenta de novo; mostra o motivo da Vercel', async () => {
+  const calls = [];
+  const fetchFn = async url => {
+    const u = String(url); calls.push(u);
+    if (u.includes('/v2/teams')) return new Response(JSON.stringify({ teams: [{ id: 'team_abc123' }] }), { status: 200 });
+    if (u.includes('teamId=team_abc123')) return new Response(JSON.stringify({ ServiceName: 'CDN Requests', ConsumedQuantity: 20000, ChargeCategory: 'Usage', BilledCost: 0 }), { status: 200 });
+    return new Response(JSON.stringify({ error: { message: 'Not Found' } }), { status: 404 });
+  };
+  const r = await vercelUsage({ env: { VERCEL_API_TOKEN: 't' }, fetchFn });
+  assert.equal(r.items[0].name, 'CDN Requests'); assert.equal(calls.length, 3);
+  const fail = await vercelUsage({ env: { VERCEL_API_TOKEN: 't' }, fetchFn: async u => String(u).includes('/v2/teams') ? new Response('{"teams":[]}') : new Response('{"error":{"message":"Not Found"}}', { status: 404 }) });
+  assert.match(fail.error, /erro 404: Not Found/); assert.match(fail.error, /Hobby/);
+});

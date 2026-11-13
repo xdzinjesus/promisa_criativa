@@ -21,11 +21,11 @@ const waitFor = (selector, ms = 2500) => new Promise(resolve => {
 });
 
 const ACTIONS = [
-  { label: 'Novo cliente', icon: '👤', hint: 'Clientes', run: async () => { go('clients'); (await waitFor('[data-click="toggleClientForm"]'))?.click(); } },
-  { label: 'Montar site no Painel do cliente', icon: '🧩', hint: 'Sites', run: () => go('clientPanel') },
-  { label: 'Registrar venda de produto (placas)', icon: '📦', hint: 'Produtos', run: () => go('products') },
-  { label: 'Importar extrato bancário', icon: '🏦', hint: 'Financeiro', run: () => go('bank') },
-  { label: 'Dar acesso a um cliente', icon: '🔑', hint: 'Acessos', run: async () => { go('clientAccess'); (await waitFor('.ca-new input'))?.focus(); } },
+  { tab: 'clients', label: 'Novo cliente', icon: '👤', hint: 'Clientes', run: async () => { go('clients'); (await waitFor('[data-click="toggleClientForm"]'))?.click(); } },
+  { tab: 'clientPanel', label: 'Montar site no Painel do cliente', icon: '🧩', hint: 'Sites', run: () => go('clientPanel') },
+  { tab: 'products', label: 'Registrar venda de produto (placas)', icon: '📦', hint: 'Produtos', run: () => go('products') },
+  { tab: 'bank', label: 'Importar extrato bancário', icon: '🏦', hint: 'Financeiro', run: () => go('bank') },
+  { tab: 'clientAccess', label: 'Dar acesso a um cliente', icon: '🔑', hint: 'Acessos', run: async () => { go('clientAccess'); (await waitFor('.ca-new input'))?.focus(); } },
 ];
 
 // ---- busca rápida ----
@@ -45,7 +45,8 @@ function palette(mode = 'all') {
   function draw() {
     const q = norm(input.value.trim());
     const pages = mode === 'new' ? [] : tabs().map(t => ({ label: t.label, icon: t.icon, hint: 'Página', run: () => t.button.click(), html: true }));
-    const all = [...ACTIONS, ...pages];
+    const open = new Set(tabs().map(t => t.id)); // sócio: só ações das abas liberadas
+    const all = [...ACTIONS.filter(a => !a.tab || open.has(a.tab)), ...pages];
     items = all.filter(item => !q || norm(item.label + ' ' + item.hint).includes(q));
     index = Math.min(index, Math.max(0, items.length - 1));
     list.replaceChildren();

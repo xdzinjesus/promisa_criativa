@@ -6,7 +6,7 @@
 <title>Acesso privado · Promisa</title>
 <link rel="icon" href="/assets/asset-1.webp"><link rel="manifest" href="/assets/promisa-admin.webmanifest"><link rel="apple-touch-icon" href="/assets/icon-180.png"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Promisa"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><link rel="stylesheet" href="/assets/access.css">
 <script src="/assets/vault-login.js?v=1" defer></script>
-<script src="/assets/access.js?v=5" defer></script>
+<script src="/assets/access.js?v=6" defer></script>
 <script src="/assets/passkey.js?v=1" defer></script>
 </head>
 <body class="access-page">
@@ -22,10 +22,12 @@
 </div>
 <form id="access-form">
 <input type="text" name="username" value="admin" autocomplete="username" hidden>
+<div id="partner-user" hidden><label for="partner-login">Usuário do sócio</label><input type="text" id="partner-login" name="partner-user" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="60"></div>
 <label for="admin-password">Senha de acesso</label>
 <div class="password-field"><input type="password" id="admin-password" name="password" autocomplete="current-password" required maxlength="256"><button type="button" id="toggle-password" aria-label="Mostrar senha" aria-pressed="false">Mostrar</button></div>
 <p id="access-error" class="access-error" role="alert"></p>
 <button type="submit" class="primary" id="access-submit">Entrar <span aria-hidden="true">→</span></button>
+<button type="button" class="back-link" id="partner-toggle" aria-expanded="false">Sou sócio: entrar com usuário</button>
 </form>
 <a class="back-link" href="/">← Voltar ao site</a>
 <noscript><p>Ative o JavaScript para entrar na área administrativa.</p></noscript>

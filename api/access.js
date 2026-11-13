@@ -5,6 +5,11 @@ import { join } from 'node:path';
 import { generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse } from '@simplewebauthn/server';
 import { passkeyStore, PasskeyError, MAX_PASSKEYS } from '../lib/passkey-store.js';
 import { signChallenge, readChallenge, createUsedChallenges, challengeCookie } from '../lib/passkey-challenge.js';
+import { createPartnerStore, createPartnerActions } from '../lib/partner-store.js';
+import { cleanModules, accessFor } from '../src/partner-modules.js';
+
+const partners = createPartnerActions({ store: createPartnerStore(), revoke: nonce => revokeSession(nonce) });
+export const partnerActions = partners; // trocável nos testes
 
 const lifetime = 15 * 60;
 const sessionVersion = 3; // Invalida todos os cookies emitidos antes desta correção.
@@ -35,7 +40,8 @@ export function session(req, config) {
   try {
     const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
     const now = Math.floor(Date.now() / 1000);
-    return data.v === sessionVersion && Number.isInteger(data.iat) && data.iat <= now &&
+    const partnerOk = data.u === undefined || (typeof data.u === 'string' && /^u[a-f0-9]{12}$/.test(data.u) && Array.isArray(data.m) && data.m.length <= 20 && cleanModules(data.m).length === data.m.length);
+    return data.v === sessionVersion && Number.isInteger(data.iat) && data.iat <= now && partnerOk &&
       typeof data.nonce === 'string' && /^[a-f0-9]{32}$/.test(data.nonce) && Number.isInteger(data.exp) && data.exp === data.iat + lifetime && data.exp > now;
   } catch { return false; }
 }
@@ -43,8 +49,22 @@ function sessionPayload(req) {
   const token = String(req.headers.cookie || '').split(';').map(x => x.trim()).find(x => x.startsWith('promisa_session='))?.slice(16);
   return token ? JSON.parse(Buffer.from(token.split('.')[0], 'base64url').toString()) : null;
 }
+// Só o DONO. Todas as rotas que não conhecem sócios continuam exigindo o dono.
 export async function authorized(req, config) {
-  return session(req, config) && await sessionActive(sessionPayload(req).nonce);
+  return session(req, config) && sessionPayload(req).u === undefined && await sessionActive(sessionPayload(req).nonce);
+}
+// Dono, ou sócio com o módulo que usa esta parte do servidor (ex.: 'publish', 'instagram').
+export async function allowedFor(req, config, api) {
+  const user = await who(req, config);
+  return Boolean(user?.owner || (user?.partner && accessFor(user.modules).api(api)));
+}
+// Quem está logado: { owner: true } | { partner: true, id, name, modules } | null. Os módulos vêm do cookie assinado
+// (sem leitura extra); mudar ou pausar o sócio corta as sessões dele na hora.
+export async function who(req, config) {
+  if (!config || !session(req, config)) return null;
+  const data = sessionPayload(req);
+  if (!await sessionActive(data.nonce)) return null;
+  return data.u === undefined ? { owner: true } : { partner: true, id: data.u, name: typeof data.n === 'string' ? data.n.slice(0, 60) : '', modules: cleanModules(data.m) };
 }
 function cookie(req, value, age) {
   const secure = process.env.VERCEL || req.headers['x-forwarded-proto'] === 'https';
@@ -65,11 +85,11 @@ export function sameOrigin(req) {
 }
 
 // Cria a sessão (revogável) e define o cookie assinado. Usado pela senha e pela chave de acesso.
-async function issueSession(req, res, config) {
+async function issueSession(req, res, config, partner = null, nonce = randomBytes(16).toString('hex')) {
   const issued = Math.floor(Date.now() / 1000);
-  const nonce = randomBytes(16).toString('hex');
   await createSession(nonce, issued + lifetime);
-  const payload = Buffer.from(JSON.stringify({ v: sessionVersion, iat: issued, exp: issued + lifetime, nonce })).toString('base64url');
+  const extra = partner ? { u: partner.id, m: cleanModules(partner.modules), n: String(partner.name || '').slice(0, 60) } : {};
+  const payload = Buffer.from(JSON.stringify({ v: sessionVersion, iat: issued, exp: issued + lifetime, nonce, ...extra })).toString('base64url');
   setCookie(res, cookie(req, `${payload}.${signature(payload, config.secret + config.password)}`, lifetime));
 }
 // Acrescenta um cookie sem apagar os já definidos.
@@ -81,6 +101,7 @@ function setCookie(res, value) {
 // ---- Chaves de acesso (WebAuthn) ----
 // Dependências trocáveis nos testes.
 export const passkeyDeps = { store: passkeyStore, generateRegistrationOptions, verifyRegistrationResponse, generateAuthenticationOptions, verifyAuthenticationResponse, used: createUsedChallenges() };
+const partnerAdminActions = ['partner-list', 'partner-create', 'partner-update', 'partner-delete'];
 const passkeyActions = ['passkey-register-options', 'passkey-register-verify', 'passkey-auth-options', 'passkey-auth-verify', 'passkey-list', 'passkey-delete'];
 const failureMessage = 'Não foi possível confirmar a chave de acesso.';
 const tooMany = 'Muitas tentativas. Aguarde antes de tentar novamente.';
@@ -279,13 +300,36 @@ export default async function handler(req, res) {
       error: 'Configure BLOB_READ_WRITE_TOKEN de um Vercel Blob privado em Production e faça um novo deploy para habilitar o acesso.'
     });
     if (req.method === 'POST') {
-    if (action !== 'login' && !passkeyActions.includes(action)) return json(res, 404, { error: 'Operação não encontrada.' });
+    if (action !== 'login' && !passkeyActions.includes(action) && !partnerAdminActions.includes(action)) return json(res, 404, { error: 'Operação não encontrada.' });
     if (!String(req.headers['content-type'] || '').startsWith('application/json')) return json(res, 415, { error: 'Formato inválido.' });
     // Na Vercel, x-real-ip/x-vercel-forwarded-for são definidos pela plataforma (não pelo visitante).
     const ip = String(req.headers['x-real-ip'] || req.headers['x-vercel-forwarded-for'] || req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim();
     let body;
     try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch {}
+    if (partnerAdminActions.includes(action)) {
+      // Só o dono cria, muda ou apaga sócios.
+      if (!await authorized(req, config)) return json(res, 401, { error: 'Só o dono do painel pode mexer nos sócios.' });
+      try {
+        if (action === 'partner-list') return json(res, 200, { partners: await partners.list() });
+        if (action === 'partner-create') return json(res, 200, { partner: await partners.create(body || {}) });
+        if (action === 'partner-update') return json(res, 200, { partner: await partners.update(String(body?.id || ''), { name: body?.name, modules: body?.modules, active: body?.active, password: body?.password }) });
+        if (action === 'partner-delete') return json(res, 200, await partners.remove(String(body?.id || '')));
+      } catch (error) { if (error.status) return json(res, error.status, { error: error.message }); throw error; }
+    }
     if (action !== 'login') return await passkeyRequest(req, res, config, action, body, ip);
+    if (body?.user !== undefined) {
+      // Entrada do sócio: usuário + senha, com o mesmo limite de tentativas do dono.
+      if (typeof body.user !== 'string' || body.user.length > 60 || typeof body?.password !== 'string' || body.password.length > 256) return json(res, 400, { error: 'Informe usuário e senha.' });
+      const retry = await reserveAttempt(ip);
+      if (retry) { res.setHeader('Retry-After', String(retry)); return json(res, 429, { error: 'Muitas tentativas. Aguarde antes de tentar novamente.' }); }
+      const nonce = randomBytes(16).toString('hex');
+      const partner = await partners.login(body.user, body.password, nonce);
+      await new Promise(resolve => setTimeout(resolve, 600));
+      if (!partner) return json(res, 401, { error: 'Usuário ou senha incorretos (ou acesso pausado pelo dono).' });
+      await clearAttempts(ip);
+      await issueSession(req, res, config, partner, nonce);
+      return json(res, 200, { ok: true });
+    }
     if (typeof body?.password !== 'string' || body.password.length > 256) return json(res, 400, { error: 'Informe uma senha válida.' });
     const retryAfter = await reserveAttempt(ip);
     if (retryAfter) { res.setHeader('Retry-After', String(retryAfter)); return json(res, 429, { error: 'Muitas tentativas. Aguarde antes de tentar novamente.' }); }
@@ -297,9 +341,10 @@ export default async function handler(req, res) {
     await issueSession(req, res, config);
     return json(res, 200, { ok: true });
   }
-  const authenticated = await authorized(req, config);
-  if (action === 'session') return json(res, authenticated ? 200 : 401, { authenticated });
+  const user = await who(req, config), authenticated = Boolean(user);
+  if (action === 'session') return json(res, authenticated ? 200 : 401, { authenticated, role: user?.owner ? 'owner' : user ? 'partner' : null, ...(user?.partner ? { name: user.name, modules: user.modules } : {}) });
   if (!['admin', 'catalogo', 'panel'].includes(view)) return json(res, 404, { error: 'Página não encontrada.' });
+  if (view === 'catalogo' && user?.partner && !user.modules.includes('mySites')) { res.statusCode = 303; res.setHeader('Location', '/admin'); return res.end(); }
   if (!authenticated) {
     res.statusCode = 303;
     res.setHeader('Location', '/acesso.html');
