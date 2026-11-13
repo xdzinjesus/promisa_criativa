@@ -3,6 +3,19 @@ import { uploadRecord } from './cloud-transfer.js';
 import { planSync, persistKeysSafely, encodeValue, decodeValue, digest } from './cloud-core.js';
 import { createKeyring, unlockKeyring, rewrapKeyring, seal, open, isEncryptedKey } from './vault.js';
 import { saveKeys, loadKeys } from './vault-keys.js';
+import { accessFor } from './partner-modules.js';
+
+// Sócio: só sincroniza os dados dos módulos liberados (o servidor também confere). Dono: tudo.
+let accessRule = null;
+async function loadAccessRule() {
+  if (accessRule) return accessRule;
+  try {
+    const r = await fetch('/api/access?action=session', { credentials: 'same-origin', cache: 'no-store' });
+    const d = await r.json();
+    if (r.ok) accessRule = d.role === 'partner' ? { partner: true, ...accessFor(d.modules) } : { partner: false, allowKey: () => true };
+  } catch { /* tenta de novo na próxima sincronização */ }
+  return accessRule || { partner: false, allowKey: () => true };
+}
 import { buildSiteEntries, canSplit, resolveSiteDownloads, withSitePairs, conflictLabels, batchOperations, siteFilesKey, legacyBaselineHints, deferSitePairs } from './site-split.js';
 
 const adapter = window.promisaAdapter;
@@ -109,6 +122,8 @@ async function capture({ plain = false, full = false } = {}) {
       entries[key] = { text, hash, plainHash, isDefault, seal: () => seal(current, key, text) };
     } else entries[key] = { text, hash: plainHash, plainHash, isDefault };
   }
+  const rule = await loadAccessRule();
+  if (rule.partner) for (const key of Object.keys(entries)) if (!rule.allowKey(key)) delete entries[key];
   return entries;
 }
 async function readRecord(key, expectedHash) {
@@ -202,6 +217,7 @@ async function sync(force = false) {
   const started = generation;
   try {
     message('Verificando dados online…', 'pending');
+    await loadAccessRule();
     const manifest = await request('manifest');
     storageReady = true;
     if (workspace !== manifest.workspace) {

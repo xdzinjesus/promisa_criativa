@@ -1,5 +1,6 @@
 import { handleUpload } from '@vercel/blob/client';
-import { settings, authorized, sameOrigin, passwordMatches } from './access.js';
+import { settings, who, sameOrigin, passwordMatches } from './access.js';
+import { accessFor } from '../src/partner-modules.js';
 import { reserveAttempt, clearAttempts } from '../lib/auth-store.js';
 import { createVaultStore, validateKeyring } from '../lib/vault-store.js';
 import { isBlobError } from '../lib/blob-utils.js';
@@ -57,19 +58,43 @@ export default async function handler(req, res) {
   res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   const config = settings();
   try {
-  if (!config || !await authorized(req, config)) return json(res, 401, { error: 'Sua sessão terminou. Entre novamente.' });
+  const user = config ? await who(req, config) : null;
+  if (!user) return json(res, 401, { error: 'Sua sessão terminou. Entre novamente.' });
+  // Sócio: só os dados e ações dos módulos liberados pelo dono. Dono: tudo.
+  const access = user.owner ? null : accessFor(user.modules);
+  const deny = () => json(res, 403, { error: 'Seu acesso não inclui esta parte do painel. Peça ao dono para liberar.' });
   if (!['GET', 'POST'].includes(req.method)) return json(res, 405, { error: 'Método não permitido.' });
   if (req.method === 'POST' && !sameOrigin(req)) return json(res, 403, { error: 'Origem não permitida.' });
   const url = new URL(req.url, 'http://localhost');
   const action = req.query?.action || url.searchParams.get('action');
   // Uso da conta na Vercel (só leitura; não usa o armazenamento).
   if (req.method === 'GET' && action === 'vercel-usage') {
+    if (access) return deny();
     try { return json(res, 200, await vercelUsage()); } catch { return json(res, 200, { configured: true, error: 'Não consegui falar com a Vercel agora. Tente de novo em alguns minutos.' }); }
+  }
+  // Sócio: confere a permissão antes de qualquer coisa (o dono passa direto).
+  if (access && req.method === 'POST') {
+    let body = null;
+    try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch { return json(res, 400, { error: 'Dados inválidos.' }); }
+    if (/^vault-/.test(action)) return deny();
+    const need = { 'share-list': 'share', 'share-create': 'share', 'share-create-many': 'share', 'share-revoke': 'share', 'featured-publish': 'featured' }[action] || (/^briefing-/.test(action) ? 'briefing' : null);
+    if (need && !access.api(need)) return deny();
+    if (action === 'commit' && (!Array.isArray(body?.operations) || body.operations.some(op => !access.allowKey(op?.key)))) return deny();
+    if (action === 'read' && !access.allowKey(body?.key)) return deny();
   }
   // A conferência da senha não usa o armazenamento (o limite de tentativas tem reserva em memória).
   if (!configured() && !(req.method === 'POST' && action === 'vault-verify')) return json(res, 503, { error: 'Conecte um Vercel Blob privado ao projeto e configure BLOB_READ_WRITE_TOKEN para ativar o armazenamento online.', code: 'STORAGE_NOT_CONFIGURED' });
-    if (req.method === 'GET' && action === 'manifest') return json(res, 200, (await loadManifest()).manifest);
-    if (req.method === 'GET' && action === 'vault') return json(res, 200, { keyring: await vault.get() });
+    if (req.method === 'GET' && action === 'manifest') {
+      const { manifest } = await loadManifest();
+      if (!access) return json(res, 200, manifest);
+      return json(res, 200, { ...manifest, records: Object.fromEntries(Object.entries(manifest.records || {}).filter(([key]) => access.allowKey(key))) });
+    }
+    if (req.method === 'GET' && action === 'vault') {
+      const keyring = await vault.get();
+      // Com a criptografia ligada, a chave é do dono: o sócio não sincroniza (os dados ficam só no aparelho dele).
+      if (access && keyring) return json(res, 403, { error: 'A criptografia dos dados está ligada: o acesso de sócio funciona só neste aparelho, sem sincronizar.', code: 'VAULT_OWNER_ONLY' });
+      return json(res, 200, { keyring });
+    }
     if (req.method === 'POST') {
       if (!String(req.headers['content-type'] || '').startsWith('application/json')) return json(res, 415, { error: 'Formato inválido.' });
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;

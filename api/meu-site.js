@@ -5,7 +5,7 @@ import { createPublishStore } from '../lib/publish-store.js';
 import { createCloudflare, configured } from '../lib/cloudflare-pages.js';
 import { notify } from '../lib/discord.js';
 import { siteBase } from '../lib/discord-events.js';
-import { settings, authorized, sameOrigin } from './access.js';
+import { settings, authorized, sameOrigin, allowedFor } from './access.js';
 import { readSiteInfo } from '../lib/site-cache.js';
 import { publishSite } from '../lib/publish-handler.js';
 import { createSiteDataStore, createSiteDataActions, withSiteData } from '../lib/site-data.js';
@@ -33,7 +33,7 @@ export default createClientAccessHandler({
   store: createClientAccessStore(),
   publishStore,
   cloudflare,
-  authorized: async req => { const admin = settings(); return Boolean(admin) && Boolean(await authorized(req, admin)); },
+  authorized: async req => { const admin = settings(); return Boolean(admin) && await allowedFor(req, admin, 'clientAccess'); }, // dono, ou sócio com o módulo liberado
   sameOrigin,
   base: () => siteBase(),
   waitUntil,
