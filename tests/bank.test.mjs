@@ -135,3 +135,53 @@ test('Nubank real: Pix no Crédito (mesmo Identificador), OFX e CSV do mesmo mê
   const d = dashboard(months, { period: 'tudo', today: '2026-10-31' });
   assert.equal(d.summary.entradas, 1000, 'Pix no crédito e aplicação ficam fora'); assert.equal(d.summary.saidas, 8); assert.equal(d.summary.neutros, 2);
 });
+
+test('revisão: gastos por categoria só com saídas; contas diferentes no CSV não se misturam', async () => {
+  const { summary: sum } = await import('../src/bank.js');
+  const s = sum([{ v: -100, cat: 'Pessoal' }, { v: 200, cat: 'Pessoal' }]);
+  assert.deepEqual(s.gastosPorCategoria, [{ cat: 'Pessoal', total: 100 }]);
+  const csv = 'Data;Descrição;Valor\n03/11/2026;Tarifa mensal;-10,00';
+  const a = parseCSV(csv, 'Conta A'), b = parseCSV(csv, 'Conta B');
+  assert.notEqual(a.tx[0].id, b.tx[0].id);
+  let { months } = mergeImport([], a); assert.equal(mergeImport(months, b).added, 1);
+  assert.equal(parseCSV(csv, 'Conta A').tx[0].id, a.tx[0].id, 'mesmo nome = mesma conta');
+});
+
+test('revisão: o que já foi importado na 1ª versão não duplica; filtro usa a mesma chave do grupo', async () => {
+  const { groupKey, topGroups } = await import('../src/bank.js');
+  const csv = 'Data;Descrição;Valor\n03/11/2026;Mercado X;-10,00';
+  // 1ª versão: sem FITID, o ID era sempre "h:csv:…", com ou sem nome de conta
+  const v1 = parseCSV(csv); assert.match(v1.tx[0].id, /^h:csv:/, 'sem nome: mesmo formato da 1ª versão');
+  const cartao = parseCSV('date,title,amount\n2026-11-02,Ifood,58.90'); assert.match(cartao.tx[0].id, /^h:csv:/, 'fatura do Nubank também');
+  v1.account = 'Conta A'; // na 1ª versão o nome digitado ficava na conta, mas não entrava no código
+  let { months } = mergeImport([], v1);
+  const comNome = parseCSV(csv, 'Conta A');
+  assert.equal(comNome.tx[0].legacyId, v1.tx[0].id);
+  const r = mergeImport(months, comNome); assert.equal(r.added, 0); assert.equal(r.dup, 1, 'reconhece o lançamento antigo');
+  assert.equal(r.months[0].tx[0].legacyId, undefined, 'a chave antiga não é guardada');
+  const tx = [{ desc: 'Pagamento de 12345', v: -5, cat: 'Outras saídas' }];
+  assert.equal(topGroups(tx)[0].key, groupKey(tx[0].desc)); assert.ok(groupKey(tx[0].desc));
+});
+
+test('revisão: CSV de outro banco com Identificador mantém o mesmo código da versão publicada', () => {
+  const csv = 'Data;Descrição;Valor;Identificador\n03/11/2026;Tarifa;-10,00;abc12345';
+  // 1ª versão: o: + resumo do nome mostrado da conta ("Conta" sem nome) + Identificador
+  const semNome = parseCSV(csv), comNome = parseCSV(csv, 'Itaú PJ');
+  assert.equal(semNome.account, 'Conta');
+  let { months } = mergeImport([], semNome);
+  assert.equal(mergeImport(months, parseCSV(csv)).added, 0, 'mesmo arquivo sem nome não duplica');
+  ({ months } = mergeImport([], comNome));
+  assert.equal(mergeImport(months, parseCSV(csv, 'Itaú PJ')).added, 0, 'mesmo arquivo com o mesmo nome não duplica');
+  assert.notEqual(semNome.tx[0].id, comNome.tx[0].id, 'contas com nomes diferentes continuam separadas');
+});
+
+test('revisão: a compatibilidade com a 1ª versão só vale dentro da mesma conta (OFX de outro banco não some)', () => {
+  const csv = 'Data;Descrição;Valor\n03/11/2026;Tarifa;-10,00';
+  const v1 = parseCSV(csv); v1.account = 'Inter'; // como a 1ª versão salvava: id h:csv:… com a conta "Inter"
+  let { months } = mergeImport([], v1);
+  const ofx = parseOFX('<OFX><BANKACCTFROM><BANKID>0341<ACCTID>9</BANKACCTFROM><BANKTRANLIST><STMTTRN><DTPOSTED>20261103<TRNAMT>-10,00<MEMO>Tarifa</BANKTRANLIST></OFX>');
+  assert.equal(ofx.tx[0].legacyId, undefined, 'OFX não usa o código antigo');
+  assert.equal(mergeImport(months, ofx).added, 1, 'tarifa do Itaú entra');
+  assert.equal(mergeImport(months, parseCSV(csv, 'Itaú')).added, 1, 'CSV de outra conta entra');
+  assert.equal(mergeImport(months, parseCSV(csv, 'Inter')).added, 0, 'mesma conta: reconhece o antigo');
+});

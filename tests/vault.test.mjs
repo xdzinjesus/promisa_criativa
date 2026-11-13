@@ -72,8 +72,8 @@ test('troca de senha mantém a chave mestra', async () => {
 });
 
 test('tipos protegidos', () => {
-  assert.deepEqual(ENCRYPTED_KINDS, ['sales', 'exp', 'projects', 'bank', 'settings', 'attachments']);
-  for (const key of ['sales:a', 'exp:a', 'projects:a', 'bank:2026-11', 'settings:a', 'attachments:a']) assert.equal(isEncryptedKey(key), true);
+  assert.deepEqual(ENCRYPTED_KINDS, ['sales', 'exp', 'projects', 'bank', 'products', 'settings', 'attachments']);
+  for (const key of ['sales:a', 'exp:a', 'projects:a', 'bank:2026-11', 'products:p1', 'settings:a', 'attachments:a']) assert.equal(isEncryptedKey(key), true);
   for (const key of ['sites:x', 'sitesx', '', 'sales', undefined]) assert.equal(isEncryptedKey(key), false);
 });
 

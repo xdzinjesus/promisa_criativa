@@ -1,7 +1,8 @@
 import { ORIGENS } from './instagram-math.js';
 import { validateBankMonth, validateBankRules } from './bank.js';
+import { validateProduct } from './products.js';
 const ID = /^[A-Za-z0-9_.~-]{1,180}$/;
-const collections = new Set(['sales', 'exp', 'projects', 'bank', 'sites', 'sitefiles', 'attachments']);
+const collections = new Set(['sales', 'exp', 'projects', 'bank', 'products', 'sites', 'sitefiles', 'attachments']);
 const settings = new Set(['prospectNotes', 'siteHostingBaseUrl', 'plan', 'demoMessage', 'bankRules']);
 const forbidden = new Set(['__proto__', 'constructor', 'prototype']);
 export function validId(id) { return (typeof id === 'string' || Number.isSafeInteger(id)) && ID.test(String(id)); }
@@ -68,6 +69,7 @@ export function validateRecord(kind, raw, expectedId, { encoded = false } = {}) 
     checkFiles();
   }
   if (kind === 'bank') validateBankMonth(value);
+  if (kind === 'products') validateProduct(value);
   if (kind === 'attachments' && !blob(value.blob)) throw new Error('Conteúdo do anexo inválido.');
   return value;
 }
@@ -91,7 +93,7 @@ export function validateSetting(name, value) {
   return value;
 }
 export function validateEntry(key, value, options) {
-  if (typeof key !== 'string' || !/^(sales|exp|projects|bank|settings|sites|sitefiles|attachments):[A-Za-z0-9%_.~-]{1,180}$/.test(key)) throw new Error('Chave de registro inválida.');
+  if (typeof key !== 'string' || !/^(sales|exp|projects|bank|products|settings|sites|sitefiles|attachments):[A-Za-z0-9%_.~-]{1,180}$/.test(key)) throw new Error('Chave de registro inválida.');
   const split = key.indexOf(':'), kind = key.slice(0, split), id = decodeURIComponent(key.slice(split + 1));
   if (value === undefined) return value;
   return kind === 'settings' ? validateSetting(id, value) : validateRecord(kind, value, id, options);
@@ -101,7 +103,7 @@ export function validateState(raw) {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Backup de dados inválido.');
   const result = {};
   for (const [name, value] of Object.entries(raw)) {
-    if (['sales', 'exp', 'projects', 'bank'].includes(name)) {
+    if (['sales', 'exp', 'projects', 'bank', 'products'].includes(name)) {
       if (!Array.isArray(value) || value.length > 5000) throw new Error('Coleção inválida.');
       result[name] = value.map(item => validateRecord(name, item));
       if (new Set(result[name].map(item => item.id)).size !== result[name].length) throw new Error('Identificadores duplicados.');

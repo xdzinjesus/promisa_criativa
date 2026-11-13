@@ -1,0 +1,22 @@
+/* Aba 📦 Produtos físicos */
+#productsRoot .pr-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+#productsRoot .pr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr))}
+.pr-card.is-low{box-shadow:inset 0 0 0 1px rgba(234,179,8,.6)}
+.pr-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.pr-stock{text-align:right;flex-shrink:0}.pr-stock b{display:block;font-size:28px;line-height:1}.pr-stock small{font-size:12px}
+.pr-nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;margin:12px 0}
+.pr-nums div{padding:8px 10px;border-radius:10px;background:rgba(127,127,127,.08)}.pr-nums small{display:block;font-size:12px;opacity:.75}.pr-nums b{font-size:15px}
+.pr-actions{display:flex;flex-wrap:wrap;gap:6px}
+.pr-panel{margin-top:10px;padding:12px;border-radius:12px;background:rgba(127,127,127,.06)}
+.pr-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:8px;align-items:end}
+.pr-form label{display:flex;flex-direction:column;gap:4px}.pr-form label small{font-size:12px;opacity:.8}
+.pr-form .pr-check{flex-direction:row;align-items:center;gap:8px}.pr-form .pr-check input{width:auto}
+.pr-form button[type=submit]{grid-column:1/-1;justify-self:start}
+.pr-sale{gap:10px;align-items:flex-start}.pr-sale>div:first-child{min-width:0;overflow-wrap:anywhere}
+.pr-right{display:flex;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px;flex-shrink:0}
+.pr-mini{padding:5px 9px;font-size:12px;margin-top:4px}
+.pr-month{display:grid;grid-template-columns:60px 1fr;gap:4px 10px;align-items:center;margin-top:10px}.pr-month small{grid-column:2;opacity:.75}
+.pr-month .bd-track{height:8px;margin:0;border-radius:4px;background:rgba(127,127,127,.12)}.pr-month .bd-track i{display:block;height:100%;border-radius:4px;background:var(--ac,#2563eb)}
+.pr-help summary{cursor:pointer;font-weight:700}.pr-help p{margin:6px 0}
+@media (max-width:600px){.pr-sale{flex-direction:column}.pr-right{justify-content:flex-start}}
+.pr-head select{width:auto;max-width:200px}.pr-head:has(select){align-items:center}

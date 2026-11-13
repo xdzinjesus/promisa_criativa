@@ -41,13 +41,14 @@ function hash(text) { let h = 2166136261; for (let i = 0; i < text.length; i++) 
 // Código do banco usado como está quando já é seguro; senão vira um resumo do código inteiro (nada é cortado ou removido).
 const fitKey = f => /^[\w.-]{1,90}$/.test(f) ? f : 'x' + hash(f) + hash('~' + f) + f.length.toString(36);
 const safeId = text => String(text).replace(/[^\w.:-]/g, '').slice(0, 120);
-function withIds(list, account, { byAccount = true } = {}) {
+function withIds(list, account, { byAccount = true, fitAccount = account, legacy = false } = {}) {
   const seen = new Map();
   return list.map(t => {
     const base = `${t.d}|${t.v}|${norm(t.desc)}`, n = (seen.get(base) || 0) + 1; seen.set(base, n);
-    const id = t.fitid ? `o:${hash(account)}:${fitKey(t.fitid)}` : safeId(`h:${byAccount ? hash(account) : 'csv'}:${hash(base + '|' + n)}`);
+    const old = safeId(`h:csv:${hash(base + '|' + n)}`); // formato da 1ª versão (sem a conta): reconhecido para não duplicar o que já foi importado
+    const id = t.fitid ? `o:${hash(fitAccount)}:${fitKey(t.fitid)}` : byAccount ? safeId(`h:${hash(account)}:${hash(base + '|' + n)}`) : old;
     const { fitid, ...rest } = t;
-    return { ...rest, id };
+    return t.fitid || !byAccount || !legacy ? { ...rest, id } : { ...rest, id, legacyId: old };
   });
 }
 
@@ -117,8 +118,8 @@ export function parseCSV(text, account = '') {
   for (const t of list) if (t.fitid) count.set(t.fitid, (count.get(t.fitid) || 0) + 1);
   for (const t of list) if (t.fitid && count.get(t.fitid) > 1 && t.v < 0) t.fitid += ':reversal';
   const acc = clean(account, 60) || (nuConta ? 'Nubank' : nuCartao ? 'Nubank cartão' : 'Conta');
-  // O nome da conta não entra no identificador: importar o mesmo período com outro nome não duplica.
-  return { account: acc, tx: withIds(list, nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : acc, { byAccount: false }), balance: null, kind: nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : 'csv' };
+  // Identidade da conta: o nome que você digitou (contas diferentes não se misturam); sem nome, uma identidade fixa (o nome do arquivo nunca entra).
+  return { account: acc, tx: (nuConta ? withIds(list, 'nubank') : clean(account) && !nuCartao ? withIds(list, 'conta:' + norm(account), { fitAccount: acc, legacy: true }) : withIds(list, 'csv', { byAccount: false, fitAccount: acc })), balance: null, kind: nuConta ? 'nubank' : nuCartao ? 'nubank-cartao' : 'csv' };
 }
 export function parseStatement(name, text, account) {
   if (/\.ofx$/i.test(name) || /<OFX>/i.test(text)) { const r = parseOFX(text); if (account) { r.account = clean(account, 60); } return r; }
@@ -169,9 +170,11 @@ export function mergeImport(months, parsed, rules = {}, now = Date.now()) {
   const byMonth = new Map((months || []).map(m => [m.id, { ...m, tx: [...(m.tx || [])] }]));
   let added = 0, dup = 0, full = 0;
   const known = new Set();
-  for (const m of byMonth.values()) for (const t of m.tx) known.add(t.id);
+  const knownAcc = new Map();
+  for (const m of byMonth.values()) for (const t of m.tx) { known.add(t.id); knownAcc.set(t.id, t.acc); }
   for (const t of parsed.tx) {
-    if (known.has(t.id)) { dup++; continue; }
+    // Código antigo (1ª versão) só conta como repetido dentro da MESMA conta.
+    if (known.has(t.id) || (t.legacyId && knownAcc.get(t.legacyId) === parsed.account)) { dup++; continue; }
     const id = t.d.slice(0, 7);
     const m = byMonth.get(id) || { id, month: id, tx: [] };
     if (m.tx.length >= MAX_TX_PER_MONTH) { full++; continue; }
@@ -191,15 +194,17 @@ export function applyRule(months, word, cat) {
 
 export function summary(tx = []) {
   let entradas = 0, saidas = 0; const cats = new Map();
-  let neutros = 0;
+  let neutros = 0; const gastos = new Map();
   for (const t of tx) {
     if (NEUTRAL.has(t.cat)) { neutros++; continue; }
-    if (t.v > 0) entradas += t.v; else saidas += -t.v;
+    if (t.v > 0) entradas += t.v; else { saidas += -t.v; gastos.set(t.cat, (gastos.get(t.cat) || 0) - t.v); }
     cats.set(t.cat, (cats.get(t.cat) || 0) + t.v);
   }
   const round = n => Math.round(n * 100) / 100;
   return { entradas: round(entradas), saidas: round(saidas), resultado: round(entradas - saidas), count: tx.length, neutros,
-    porCategoria: [...cats.entries()].map(([cat, total]) => ({ cat, total: round(total) })).sort((a, b) => Math.abs(b.total) - Math.abs(a.total)) };
+    porCategoria: [...cats.entries()].map(([cat, total]) => ({ cat, total: round(total) })).sort((a, b) => Math.abs(b.total) - Math.abs(a.total)),
+    // Só as saídas de cada categoria (uma entrada na mesma categoria não esconde o gasto).
+    gastosPorCategoria: [...gastos.entries()].map(([cat, total]) => ({ cat, total: round(total) })).sort((a, b) => b.total - a.total) };
 }
 // Recebimento que bate com uma venda fechada e ainda não paga (mesmo valor, até 60 dias depois da venda).
 export function matchSale(t, sales = []) {
@@ -284,11 +289,13 @@ export function cumulative(tx) {
   return [...days.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1).map(([d, v]) => { acc = Math.round((acc + v) * 100) / 100; return { d, v: acc }; });
 }
 // Maiores destinos (saídas) ou origens (entradas), agrupando descrições parecidas.
+// Chave de agrupamento do dashboard (a mesma usada no filtro da lista).
+export const groupKey = desc => keywordOf(desc) || norm(desc).slice(0, 40);
 export function topGroups(tx, side = 'out', n = 5) {
   const groups = new Map();
   for (const t of tx) {
     if (NEUTRAL.has(t.cat) || (side === 'out' ? t.v >= 0 : t.v <= 0)) continue;
-    const key = keywordOf(t.desc) || norm(t.desc).slice(0, 40);
+    const key = groupKey(t.desc);
     const g = groups.get(key) || { key, label: cleanName(t.desc), total: 0, count: 0 };
     g.total += Math.abs(t.v); g.count++; groups.set(key, g);
   }
@@ -305,7 +312,7 @@ export function dashboard(months, { period = 'mes', acc = '', today }) {
     delta: { entradas: prev.length ? change(s.entradas, p.entradas) : null, saidas: prev.length ? change(s.saidas, p.saidas) : null },
     gastoPorDia: Math.round(s.saidas / days * 100) / 100,
     series: monthlySeries(tx, r.from, r.to), saldo: cumulative(tx),
-    categorias: s.porCategoria.filter(c => c.total < 0).map(c => ({ cat: c.cat, total: -c.total })),
+    categorias: s.gastosPorCategoria,
     topSaidas: topGroups(tx, 'out'), topEntradas: topGroups(tx, 'in'),
   };
 }

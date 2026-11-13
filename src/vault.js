@@ -4,7 +4,7 @@ const encoder = new TextEncoder(), decoder = new TextDecoder();
 const AAD = encoder.encode('promisa-vault-v1');
 const MIN_ITERATIONS = 100_000, MAX_ITERATIONS = 5_000_000, ITERATIONS = 600_000;
 
-export const ENCRYPTED_KINDS = ['sales', 'exp', 'projects', 'bank', 'settings', 'attachments'];
+export const ENCRYPTED_KINDS = ['sales', 'exp', 'projects', 'bank', 'products', 'settings', 'attachments'];
 export const isEncryptedKey = recordKey => typeof recordKey === 'string' && ENCRYPTED_KINDS.includes(recordKey.slice(0, Math.max(0, recordKey.indexOf(':'))));
 
 export class VaultError extends Error {

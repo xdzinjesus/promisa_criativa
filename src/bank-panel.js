@@ -1,13 +1,13 @@
 // Aba "🏦 Extratos" do painel: importar extrato (OFX/CSV), ver entradas e saídas por mês e por categoria.
 // Os dados ficam no estado do painel (S.bank, 1 registro por mês) e sincronizam como o resto (criptografados se o cofre estiver ligado).
-import { CATEGORIES, NEUTRAL, PERIODS, cleanName, parseStatement, mergeImport, summary, categorize, keywordOf, applyRule, matchSale, toCSV, dashboard } from './bank.js';
+import { CATEGORIES, NEUTRAL, PERIODS, cleanName, groupKey, parseStatement, mergeImport, summary, categorize, keywordOf, applyRule, matchSale, toCSV, dashboard } from './bank.js';
 import { renderDashboard } from './bank-dashboard.js';
 
 const el = (tag, text, props = {}) => Object.assign(document.createElement(tag), text == null ? {} : { textContent: text }, props);
 const R = n => (+n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const MES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 const monthName = id => `${MES[+id.slice(5) - 1]}/${id.slice(0, 4)}`;
-const ui = { view: 'dash', period: 'mes', month: '', acc: '', kind: '', cat: '', q: '', note: '' };
+const ui = { group: '', view: 'dash', period: 'mes', month: '', acc: '', kind: '', cat: '', q: '', note: '' };
 const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
 
 const state = () => window.promisaAdapter?.getState?.();
@@ -92,8 +92,8 @@ function draw(root) {
     root.append(top);
     const box = el('div', null, { className: 'bank-dash' }); root.append(box);
     renderDashboard(box, dashboard(all, { period: ui.period, acc: ui.acc, today: today() }), {
-      onCategory: cat => { ui.view = 'list'; ui.cat = cat; ui.q = ''; draw(root); },
-      onSearch: q => { ui.view = 'list'; ui.q = q; ui.cat = ''; draw(root); },
+      onCategory: cat => { ui.view = 'list'; ui.cat = cat; ui.q = ''; ui.group = ''; draw(root); },
+      onSearch: (key, label) => { ui.view = 'list'; ui.group = key; ui.groupLabel = label; ui.q = ''; ui.cat = ''; draw(root); },
     });
     return;
   }
@@ -115,7 +115,7 @@ function draw(root) {
   const last = all.slice(0, 6).reverse().map(m => ({ id: m.id, s: summary(m.tx.filter(byAcc)) }));
   const c1 = el('div', null, { className: 'card' }); c1.append(el('b', 'Últimos meses'), el('small', ' 🟩 entradas · 🟥 saídas'), bars(last)); grid.append(c1);
   const c2 = el('div', null, { className: 'card' }); c2.append(el('b', 'Para onde foi o dinheiro'));
-  const outs = sm.porCategoria.filter(c => c.total < 0), mxOut = Math.max(1, ...outs.map(c => -c.total));
+  const outs = sm.gastosPorCategoria.map(c => ({ cat: c.cat, total: -c.total })), mxOut = Math.max(1, ...outs.map(c => -c.total));
   if (!outs.length) c2.append(el('p', 'Nenhuma saída neste mês.', { className: 'sub' }));
   for (const c of outs.slice(0, 8)) {
     const line = el('button', null, { type: 'button', className: 'bank-cat', title: 'Filtrar por esta categoria' });
@@ -130,6 +130,13 @@ function draw(root) {
   const fil = el('div', null, { className: 'row bank-filters' });
   const q = el('input', null, { type: 'search', placeholder: 'Buscar (ex.: pix, cliente, mercado)', value: ui.q, ariaLabel: 'Buscar lançamento' });
   q.addEventListener('input', () => { ui.q = q.value; drawRows(); });
+  // Filtro vindo do dashboard ("Onde você mais gastou"): usa a mesma chave de agrupamento, não um texto solto.
+  let chip = null;
+  if (ui.group) {
+    chip = el('button', `✕ ${ui.groupLabel || ui.group}`, { type: 'button', className: 'sec bank-chip', title: 'Tirar este filtro' });
+    chip.addEventListener('click', () => { ui.group = ''; chip.remove(); drawRows(); });
+  }
+  if (chip) fil.append(chip);
   fil.append(q,
     sel('Tipo', ui.kind, [['', 'Entradas e saídas'], ['in', 'Só entradas'], ['out', 'Só saídas']], v => { ui.kind = v; drawRows(); }),
     sel('Categoria', ui.cat, [['', 'Todas as categorias'], ...CATEGORIES.map(c => [c, c])], v => { ui.cat = v; drawRows(); }));
@@ -145,7 +152,7 @@ function draw(root) {
 
   function visible() {
     const w = ui.q.trim().toLowerCase();
-    return tx.filter(t => (!ui.kind || (ui.kind === 'in' ? t.v > 0 : t.v < 0)) && (!ui.cat || t.cat === ui.cat) && (!w || `${t.desc} ${t.cat} ${t.note || ''}`.toLowerCase().includes(w)));
+    return tx.filter(t => (!ui.group || groupKey(t.desc) === ui.group) && (!ui.kind || (ui.kind === 'in' ? t.v > 0 : t.v < 0)) && (!ui.cat || t.cat === ui.cat) && (!w || `${t.desc} ${t.cat} ${t.note || ''}`.toLowerCase().includes(w)));
   }
   function drawRows() {
     rows.replaceChildren();
