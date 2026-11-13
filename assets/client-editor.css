@@ -64,3 +64,6 @@
 .ca-new input,.ca-new select,.ca-actions select{width:100%;min-width:0;background:#ffffff08;border:1px solid #ffffff1c;border-radius:11px;color:var(--tx);padding:10px 12px;font:inherit;font-size:14px}
 .ca-actions select{width:auto}.ca-new select option,.ca-actions select option{background:#121019;color:#f3f1f8}
 @media(max-width:600px){.ca-two{grid-template-columns:1fr}}
+
+/* Bloco "Dados ao vivo" na janela de publicação */
+.pub-data{display:grid;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid #ffffff1a}.pub-data h3{margin:0;font-size:15px}.pub-data .demo-link-actions{display:flex;flex-wrap:wrap;gap:8px}

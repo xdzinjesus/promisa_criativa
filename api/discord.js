@@ -11,6 +11,7 @@ import { publishSite } from '../lib/publish-handler.js';
 import { analyzeSite } from '../lib/diagnostico-analyze.js';
 import { createCloudflare, configured as cloudflareConfigured } from '../lib/cloudflare-pages.js';
 import { readSiteInfo } from '../lib/site-cache.js';
+import { createSiteDataStore, withSiteData } from '../lib/site-data.js';
 import { createBackupIndexStore } from '../lib/backup-index-store.js';
 import { settings, authorized, sameOrigin } from './access.js';
 
@@ -23,12 +24,15 @@ const shares = createShareStore();
 const diagnosticos = createDiagnosticoStore();
 const publishedStore = createPublishStore();
 const data = createData();
+const siteDataStore = createSiteDataStore();
 
 const commands = createCommands({
   discord, data, events, shares, diagnosticos, publishedStore,
   analyze: url => analyzeSite(url),
   cloudflare: () => cloudflareConfigured() ? createCloudflare({ token: process.env.CLOUDFLARE_API_TOKEN, accountId: process.env.CLOUDFLARE_ACCOUNT_ID }) : null,
-  readSiteInfo, publishSite, base: () => siteBase()
+  readSiteInfo, base: () => siteBase(),
+  // Publicar pelo Discord também embute os "dados ao vivo" do site, quando ligados.
+  publishSite: (deps, ...args) => publishSite({ ...deps, readSiteInfo: withSiteData(deps.readSiteInfo, siteDataStore, { api: siteBase() + '/api/meu-site' }) }, ...args)
 });
 
 export default createDiscordHandler({
