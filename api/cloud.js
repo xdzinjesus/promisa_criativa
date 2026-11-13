@@ -7,6 +7,7 @@ import { createShareStore, siteKeyFor } from '../lib/share-store.js';
 import { createFeaturedStore, cleanFeaturedItems } from '../lib/featured-store.js';
 import { createBriefingStore } from '../lib/briefing-store.js';
 import { validId } from '../src/data-validation.js';
+import { vercelUsage } from '../lib/vercel-usage.js';
 import { configured, loadManifest, commitOperations, signedRead, validKey, validPath, MAX_OBJECT_BYTES } from '../lib/cloud-store.js';
 
 function json(res, status, body) {
@@ -61,6 +62,10 @@ export default async function handler(req, res) {
   if (req.method === 'POST' && !sameOrigin(req)) return json(res, 403, { error: 'Origem não permitida.' });
   const url = new URL(req.url, 'http://localhost');
   const action = req.query?.action || url.searchParams.get('action');
+  // Uso da conta na Vercel (só leitura; não usa o armazenamento).
+  if (req.method === 'GET' && action === 'vercel-usage') {
+    try { return json(res, 200, await vercelUsage()); } catch { return json(res, 200, { configured: true, error: 'Não consegui falar com a Vercel agora. Tente de novo em alguns minutos.' }); }
+  }
   // A conferência da senha não usa o armazenamento (o limite de tentativas tem reserva em memória).
   if (!configured() && !(req.method === 'POST' && action === 'vault-verify')) return json(res, 503, { error: 'Conecte um Vercel Blob privado ao projeto e configure BLOB_READ_WRITE_TOKEN para ativar o armazenamento online.', code: 'STORAGE_NOT_CONFIGURED' });
     if (req.method === 'GET' && action === 'manifest') return json(res, 200, (await loadManifest()).manifest);
