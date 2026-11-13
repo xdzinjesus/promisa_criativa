@@ -1,6 +1,6 @@
 // Aba "📦 Produtos físicos": estoque, compras, vendas (com o link gravado em cada placa), custo, lucro e quem falta pagar.
 // Dados no estado do painel (S.products, 1 registro por produto), sincronizados e criptografados como o resto.
-import { STARTERS, KINDS, stats, periodStats, monthly, allSales, plateLink, newMove } from './products.js';
+import { STARTERS, KINDS, MAX_IMAGES, MAX_IMAGE_CHARS, validImage, stats, periodStats, monthly, allSales, plateLink, newMove } from './products.js';
 
 const el = (tag, text, props = {}) => Object.assign(document.createElement(tag), text == null ? {} : { textContent: text }, props);
 const R = n => (+n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -37,6 +37,27 @@ function form(fields, submitLabel, onSubmit) {
   return { f, inputs };
 }
 
+// Foto: reduz no navegador (lado maior 900px, JPEG) até caber no limite. Nada sai do aparelho além do resultado.
+async function shrink(file) {
+  if (!/^image\//.test(file.type)) throw new Error('Escolha um arquivo de imagem.');
+  if (file.size > 25 * 1024 * 1024) throw new Error('Imagem grande demais (máx. 25 MB).');
+  const bmp = await createImageBitmap(file).catch(() => null);
+  const src = bmp || await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => no(new Error('Não consegui abrir essa imagem.')); i.src = URL.createObjectURL(file); });
+  const w0 = src.width, h0 = src.height;
+  for (const [side, q] of [[900, 0.82], [800, 0.72], [640, 0.65], [480, 0.6]]) {
+    const k = Math.min(1, side / Math.max(w0, h0)), c = document.createElement('canvas');
+    c.width = Math.round(w0 * k); c.height = Math.round(h0 * k);
+    const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); ctx.drawImage(src, 0, 0, c.width, c.height);
+    const url = c.toDataURL('image/jpeg', q);
+    if (url.length <= MAX_IMAGE_CHARS && validImage(url)) return url;
+  }
+  throw new Error('Não consegui deixar a imagem pequena o bastante. Tente outra foto.');
+}
+function zoom(src, alt) {
+  const d = el('dialog', null, { className: 'pr-zoom' }); d.addEventListener('close', () => d.remove());
+  d.addEventListener('click', () => d.close());
+  d.append(el('img', null, { src, alt })); document.body.append(d); d.showModal();
+}
 function copy(text, button) {
   navigator.clipboard?.writeText(text).then(() => { const t = button.textContent; button.textContent = 'Copiado ✓'; setTimeout(() => { button.textContent = t; }, 1500); }).catch(() => prompt('Copie:', text));
 }
@@ -45,7 +66,14 @@ function productCard(p, root) {
   const s = stats(p);
   const card = el('div', null, { className: 'card pr-card' + (s.low ? ' is-low' : '') });
   const head = el('div', null, { className: 'pr-head' });
-  const title = el('div'); title.append(el('b', `${p.emoji || '📦'} ${p.name}`), el('br'), el('small', `${KINDS[p.kind] || 'Outro'} · preço de venda ${p.price ? R(p.price) : 'não definido'}`, { className: 'sub' }));
+  if (p.images?.length) {
+    const thumb = el('button', null, { type: 'button', className: 'pr-thumb', title: 'Ver foto', ariaLabel: 'Ver foto de ' + p.name });
+    thumb.append(el('img', null, { src: p.images[0], alt: '' }));
+    if (p.images.length > 1) thumb.append(el('span', '+' + (p.images.length - 1)));
+    thumb.addEventListener('click', () => zoom(p.images[0], p.name));
+    head.append(thumb);
+  }
+  const title = el('div', null, { className: 'pr-title' }); title.append(el('b', `${p.emoji || '📦'} ${p.name}`), el('br'), el('small', `${KINDS[p.kind] || 'Outro'} · preço de venda ${p.price ? R(p.price) : 'não definido'}`, { className: 'sub' }));
   const stock = el('div', null, { className: 'pr-stock' }); stock.append(el('b', String(s.stock)), el('small', s.low ? '⚠️ estoque baixo' : 'em estoque'));
   head.append(title, stock); card.append(head);
   const nums = el('div', null, { className: 'pr-nums' });
@@ -114,7 +142,33 @@ function productCard(p, root) {
     f.querySelector('select').value = p.kind || 'outro';
     const del = el('button', '🗑️ Apagar produto', { type: 'button', className: 'sec' });
     del.addEventListener('click', () => { if (!confirm(`Apagar "${p.name}" e todo o histórico dele?`)) return; const st = state(); st.products = st.products.filter(x => x.id !== p.id); persist(root); });
-    box.append(f, del); return box;
+    // Fotos
+    const gal = el('div', null, { className: 'pr-gallery' });
+    gal.append(el('small', `Fotos (até ${MAX_IMAGES}; a primeira aparece no cartão)`));
+    const grid = el('div', null, { className: 'pr-photos' });
+    (p.images || []).forEach((src, i) => {
+      const fig = el('div', null, { className: 'pr-photo' });
+      const img = el('img', null, { src, alt: `Foto ${i + 1} de ${p.name}` }); img.addEventListener('click', () => zoom(src, p.name));
+      const rm = el('button', '✕', { type: 'button', className: 'sec pr-mini', title: 'Tirar esta foto', ariaLabel: 'Tirar esta foto' });
+      rm.addEventListener('click', () => { p.images.splice(i, 1); if (!p.images.length) delete p.images; touch(p); persist(root); });
+      fig.append(img, rm);
+      if (i) { const main = el('button', '⭐', { type: 'button', className: 'sec pr-mini', title: 'Usar como principal', ariaLabel: 'Usar como foto principal' }); main.addEventListener('click', () => { p.images.unshift(p.images.splice(i, 1)[0]); touch(p); persist(root); }); fig.append(main); }
+      grid.append(fig);
+    });
+    if ((p.images?.length || 0) < MAX_IMAGES) {
+      const pick = el('label', null, { className: 'pr-add-photo' });
+      const input = el('input', null, { type: 'file', accept: 'image/*', multiple: true, ariaLabel: 'Adicionar foto' });
+      pick.append(el('span', '📷 Adicionar foto'), input);
+      input.addEventListener('change', async () => {
+        const files = [...input.files].slice(0, MAX_IMAGES - (p.images?.length || 0));
+        pick.querySelector('span').textContent = '⏳ Preparando…';
+        try { for (const file of files) { const url = await shrink(file); p.images = [...(p.images || []), url]; } touch(p); persist(root); }
+        catch (error) { alert(error.message); pick.querySelector('span').textContent = '📷 Adicionar foto'; }
+      });
+      grid.append(pick);
+    }
+    gal.append(grid);
+    box.append(f, gal, del); return box;
   });
   card.append(bar, panels);
   if (p.supplier) { const a = /^https:\/\//i.test(p.supplier) ? el('a', '🛒 Comprar de novo', { href: p.supplier, target: '_blank', rel: 'noopener noreferrer' }) : el('small', '🛒 ' + p.supplier, { className: 'sub' }); card.append(a); }

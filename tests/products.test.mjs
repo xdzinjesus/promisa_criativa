@@ -44,3 +44,13 @@ test('validação do produto e sincronização', async () => {
   const { validKey } = await import('../lib/cloud-store.js');
   assert.equal(validKey('products:p1'), true);
 });
+
+test('fotos do produto: até 3, só imagem em data URL dentro do limite', async () => {
+  const { MAX_IMAGES } = await import('../src/products.js');
+  const img = 'data:image/jpeg;base64,' + 'A'.repeat(1000);
+  assert.doesNotThrow(() => validateProduct({ ...placa(), images: [img, img] }));
+  assert.throws(() => validateProduct({ ...placa(), images: Array(MAX_IMAGES + 1).fill(img) }), /Fotos/);
+  assert.throws(() => validateProduct({ ...placa(), images: ['data:image/svg+xml;base64,AAAA'] }), /Fotos/, 'SVG não (pode ter código)');
+  assert.throws(() => validateProduct({ ...placa(), images: ['https://site.com/x.jpg'] }), /Fotos/);
+  assert.throws(() => validateProduct({ ...placa(), images: ['data:image/jpeg;base64,' + 'A'.repeat(300_001)] }), /Fotos/);
+});
