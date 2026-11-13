@@ -52,10 +52,17 @@ function credentialsBox(name, user, password) {
 
 async function draw(root) {
   if (!root?.isConnected) return;
-  let partners = [];
-  try { partners = (await api('partner-list')).partners || []; }
+  let partners = [], ownerName = '';
+  try { const d = await api('partner-list'); partners = d.partners || []; ownerName = d.ownerName || ''; }
   catch (error) { root.replaceChildren(el('div', '⚠️ ' + error.message, { className: 'card pub-warn' })); return; }
   root.replaceChildren();
+  // Seu nome: aparece como "Responsável" nos seus clientes (o filtro "Meus / do sócio" usa isso).
+  const me = el('form', null, { className: 'card pt-me' });
+  const meInput = el('input', null, { value: ownerName, placeholder: 'Seu nome (ex.: o seu primeiro nome)', maxLength: 40, required: true, ariaLabel: 'Seu nome' });
+  const meSave = el('button', 'Salvar', { type: 'submit', className: 'sec' });
+  me.append(el('small', 'Seu nome (aparece como responsável dos seus clientes)'), meInput, meSave);
+  me.addEventListener('submit', async e => { e.preventDefault(); meSave.disabled = true; try { await api('partner-owner-name', { name: meInput.value }); meSave.textContent = 'Salvo ✓'; setTimeout(() => { meSave.textContent = 'Salvar'; meSave.disabled = false; }, 1500); } catch (error) { alert(error.message); meSave.disabled = false; } });
+  root.append(me);
   if (ui.fresh) root.append(credentialsBox(...ui.fresh));
 
   // Novo sócio

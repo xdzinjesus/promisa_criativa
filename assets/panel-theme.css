@@ -125,3 +125,6 @@ body.is-partner #cloud-copy,body.is-partner .tb-file,body.is-partner #passkey-op
 .pt-row input{font-family:ui-monospace,monospace}.pt-wa{display:inline-block;margin-top:12px;font-weight:700}
 @media (max-width:600px){.pt-row{grid-template-columns:1fr auto}.pt-row small{grid-column:1/-1}}
 .pt-quick{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+/* Responsável pelo cliente */
+.cowner{margin-bottom:8px}.cowner-badge{font-weight:600}
+.pt-me{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:center}.pt-me small{grid-column:1/-1;font-size:12px;opacity:.8}

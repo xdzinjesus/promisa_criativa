@@ -47,6 +47,8 @@ export function validateRecord(kind, raw, expectedId, { encoded = false } = {}) 
     if (e.obs !== undefined && (typeof e.obs !== 'string' || e.obs.length > 2000)) throw new Error('Observações de entrega inválidas.');
   }
   if (value.paid !== undefined && typeof value.paid !== 'boolean') throw new Error('Situação de pagamento inválida.');
+  // Responsável pelo cliente: vazio/ausente = o dono; senão o id de um sócio.
+  if (value.owner !== undefined && !(value.owner === '' || /^u[a-f0-9]{12}$/.test(value.owner))) throw new Error('Responsável inválido.');
   const checkFiles = () => {
     if (!Array.isArray(value.files) || !value.files.length || value.files.length > 5000 || !safeFilePath(value.htmlPath)) throw new Error('Arquivos do site inválidos.');
     const paths = new Set();
