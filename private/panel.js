@@ -75,30 +75,38 @@ function clientAccessPage(){return `<h1>🔐 Acessos dos clientes</h1><p class="
 function clientPanelPage(){return `<h1>🧩 Painel do cliente</h1><p class="sub">Demonstração do painel que você pode vender: o cliente edita o próprio site sem quebrar o design.</p><div id="ceRoot"></div>`}
 function instagramPage(){return `<h1>📈 Instagram</h1><p class="sub">Seguidores, posts, metas e clientes que vieram do Instagram, tudo automático.</p><div id="igRoot"></div>`}
 function drawInstagram(){window.promisaInstagram?.mount(document.getElementById('igRoot'),{leads:()=>S.sales})}
+// Vendas de produtos físicos (aba Produtos) no mesmo formato das vendas de sites: data, valor, pago e custo.
+// O custo por unidade é a média das compras, igual à aba Produtos (assim o lucro bate nos dois lugares).
+function productSales(){const out=[];for(const p of S.products||[]){let q=0,c=0;for(const m of p.moves||[])if(m.type==='in'){q+=m.qty;c+=m.total||0}const unit=q?c/q:0;for(const m of p.moves||[])if(m.type==='out')out.push({pid:p.id,mid:m.id,date:m.d,value:+m.total||0,paid:Boolean(m.paid),cost:m.qty*unit,qty:m.qty,client:m.client||'',name:p.name,emoji:p.emoji||'📦'})}return out}
+function payProduct(pid,mid){const p=(S.products||[]).find(x=>x.id===pid),m=p?.moves?.find(x=>x.id===mid);if(m){m.paid=true;p.updatedAt=new Date().toISOString();save();render()}}
 function dash(){
  const f=S.sales.filter(s=>s.stage==='Fechado'),paid=f.filter(s=>s.paid),pend=f.filter(s=>!s.paid);
- const rec=sum(paid),pen=sum(pend),desp=sum(S.exp),pipe=sum(S.sales.filter(s=>['Novo','Em contato','Proposta enviada'].includes(s.stage)));
- const lucro=rec-desp,mk=today().slice(0,7),meta=+S.plan.meta||0,recM=sum(paid.filter(s=>(s.date||'').startsWith(mk)));
+ const ps=productSales(),psPaid=ps.filter(x=>x.paid),psPend=ps.filter(x=>!x.paid);
+ const prodRec=sum(psPaid),prodPen=sum(psPend),prodLucro=Math.round(ps.reduce((t,x)=>t+x.value-x.cost,0)*100)/100;
+ const siteRec=sum(paid),rec=siteRec+prodRec,pen=sum(pend)+prodPen,desp=sum(S.exp),pipe=sum(S.sales.filter(s=>['Novo','Em contato','Proposta enviada'].includes(s.stage)));
+ const lucro=siteRec-desp+prodLucro,mk=today().slice(0,7),meta=+S.plan.meta||0,recM=sum(paid.filter(s=>(s.date||'').startsWith(mk)))+sum(psPaid.filter(x=>x.date.startsWith(mk)));
  const pct=meta?Math.min(100,recM/meta*100):0;
  const leads=S.sales.length,proj=(S.projects||[]).filter(p=>p.status!=='Concluído').length,sites=paid.length;
- const days=[];for(let i=29;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().slice(0,10))}
- const dv=days.map(d=>sum(paid.filter(s=>s.date===d))),hoje=dv[29],sem=dv.slice(23).reduce((a,b)=>a+b,0);
- const vh=paid.filter(s=>s.date===days[29]).length,vs7=paid.filter(s=>days.slice(23).includes(s.date)).length;
+ // Dias e meses no horário de Brasília (antes era UTC: depois das 21h as vendas de hoje sumiam do gráfico).
+ const noon=new Date(today()+'T12:00:00Z');
+ const days=[];for(let i=29;i>=0;i--){const d=new Date(noon);d.setUTCDate(d.getUTCDate()-i);days.push(d.toISOString().slice(0,10))}
+ const dv=days.map(d=>sum(paid.filter(s=>s.date===d))+sum(ps.filter(x=>x.date===d))),hoje=dv[29],sem=dv.slice(23).reduce((a,b)=>a+b,0);
+ const vh=paid.filter(s=>s.date===days[29]).length+ps.filter(x=>x.date===days[29]).length,vs7=paid.filter(s=>days.slice(23).includes(s.date)).length+ps.filter(x=>days.slice(23).includes(x.date)).length;
  const M=Math.max(1,...dv),line=dv.map((v,i)=>(i/29*300).toFixed(1)+','+(70-v/M*60).toFixed(1)).join(' ');
- const ms=[];for(let i=5;i>=0;i--){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);ms.push(d.toISOString().slice(0,7))}
- const data=ms.map(m=>[m,sum(paid.filter(s=>(s.date||'').startsWith(m))),sum(S.exp.filter(s=>(s.date||'').startsWith(m)))]);
+ const ms=[];for(let i=5;i>=0;i--){const d=new Date(noon);d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()-i);ms.push(d.toISOString().slice(0,7))}
+ const data=ms.map(m=>[m,sum(paid.filter(s=>(s.date||'').startsWith(m)))+sum(psPaid.filter(x=>x.date.startsWith(m))),sum(S.exp.filter(s=>(s.date||'').startsWith(m)))]);
  const mx=Math.max(1,...data.map(d=>Math.max(d[1],d[2])));
  return `<h1>Início</h1><p class="sub">Veja o que fazer agora e como está o seu negócio.</p><div id="nextSteps">${nextStepsHtml()}</div>
  <div class="grid g3"><div class="card kpi"><small>Sites entregues</small><b>${sites}</b><small>fechados e pagos</small></div><div class="card kpi"><small>Projetos ativos</small><b>${proj}</b><small>${(S.projects||[]).length} cadastrados no total</small></div><div class="card kpi"><small>Clientes</small><b>${leads}</b><small>cadastrados</small></div></div>
  <h2>Vendas</h2><div class="grid"><div class="card kpi"><small>Vendas hoje</small><b>${R(hoje)}</b><small>${vh} venda(s)</small></div><div class="card kpi"><small>Últimos 7 dias</small><b>${R(sem)}</b><small>${vs7} venda(s)</small></div></div>
  <div class="card"><b>Vendas por dia · últimos 30 dias</b><svg viewBox="0 0 300 75" preserveAspectRatio="none" style="width:100%;height:150px;margin-top:8px"><polygon points="0,70 ${line} 300,70" fill="var(--ac)" fill-opacity=".25"/><polyline points="${line}" fill="none" stroke="var(--ac)" stroke-width="2" vector-effect="non-scaling-stroke"/></svg><div style="display:flex;justify-content:space-between"><small>${days[0].slice(8)}/${days[0].slice(5,7)}</small><small>hoje</small></div></div>
- <div class="grid g4"><div class="card kpi"><small>Lucro</small><b class="${lucro>=0?'pos':'neg'}">${R(lucro)}</b><small>recebido menos despesas</small></div>
- <div class="card kpi"><small>Recebido</small><b>${R(rec)}</b><small>total já pago</small></div>
- <div class="card kpi"><small>A receber</small><b class="warn">${R(pen)}</b><small>fechado e não pago</small></div>
+ <div class="grid g4"><div class="card kpi"><small>Lucro</small><b class="${lucro>=0?'pos':'neg'}">${R(lucro)}</b><small>${ps.length?`sites ${R(siteRec-desp)} + produtos ${R(prodLucro)}`:'recebido menos despesas'}</small></div>
+ <div class="card kpi"><small>Recebido</small><b>${R(rec)}</b><small>${ps.length?`sites ${R(siteRec)} + produtos ${R(prodRec)}`:'total já pago'}</small></div>
+ <div class="card kpi"><small>A receber</small><b class="warn">${R(pen)}</b><small>${prodPen?`inclui ${R(prodPen)} de produtos`:'fechado e não pago'}</small></div>
  <div class="card kpi"><small>Em negociação</small><b>${R(pipe)}</b><small>propostas em andamento</small></div></div>
  <div class="card"><b>Meta do mês</b> <small>${meta?R(recM)+' de '+R(meta):'defina a meta na aba Plano'}</small><div class="prog"><i style="width:${pct}%"></i></div></div>
  <div class="card"><b>Últimos 6 meses</b> <small>🟩 recebido · 🟥 despesas</small><div class="bars">${data.map(d=>`<div><span style="height:${d[1]/mx*90}px;background:var(--grn)"></span><span style="height:${d[2]/mx*90}px;background:var(--red)"></span><br>${d[0].slice(5)}</div>`).join('')}</div></div>
- <h2>Pendentes de pagamento</h2><div class="card">${pend.length?pend.map(s=>`<div class="item"><div>${esc(s.client)}<br><small>${esc(s.service)} · ${R(s.value)}</small></div><span class="charge-row">${chargeHtml(s)}<button class="sec" data-click="pay" data-click-args="${esc(JSON.stringify([s.id]))}">Marcar pago</button></span></div>`).join(''):'<small>Nenhum pagamento pendente.</small>'}</div>
+ <h2>Pendentes de pagamento</h2><div class="card">${pend.length||psPend.length?psPend.map(x=>`<div class="item"><div>${esc(x.emoji)} ${esc(x.client||'Cliente')}<br><small>${esc(x.name)} · ${x.qty} un. · ${R(x.value)}</small></div><button class="sec" data-click="payProduct" data-click-args="${esc(JSON.stringify([x.pid,x.mid]))}">Marcar pago</button></div>`).join('')+pend.map(s=>`<div class="item"><div>${esc(s.client)}<br><small>${esc(s.service)} · ${R(s.value)}</small></div><span class="charge-row">${chargeHtml(s)}<button class="sec" data-click="pay" data-click-args="${esc(JSON.stringify([s.id]))}">Marcar pago</button></span></div>`).join(''):'<small>Nenhum pagamento pendente.</small>'}</div>
  <div id="vercelUsage"></div>
  <h2>Funil</h2><div class="card">${STAGES.map(st=>{const l=S.sales.filter(s=>s.stage===st);return `<div class="item"><span>${st}</span><span><b>${l.length}</b> <small>${R(sum(l))}</small></span></div>`}).join('')}</div>`;
 }
@@ -940,7 +948,7 @@ async function boundedDecompress(bytes,limit){const reader=new Blob([bytes]).str
 const previewResources=new Map();
 function releasePreview(url){for(const resource of previewResources.get(url)||[])URL.revokeObjectURL(resource);previewResources.delete(url);URL.revokeObjectURL(url)}
 async function safePreviewDocument(url){const doc=new DOMParser().parseFromString(await(await fetch(url)).text(),'text/html');doc.querySelectorAll('script,iframe,object,embed,base,meta[http-equiv],link').forEach(el=>{if(el.tagName==='LINK'&&el.rel==='stylesheet'&&el.href.startsWith('blob:'))return;el.remove()});for(const el of doc.querySelectorAll('*'))for(const attr of [...el.attributes])if(attr.name.startsWith('on'))el.removeAttribute(attr.name);const policy=document.createElement('meta');policy.httpEquiv='Content-Security-Policy';policy.content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline' blob:; font-src blob: data:; script-src 'none'; connect-src 'none'; form-action 'none'; frame-src 'none'";doc.head.prepend(policy);return '<!doctype html>'+doc.documentElement.outerHTML}
-const panelActions={openPublish,openDiagnostico,openEntregas,setEntregaFilter,entregaSetPlan,entregaToggle,entregaObs,openPlanPrompts,openFeatured,publishFeatured,briefingPrepare,briefingView,briefingRevoke,briefingCopyLink,sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,sheetTab,toggleClientNeedsAction,setClientView,setClientOwner,toggleClientMore,attachSite,pay,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
+const panelActions={openPublish,openDiagnostico,openEntregas,setEntregaFilter,entregaSetPlan,entregaToggle,entregaObs,openPlanPrompts,openFeatured,publishFeatured,briefingPrepare,briefingView,briefingRevoke,briefingCopyLink,sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,sheetTab,toggleClientNeedsAction,setClientView,setClientOwner,toggleClientMore,attachSite,pay,payProduct,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
  attachProjectZipClear:attachProjectZip,importClientFolderClear:importClientFolder,importClientHtmlClear:importClientHtml,importClientZipClear:importClientZip,runGeneralBackupClear:runGeneralBackup,
  sheetDo(name,...args){if(name==='sheetDo'||!Object.hasOwn(panelActions,name))return;closeSheet();return panelActions[name](...args)},
  pset2Calc(...args){pset2(...args);upCalc()},pickFile(id){document.getElementById(id).click()}};
