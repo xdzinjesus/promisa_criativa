@@ -42,6 +42,9 @@ const hasTeam=()=>TEAM.length>1;
 function setClientOwner(v){clientOwner=v;drawClientsList()}
 function go(t){t=tabKey(t);if(!canTab(t))return;if(t==='clients'&&tab!=='clients')clientsLoaded=false;tab=t;render()}
 function toggleMoreNav(){const menu=document.getElementById("navMore"),button=document.getElementById("moreToggle");if(!menu||!button)return;const open=!menu.classList.contains("open");menu.classList.toggle("open",open);button.setAttribute("aria-expanded",String(open))}
+// Números do Início "contam" até o valor ao abrir (só transform/texto; quem pediu menos movimento não vê).
+let lastAnimTab='',pmTimer=0;
+function countUpKpis(){if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;for(const el of document.querySelectorAll('#app .kpi > b')){const txt=el.textContent.trim(),money=/R\$/.test(txt),neg=/^-|−/.test(txt),raw=txt.replace(/[^\d,]/g,'').replace(',','.'),end=(neg?-1:1)*(parseFloat(raw)||0);if(!end||Math.abs(end)>1e9)continue;const t0=performance.now(),dur=650;const step=t=>{if(!el.isConnected)return;const k=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-k,3),v=end*e;el.textContent=money?R(v):String(Math.round(v));if(k<1)requestAnimationFrame(step);else el.textContent=txt};requestAnimationFrame(step)}}
 function render(){
  if(!canTab(tab))tab=TABS.map(t=>t[0]).find(canTab)||'dash';
  document.getElementById("navMore")?.remove();
@@ -63,6 +66,8 @@ function render(){
  if(tab==='bank') mountModule('promisaBank','/assets/bank-panel.js','bankRoot');
   if(tab==='partners') mountModule('promisaPartners','/assets/partners-panel.js','partnersRoot');
  if(tab==='products') mountModule('promisaProducts','/assets/products-panel.js','productsRoot');
+ // Animação de entrada só quando a aba muda (re-desenhos da mesma aba não piscam).
+ if(lastAnimTab!==tab){const app=$('#app');app.classList.add('pm-enter');clearTimeout(pmTimer);pmTimer=setTimeout(()=>app.classList.remove('pm-enter'),900);if(tab==='dash')countUpKpis();lastAnimTab=tab}
  window.scrollTo(0,0);
 }
 const ORIGENS=[['','Não informado'],['instagram','Instagram'],['indicacao','Indicação'],['google','Google'],['whatsapp','WhatsApp'],['site','Site'],['outro','Outro']];
@@ -283,7 +288,9 @@ async function drawClients(){
   clientSiteToast('Falha ao abrir os sites: '+e.message);
  }
 }
-function setClientQuery(value){clientQuery=String(value||'');drawClientsList()}
+// Busca: redesenha a lista quando a pessoa para de digitar (não a cada letra).
+let clientQueryTimer=0;
+function setClientQuery(value){clientQuery=String(value||'');clearTimeout(clientQueryTimer);clientQueryTimer=setTimeout(drawClientsList,140)}
 function setClientFilter(key){if(!CLIENT_FILTERS.some(f=>f[0]===key))return;clientFilter=key;drawClientsList()}
 function goClients(filter){clientFilter=CLIENT_FILTERS.some(f=>f[0]===filter)?filter:'active';clientNeedsAction=false;clientQuery='';go('clients')}
 function toggleClientNeedsAction(){clientNeedsAction=!clientNeedsAction;drawClientsList()}

@@ -56,7 +56,7 @@ async function shrink(file) {
 function zoom(src, alt) {
   const d = el('dialog', null, { className: 'pr-zoom' }); d.addEventListener('close', () => d.remove());
   d.addEventListener('click', () => d.close());
-  d.append(el('img', null, { src, alt })); document.body.append(d); d.showModal();
+  d.append(el('img', null, { src, alt, decoding: 'async' })); document.body.append(d); d.showModal();
 }
 function copy(text, button) {
   navigator.clipboard?.writeText(text).then(() => { const t = button.textContent; button.textContent = 'Copiado ✓'; setTimeout(() => { button.textContent = t; }, 1500); }).catch(() => prompt('Copie:', text));
@@ -68,7 +68,7 @@ function productCard(p, root) {
   const head = el('div', null, { className: 'pr-head' });
   if (p.images?.length) {
     const thumb = el('button', null, { type: 'button', className: 'pr-thumb', title: 'Ver foto', ariaLabel: 'Ver foto de ' + p.name });
-    thumb.append(el('img', null, { src: p.images[0], alt: '' }));
+    thumb.append(el('img', null, { src: p.images[0], alt: '', decoding: 'async', loading: 'lazy' }));
     if (p.images.length > 1) thumb.append(el('span', '+' + (p.images.length - 1)));
     thumb.addEventListener('click', () => zoom(p.images[0], p.name));
     head.append(thumb);
@@ -154,7 +154,7 @@ function productCard(p, root) {
     const grid = el('div', null, { className: 'pr-photos' });
     (p.images || []).forEach((src, i) => {
       const fig = el('div', null, { className: 'pr-photo' });
-      const img = el('img', null, { src, alt: `Foto ${i + 1} de ${p.name}` }); img.addEventListener('click', () => zoom(src, p.name));
+      const img = el('img', null, { src, alt: `Foto ${i + 1} de ${p.name}`, decoding: 'async', loading: 'lazy' }); img.addEventListener('click', () => zoom(src, p.name));
       const rm = el('button', '✕', { type: 'button', className: 'sec pr-mini', title: 'Tirar esta foto', ariaLabel: 'Tirar esta foto' });
       rm.addEventListener('click', () => { p.images.splice(i, 1); if (!p.images.length) delete p.images; touch(p); persist(root); });
       fig.append(img, rm);
