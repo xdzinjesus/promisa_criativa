@@ -549,3 +549,29 @@ test('ligar domínio: em uso fora desta conta (8000018 que não some) avisa onde
   assert.equal(error.info.apex, 'kaetanoink.com.br');
   assert.equal(error.info.zone.id, 'c'.repeat(32));
 });
+
+test('ponte (plano B): domínio recusado pela Cloudflare é ligado por um Worker que entrega o site do pages.dev', async () => {
+  const ok = result => new Response(JSON.stringify({ success: true, errors: [], result }), { status: 200 });
+  const routes = [], scripts = {};
+  const fetch = async (url, init = {}) => {
+    const u = new URL(url), path = u.pathname.replace('/client/v4', ''), method = init.method || 'GET'; let m;
+    if (method === 'GET' && path === '/zones') return ok([{ id: 'c'.repeat(32), name: 'kaetanoink.com.br', status: 'active', name_servers: ['a.ns.cloudflare.com', 'b.ns.cloudflare.com'] }]);
+    if (/\/pages\/projects\/[^/]+\/domains$/.test(path) && method === 'POST') return new Response(JSON.stringify({ success: false, errors: [{ code: 8000018, message: 'Domain already in use' }] }), { status: 409 });
+    if (/\/pages\/projects\/[^/]+\/domains\/[^/]+$/.test(path) && method === 'DELETE') return new Response(JSON.stringify({ success: false, errors: [{ code: 8000021, message: 'does not exist' }] }), { status: 404 });
+    if (/\/pages\/projects\/[^/]+\/domains$/.test(path) && method === 'GET') return ok([]);
+    if (method === 'GET' && /\/pages\/projects$/.test(path)) return ok(u.searchParams.get('page') === '1' ? [{ name: 'promisa-site-woc7', domains: [] }] : []);
+    if (method === 'GET' && /\/workers\/domains$/.test(path)) return ok([]);
+    if (path.endsWith('/dns_records')) return ok(method === 'GET' ? [] : { id: 'x' });
+    if ((m = /\/workers\/scripts\/([^/]+)$/.exec(path)) && method === 'PUT') { const f = init.body; scripts[m[1]] = await f.get('ponte.js').text(); return ok({ id: m[1] }); }
+    if (/\/workers\/routes$/.test(path) && method === 'GET') return ok(routes);
+    if (/\/workers\/routes$/.test(path) && method === 'POST') { const b = JSON.parse(init.body); routes.push({ id: 'r' + routes.length, ...b }); return ok({}); }
+    return new Response('{}', { status: 404 });
+  };
+  const cf = createCloudflare({ token: TOKEN, accountId: ACCOUNT, retryDelayMs: 0, fetch });
+  const info = await cf.attachDomain('promisa-site-woc7', 'kaetanoink.com.br');
+  assert.equal(info.bridge.script, 'promisa-ponte-promisa-site-woc7');
+  assert.deepEqual(routes.map(r => [r.pattern, r.script]), [['kaetanoink.com.br/*', 'promisa-ponte-promisa-site-woc7'], ['www.kaetanoink.com.br/*', 'promisa-ponte-promisa-site-woc7']]);
+  assert.match(scripts['promisa-ponte-promisa-site-woc7'], /promisa-site-woc7\.pages\.dev/);
+  await cf.proxyDomain('promisa-site-woc7', 'c'.repeat(32), ['kaetanoink.com.br', 'www.kaetanoink.com.br']);
+  assert.equal(routes.length, 2, 'não duplica rotas');
+});
