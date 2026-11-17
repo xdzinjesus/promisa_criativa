@@ -504,3 +504,26 @@ test('ligar domínio: lista sem domínios pergunta projeto por projeto; preso nu
   domains['promisa-site-novo'] = []; worker = true;
   await assert.rejects(cf.ensureDomainsOnProject('promisa-site-novo', ['kaetanoink.com.br']), /Worker "meu-worker"/);
 });
+
+test('ligar domínio: código 8000018 sem aparecer na lista (cadastro travado) é removido e refeito no mesmo projeto', async () => {
+  const listed = [], ghost = new Set(['kaetanoink.com.br', 'www.kaetanoink.com.br']), log = [];
+  const ok = result => new Response(JSON.stringify({ success: true, errors: [], result }), { status: 200 });
+  const fetch = async (url, init = {}) => {
+    const u = new URL(url), path = u.pathname.replace('/client/v4', ''), method = init.method || 'GET', body = init.body ? JSON.parse(init.body) : null; let m;
+    log.push(method + ' ' + path);
+    if (/\/pages\/projects\/promisa-site-woc7\/domains$/.test(path) && method === 'POST') {
+      if (ghost.has(body.name)) return new Response(JSON.stringify({ success: false, errors: [{ code: 8000018, message: 'Domain already added to this project' }] }), { status: 409 });
+      listed.push(body.name); return ok({ name: body.name });
+    }
+    if (/\/pages\/projects\/promisa-site-woc7\/domains$/.test(path) && method === 'GET') return ok(listed.map(name => ({ name, status: 'pending' })));
+    if ((m = /\/pages\/projects\/promisa-site-woc7\/domains\/([^/]+)$/.exec(path)) && method === 'DELETE') { ghost.delete(decodeURIComponent(m[1])); return ok(null); }
+    if (method === 'GET' && /\/pages\/projects$/.test(path)) return ok(u.searchParams.get('page') === '1' ? [{ name: 'promisa-site-woc7', domains: [] }, { name: 'outro', domains: [] }] : []);
+    if (method === 'GET' && /\/workers\/domains$/.test(path)) return ok([]);
+    return new Response('{}', { status: 404 });
+  };
+  const cf = createCloudflare({ token: TOKEN, accountId: ACCOUNT, retryDelayMs: 0, fetch });
+  const moved = await cf.ensureDomainsOnProject('promisa-site-woc7', ['kaetanoink.com.br', 'www.kaetanoink.com.br']);
+  assert.deepEqual(moved.map(x => [x.name, x.reset]), [['kaetanoink.com.br', true], ['www.kaetanoink.com.br', true]]);
+  assert.deepEqual(listed, ['kaetanoink.com.br', 'www.kaetanoink.com.br']);
+  assert.ok(!log.some(l => l.startsWith('DELETE') && !l.includes('promisa-site-woc7')), 'só mexe no próprio projeto');
+});
