@@ -12,7 +12,7 @@ O site e o sistema de gestão da **Promisa Criação Digital**, uma agência de 
 ## Fluxo de trabalho (obrigatório)
 1. Trabalhar numa **branch própria** (ex.: `claude/...`).
 2. Fazer commit e push, depois abrir um **pull request**.
-3. **Fazer o merge só com a aprovação do dono, dada no chat.**
+3. **Fazer o merge automático assim que os testes passarem (o dono autorizou; não precisa pedir). Teste falhou = não faz merge.**
 4. O merge na `main` dispara o **deploy automático na Vercel** (`promisa.online`). Não existe outro passo de publicação.
 5. Antes de entregar, rodar:
    1. `SITE_URL=https://example.test node build.mjs`

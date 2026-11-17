@@ -30,7 +30,7 @@ PLANEJAR → DISTRIBUIR → IMPLEMENTAR → TESTAR → REVISAR → HANDOFF → C
 
 ## Projeto e aprovação
 - Resumo de como tudo funciona: `docs/PROJETO.md`.
-- Fluxo: branch própria → commit/push → pull request → **merge só com a aprovação do dono no chat** → a Vercel publica sozinha em promisa.online.
+- Fluxo: branch própria → commit/push → pull request → **merge automático assim que `npm test` e `npm run test:browser` passarem** (autorizado pelo dono; não precisa pedir) → a Vercel publica sozinha em promisa.online. Se algum teste falhar, não faz o merge: corrige primeiro.
 
 ## Discord
 - Antes de mexer em qualquer coisa do Discord (`api/discord.js`, `lib/discord*.js`, `src/discord-panel.js`), leia `docs/DISCORD.md`.
