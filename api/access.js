@@ -350,7 +350,7 @@ export default async function handler(req, res) {
   if (view === 'catalogo' && user?.partner && !user.modules.includes('mySites')) { res.statusCode = 303; res.setHeader('Location', '/admin'); return res.end(); }
   if (!authenticated) {
     res.statusCode = 303;
-    res.setHeader('Location', '/acesso.html');
+    res.setHeader('Location', '/acesso.html' + loginNext(view, req));
     return res.end();
   }
   try {
@@ -363,4 +363,13 @@ export default async function handler(req, res) {
     return json(res, 500, { error: 'Não foi possível carregar a página. Tente novamente.' });
   }
   } catch { return json(res, 503, { code: 'AUTH_STORAGE_UNAVAILABLE', error: 'Não foi possível acessar o armazenamento de sessões. Confira se o Vercel Blob é privado, se BLOB_READ_WRITE_TOKEN está válido e conectado a este projeto e tente novamente.' }); }
+}
+// Depois de entrar, volta para a ficha pedida (link direto do Pixel): só /admin com tab, cliente e aba.
+export function loginNext(view, req) {
+  if (view !== 'admin') return '';
+  const q = new URL(req.url || '/', 'http://localhost').searchParams, get = k => req.query?.[k] ?? q.get(k);
+  const cliente = String(get('cliente') || ''), aba = String(get('aba') || '');
+  if (!/^[\w.~-]{1,180}$/.test(cliente)) return '';
+  const next = '/admin?tab=clients&cliente=' + encodeURIComponent(cliente) + (/^[a-z]{1,20}$/.test(aba) ? '&aba=' + aba : '');
+  return '?next=' + encodeURIComponent(next);
 }

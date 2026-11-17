@@ -3,7 +3,7 @@ import { validateBankMonth, validateBankRules } from './bank.js';
 import { validateProduct } from './products.js';
 const ID = /^[A-Za-z0-9_.~-]{1,180}$/;
 const collections = new Set(['sales', 'exp', 'projects', 'bank', 'products', 'sites', 'sitefiles', 'attachments']);
-const settings = new Set(['prospectNotes', 'siteHostingBaseUrl', 'plan', 'demoMessage', 'bankRules']);
+const settings = new Set(['prospectNotes', 'siteHostingBaseUrl', 'plan', 'demoMessage', 'bankRules', 'pixelKey']);
 const forbidden = new Set(['__proto__', 'constructor', 'prototype']);
 export function validId(id) { return (typeof id === 'string' || Number.isSafeInteger(id)) && ID.test(String(id)); }
 export function safeFilePath(path) {
@@ -46,6 +46,7 @@ export function validateRecord(kind, raw, expectedId, { encoded = false } = {}) 
     }
     if (e.obs !== undefined && (typeof e.obs !== 'string' || e.obs.length > 2000)) throw new Error('Observações de entrega inválidas.');
   }
+  if (value.prazo !== undefined && value.prazo !== '' && !(typeof value.prazo === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.prazo))) throw new Error('Prazo inválido.');
   if (value.paid !== undefined && typeof value.paid !== 'boolean') throw new Error('Situação de pagamento inválida.');
   // Responsável pelo cliente: vazio/ausente = o dono; senão o id de um sócio.
   if (value.owner !== undefined && !(value.owner === '' || /^u[a-f0-9]{12}$/.test(value.owner))) throw new Error('Responsável inválido.');
@@ -79,6 +80,7 @@ export function validateSetting(name, value) {
   assertSafeTree(value);
   if (!settings.has(name)) throw new Error('Configuração desconhecida.');
   if (name === 'bankRules') return validateBankRules(value);
+  if (name === 'pixelKey') { if (value !== '' && !(typeof value === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(value))) throw new Error('Chave do Pixel inválida.'); return value; }
   if (name === 'plan') {
     if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Plano inválido.');
     for (const [key, item] of Object.entries(value)) {

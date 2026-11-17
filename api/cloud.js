@@ -10,6 +10,7 @@ import { createBriefingStore } from '../lib/briefing-store.js';
 import { validId } from '../src/data-validation.js';
 import { vercelUsage } from '../lib/vercel-usage.js';
 import { blobUsage } from '../lib/blob-usage.js';
+import { pixelStore } from '../lib/pixel-store.js';
 import { maintainStorage } from '../lib/storage-maintenance.js';
 import { configured, loadManifest, commitOperations, signedRead, validKey, validPath, MAX_OBJECT_BYTES } from '../lib/cloud-store.js';
 
@@ -84,6 +85,12 @@ export default async function handler(req, res) {
     if (access) return deny();
     try { const r = await maintainStorage({ apply: true, retention: 0 }); return json(res, 200, { removed: r.removed, freedBytes: r.freedBytes, more: r.more }); }
     catch (error) { return json(res, 409, { error: /manutenção/i.test(error?.message || '') ? 'Uma limpeza já está em andamento. Tente de novo em 2 minutos.' : 'Não consegui liberar o espaço agora. Tente de novo em alguns minutos.' }); }
+  }
+  // Agenda do Pixel: o navegador do dono envia o envelope já criptografado (só quando mudou).
+  if (req.method === 'POST' && action === 'pixel-agenda') {
+    if (access) return deny();
+    let body; try { body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body; } catch { return json(res, 400, { error: 'Dados inválidos.' }); }
+    try { return json(res, 200, await pixelStore.write(body?.envelope)); } catch (error) { return json(res, error.status || 503, { error: error.status === 400 ? 'Agenda inválida.' : 'Não consegui salvar a agenda do Pixel agora.' }); }
   }
   // Sócio: confere a permissão antes de qualquer coisa (o dono passa direto).
   if (access && req.method === 'POST') {

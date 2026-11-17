@@ -60,6 +60,7 @@ test('login do sócio: só os módulos dele, nada do dono, e o acesso cai quando
   // servidor de dados
   assert.equal((await call(cloudHandler, { query: { action: 'vercel-usage' }, cookie: partner })).status, 403);
   assert.equal((await call(cloudHandler, { query: { action: 'blob-usage' }, cookie: partner })).status, 403);
+  assert.equal((await call(cloudHandler, { method: 'POST', query: { action: 'pixel-agenda' }, body: { envelope: {} }, cookie: partner })).status, 403);
   assert.equal((await call(cloudHandler, { method: 'POST', query: { action: 'commit' }, body: { operations: [{ key: 'sales:1', baseHash: null, hash: 'a'.repeat(64) }] }, cookie: partner })).status, 403, 'não grava clientes');
   assert.equal((await call(cloudHandler, { method: 'POST', query: { action: 'read' }, body: { key: 'settings:plan' }, cookie: partner })).status, 403, 'não lê o plano');
   assert.equal((await call(cloudHandler, { method: 'POST', query: { action: 'share-list' }, body: { siteId: 'x' }, cookie: partner })).status, 403);

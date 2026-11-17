@@ -269,6 +269,9 @@
     },
     "api/meu-site.js": {
       "maxDuration": 60
+    },
+    "api/pixel.js": {
+      "maxDuration": 10
     }
   },
   "rewrites": [

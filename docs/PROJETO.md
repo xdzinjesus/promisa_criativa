@@ -70,3 +70,6 @@ O site e o sistema de gestão da **Promisa Criação Digital**, uma agência de 
   - Depoimentos reais.
   - Perguntas frequentes.
 - **Sites de clientes** (GV Barber, Kaetano, RG Pneus) **não ficam no repositório**: são anexados pelo painel.
+
+## Pixel (assistente pessoal)
+Agenda de entregas criptografada e rota só de leitura `GET /api/pixel?action=agenda`. Contrato completo em `docs/PIXEL.md`.
