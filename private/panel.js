@@ -661,8 +661,8 @@ async function openPublish(key){
   const sec=el('div','pub-domain');sec.append(el('h3','','Domínio do cliente'));
   const domains=data.live?.domains||[],zone=data.live?.zone||(info?.zone?{status:info.zone.status,nameServers:info.zone.nameServers}:null);
   if(data.domain){
-   const ok=zone?.status==='active'&&domains.length>0&&domains.every(d=>d.status==='active');
-   if(ok)sec.append(el('p','pub-ok','✅ No ar em https://'+data.domain));
+   const ok=zone?.status==='active'&&((domains.length>0&&domains.every(d=>d.status==='active'))||Boolean(data.bridge));
+   if(ok)sec.append(el('p','pub-ok','✅ No ar em https://'+data.domain+(data.bridge?' (pela ponte: a Cloudflare recusou o jeito normal, então o painel ligou por outro caminho)':'')));
    else{
     sec.append(el('p','pub-wait','⏳ Aguardando o domínio (pode levar de 1 a 24 horas)'));
     const label={active:'✅ ativo',pending:'⏳ verificando',initializing:'⏳ começando',error:'❌ com erro',blocked:'❌ bloqueado',deactivated:'❌ desativado'};
@@ -683,7 +683,7 @@ async function openPublish(key){
   if(ex.length)sec.append(el('p','pub-warn','Atenção: já existem endereços antigos neste domínio ('+ex.map(c=>c.name+' '+c.type).join(', ')+'). Não apagamos nada. Peça ajuda antes de continuar, senão o site novo pode não aparecer.'));
   const form=el('form','demo-links-form');const label=el('label','','Domínio do cliente (ex.: chicomoveis.com.br)');const input=el('input');input.type='text';input.placeholder='chicomoveis.com.br';input.autocomplete='off';input.value=data.domain||'';label.append(input);
   const go=el('button','sec',data.domain?'Trocar domínio':'Ligar domínio');go.type='submit';form.append(label,go);
-  form.addEventListener('submit',event=>{event.preventDefault();run(go,'Ligando…',async()=>{const res=await publishApi({action:'set-domain',siteId:String(site.id),domain:input.value});clientSiteToast(res.domainInfo?.moved?.length?`Domínio ligado. Ele estava preso em outro projeto (${res.domainInfo.moved[0].from}) e foi movido para este site. Em até 15 minutos abre.`:'Domínio ligado. Agora siga os passos abaixo.');await load(res.domainInfo)})});
+  form.addEventListener('submit',event=>{event.preventDefault();run(go,'Ligando…',async()=>{const res=await publishApi({action:'set-domain',siteId:String(site.id),domain:input.value});clientSiteToast(res.domainInfo?.bridge?'Domínio ligado pela ponte. Em até 5 minutos abre.':res.domainInfo?.moved?.length?`Domínio ligado. Ele estava preso em outro projeto (${res.domainInfo.moved[0].from}) e foi movido para este site. Em até 15 minutos abre.`:'Domínio ligado. Agora siga os passos abaixo.');await load(res.domainInfo)})});
   sec.append(form);return sec;
  }
  async function load(info){
@@ -700,6 +700,7 @@ async function openPublish(key){
    const open=btn('Abrir','sec',()=>window.open(data.url,'_blank','noopener,noreferrer'));nodes[1].querySelector('.demo-link-actions').append(open);
    nodes.push(el('p','demo-link-meta','Publicado em '+demoLinkDate(data.lastPublishedAt)));
    if(data.liveError)nodes.push(note(data.liveError));
+   if(data.bridgeNew)nodes.push(el('p','pub-ok','✅ A Cloudflare recusou ligar o domínio do jeito normal, então o painel ligou por outro caminho (ponte). Em até 5 minutos abre.'));
    if(data.moved?.length)nodes.push(el('p','pub-ok',data.moved[0].reset?'✅ O cadastro do domínio estava travado na Cloudflare e foi refeito. Em até 15 minutos abre.':`✅ O domínio estava preso numa publicação antiga (${data.moved[0].from}) e foi ligado a este site. Em até 15 minutos abre.`));
    if(data.outdated)nodes.push(el('p','pub-warn','⚠️ Há mudanças não publicadas. Clique em "Atualizar site" para mostrar a versão nova.'));
    const upd=el('button',data.outdated?'':'sec','Atualizar site');upd.type='button';upd.addEventListener('click',()=>publish(upd));
