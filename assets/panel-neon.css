@@ -270,3 +270,34 @@ dialog[open]:not(.sheet){border-color:#33205a!important}
 @media(max-width:400px){.dk-kpis{grid-template-columns:1fr 1fr}}
 /* Menu lateral com muitos itens: rola por dentro em telas mais baixas. */
 @media(min-width:760px){#nav{overflow-y:auto;overflow-x:hidden;scrollbar-width:none}#nav::-webkit-scrollbar{display:none}}
+
+/* ---------- Lixeira de clientes ---------- */
+.ic-inline{width:1.05em;height:1.05em;vertical-align:-.17em;margin-right:.35em;flex:none}
+.cseg-trash{color:#fda4af!important}
+.cseg button.cseg-trash[aria-pressed="true"]{background:linear-gradient(135deg,#7f1d1d,#be123c)!important;border-color:#fb7185!important;box-shadow:0 0 16px #f43f5e55!important;color:#fff!important}
+.trash-list{display:grid;gap:10px}
+.trash-row{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:14px 16px;border-radius:16px;border:1px solid #3b1d2a;background:linear-gradient(165deg,#ffffff06,transparent 50%),#0c0810;animation:pm-in .3s var(--pm-ease,ease) both}
+.trash-info{display:grid;gap:3px;min-width:0}.trash-info b{color:#fff}.trash-info small{color:var(--mut)}
+.trash-acts{display:flex;gap:8px;flex-wrap:wrap}
+button.del,.del{background:linear-gradient(135deg,#9f1239,#e11d48)!important;border:1px solid #fb718566!important;color:#fff!important;box-shadow:0 6px 20px #e11d4840!important}
+@media (hover:hover){button.del:hover:not(:disabled){box-shadow:0 8px 28px #f43f5e77,0 0 0 3px #f43f5e26!important}}
+.trash-list .site-empty{display:grid;justify-items:center;gap:6px;padding:40px 16px;text-align:center}
+.trash-list .site-empty .ic-inline{width:42px;height:42px;margin:0;color:#7d6a99}
+.trash-list .site-empty p{margin:0;font-weight:600;color:#ece4fb}
+/* Janela "Tem certeza?" */
+dialog.ask-dialog{width:min(440px,calc(100vw - 32px));padding:26px 24px 22px;border-radius:20px;border:1px solid #33205a!important;background:#0a0611;color:var(--tx);text-align:center;box-shadow:0 0 0 1px #a855f722,0 40px 120px #000,0 0 60px #7c3aed33}
+dialog.ask-dialog.is-danger{border-color:#7f1d1d!important;box-shadow:0 0 0 1px #f43f5e33,0 40px 120px #000,0 0 60px #e11d4833}
+.ask-ico{display:grid;place-items:center;width:56px;height:56px;margin:0 auto 12px;border-radius:16px;background:#f43f5e1a;border:1px solid #f43f5e55;color:#fb7185}
+.ask-ico:empty{display:none}.ask-ico .ic-inline{width:28px;height:28px;margin:0}
+.ask-dialog h2{margin:0 0 8px;font-size:20px;color:#fff}.ask-dialog h2:after{display:none}
+.ask-dialog p{margin:0 0 20px;color:var(--mut);line-height:1.55}
+.ask-acts{display:grid;grid-template-columns:1fr 1fr;gap:10px}.ask-acts button{min-height:48px}
+.ask-dialog.is-danger .ask-yes{background:linear-gradient(135deg,#9f1239,#e11d48)!important;border-color:#fb718566!important;box-shadow:0 6px 20px #e11d4855!important}
+/* Aviso com "Desfazer" */
+.undo-toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:200;display:flex;align-items:center;gap:14px;max-width:calc(100vw - 24px);padding:10px 10px 10px 16px;border-radius:14px;background:#120a1e;border:1px solid #5b2ea0;color:#f4effc;box-shadow:0 0 0 1px #a855f733,0 20px 50px #000c,0 0 30px #7c3aed44;animation:pm-in .3s var(--pm-ease,ease) both}
+.undo-toast button{min-height:38px!important;padding:6px 14px}
+@media(max-width:759px){.undo-toast{bottom:calc(92px + env(safe-area-inset-bottom,0px))}.trash-acts{width:100%}.trash-acts button{flex:1}}
+@media(max-width:759px){
+  .undo-toast{left:12px;right:12px;transform:none;justify-content:space-between}
+  .cseg button{white-space:nowrap;flex:0 0 auto!important;padding-left:14px!important;padding-right:14px!important}
+}
