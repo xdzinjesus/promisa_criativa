@@ -665,6 +665,8 @@ async function openPublish(key){
    if(ok)sec.append(el('p','pub-ok','✅ No ar em https://'+data.domain));
    else{
     sec.append(el('p','pub-wait','⏳ Aguardando o domínio (pode levar de 1 a 24 horas)'));
+    const label={active:'✅ ativo',pending:'⏳ verificando',initializing:'⏳ começando',error:'❌ com erro',blocked:'❌ bloqueado',deactivated:'❌ desativado'};
+    for(const d of domains)sec.append(el('p','demo-help',`${d.name}: ${label[d.status]||d.status||'?'}${d.verification&&d.verification!=='active'?' · verificação: '+d.verification:''}${d.validation&&d.validation!=='active'?' · certificado: '+d.validation:''}${d.error?' · '+d.error:''}`));
     const ns=(zone?.nameServers?.length?zone.nameServers:data.nameServers)||[];
     if(zone?.status!=='active'&&ns.length){
      const steps=el('div','pub-steps');
@@ -698,7 +700,7 @@ async function openPublish(key){
    const open=btn('Abrir','sec',()=>window.open(data.url,'_blank','noopener,noreferrer'));nodes[1].querySelector('.demo-link-actions').append(open);
    nodes.push(el('p','demo-link-meta','Publicado em '+demoLinkDate(data.lastPublishedAt)));
    if(data.liveError)nodes.push(note(data.liveError));
-   if(data.moved?.length)nodes.push(el('p','pub-ok',`✅ O domínio estava preso numa publicação antiga (${data.moved[0].from}) e foi ligado a este site. Em até 15 minutos abre.`));
+   if(data.moved?.length)nodes.push(el('p','pub-ok',data.moved[0].reset?'✅ O cadastro do domínio estava travado na Cloudflare e foi refeito. Em até 15 minutos abre.':`✅ O domínio estava preso numa publicação antiga (${data.moved[0].from}) e foi ligado a este site. Em até 15 minutos abre.`));
    if(data.outdated)nodes.push(el('p','pub-warn','⚠️ Há mudanças não publicadas. Clique em "Atualizar site" para mostrar a versão nova.'));
    const upd=el('button',data.outdated?'':'sec','Atualizar site');upd.type='button';upd.addEventListener('click',()=>publish(upd));
    const off=btn('Tirar do ar','sec danger',()=>{if(!confirm('Tirar este site do ar? O endereço deixa de funcionar. Você pode publicar de novo depois.'))return;run(off,'Tirando do ar…',async()=>{await publishApi({action:'unpublish',siteId:String(site.id)});publishedMap?.delete(String(site.id));clientSiteToast('Site tirado do ar.');await load()})});
