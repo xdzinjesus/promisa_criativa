@@ -317,3 +317,6 @@ dialog.ask-dialog.is-danger{border-color:#7f1d1d!important;box-shadow:0 0 0 1px 
 .vu-more{margin-top:10px}.vu-more>summary{cursor:pointer;color:#d8b4fe;font-weight:600;padding:6px 0}
 .vu-blob-total{display:flex;align-items:baseline;gap:10px;margin:10px 0 6px}.vu-blob-total b{font-size:30px;color:#fff;text-shadow:0 0 22px #a855f744}.vu-blob-total small{color:var(--mut)}
 .vu-groups .vu-row.is-warn .vu-track i{background:#eab308!important}
+.vu-wrap{align-items:start}
+.vu-pending{margin:10px 0 0;line-height:1.55}
+.vu-card>.vu-plan{margin-top:12px}
