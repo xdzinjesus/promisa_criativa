@@ -5,15 +5,15 @@
 
 /* ---------- Desempenho ---------- */
 /* Fundo: antes era "background-attachment:fixed" (redesenhava a tela inteira a cada rolagem). Agora é uma camada fixa à parte. */
-body{background-attachment:scroll!important;background:var(--bg,#050a1a)!important}
+body{background-attachment:scroll!important;background:var(--bg,#030106)!important}
 body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-  background:radial-gradient(ellipse 70% 45% at 72% -12%,#1d4ed866,transparent 70%),radial-gradient(ellipse 45% 40% at -5% 105%,#0ea5e926,transparent 70%),radial-gradient(ellipse 40% 30% at 105% 60%,#6366f11a,transparent 70%),var(--bg,#050a1a);
+  background:radial-gradient(ellipse 70% 45% at 72% -12%,#7e22ce66,transparent 70%),radial-gradient(ellipse 45% 40% at -5% 105%,#a21caf26,transparent 70%),radial-gradient(ellipse 40% 30% at 105% 60%,#8b5cf61a,transparent 70%),var(--bg,#030106);
   transform:translateZ(0)}
 /* Desfoque só onde a tela não rola por baixo (janelas). Barra do topo e menu ficam com fundo quase sólido. */
 .topbar,#nav,.mhead{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
-.topbar{background:#050a1a!important;box-shadow:0 8px 18px -10px #000c}
-@media (min-width:760px){#nav{background:linear-gradient(180deg,#0b1430,#070e24)!important}}
-@media (max-width:759px){#nav{background:#081128!important}}
+.topbar{background:#030106!important;box-shadow:0 8px 18px -10px #000c}
+@media (min-width:760px){#nav{background:linear-gradient(180deg,#0c0814,#070410)!important}}
+@media (max-width:759px){#nav{background:#09050f!important}}
 .topbar{transform:translateZ(0)}
 /* Listas longas: cartões fora da tela não são calculados nem desenhados até aparecerem. */
 .clients-grid>*,.kdrop>*,.bank-rows>.bank-item,.pr-grid>.pr-card,.pt-card,.pt-log-row,#productsRoot .pr-sale{content-visibility:auto;contain-intrinsic-size:auto 180px}
@@ -44,7 +44,7 @@ button,.sec,a.charge-btn,.choice-card,.fchip{transition:transform .14s var(--pm-
 button:active:not(:disabled),.sec:active,a.charge-btn:active,.fchip:active{transform:scale(.96)}
 @media (hover:hover){
   .card.kpi,.ccard,.pr-card,.pt-card,.bd-row,.bank-cat,.vu-row{transition:transform .22s var(--pm-ease),box-shadow .22s,border-color .22s}
-  .card.kpi:hover,.ccard:hover,.pr-card:hover,.pt-card:hover{transform:translate3d(0,-3px,0);box-shadow:0 14px 34px #0006;border-color:#3b82f655}
+  .card.kpi:hover,.ccard:hover,.pr-card:hover,.pt-card:hover{transform:translate3d(0,-3px,0);box-shadow:0 14px 34px #0006;border-color:#a855f755}
   button:hover:not(:disabled){transform:translate3d(0,-1px,0)}
 }
 /* Menu: o item ativo "acende" e o ícone dá um pulinho ao trocar de aba. */
