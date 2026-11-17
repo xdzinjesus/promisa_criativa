@@ -301,3 +301,19 @@ dialog.ask-dialog.is-danger{border-color:#7f1d1d!important;box-shadow:0 0 0 1px 
   .undo-toast{left:12px;right:12px;transform:none;justify-content:space-between}
   .cseg button{white-space:nowrap;flex:0 0 auto!important;padding-left:14px!important;padding-right:14px!important}
 }
+
+/* ---------- Uso da Vercel e monitor do Blob ---------- */
+.vu-wrap{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:14px;margin:14px 0}
+.vu-wrap>.card{margin:0!important}
+.vu-head b{display:inline-flex;align-items:center;gap:10px;font-size:17px;color:#fff}
+.vu-ico{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#a855f722;border:1px solid #a855f744;color:#d8b4fe}.vu-ico svg{width:18px;height:18px}
+.vu-refresh{display:grid;place-items:center;width:38px;height:38px;padding:0!important}.vu-refresh svg{width:17px;height:17px}
+.vu-credit{margin:12px 0 4px;padding:14px;border-radius:14px;border:1px solid #a855f744;background:linear-gradient(135deg,#a855f71a,#a855f705)}
+.vu-credit.is-warn{border-color:#fbbf2455}.vu-credit.is-red{border-color:#f43f5e66}
+.vu-credit .vu-track{height:10px}.vu-credit small{color:var(--mut)}
+.vu-credit.is-warn .vu-track i{background:#eab308!important}.vu-credit.is-red .vu-track i{background:#e11d48!important}
+.vu-plan{display:inline-block;margin-bottom:8px;padding:3px 10px;border-radius:999px;font-size:11.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;background:linear-gradient(135deg,#7c3aed,#c026d3);color:#fff;box-shadow:0 0 14px #a855f766}
+.vu-sec{margin:14px 0 2px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#c084fc;font-weight:700}
+.vu-more{margin-top:10px}.vu-more>summary{cursor:pointer;color:#d8b4fe;font-weight:600;padding:6px 0}
+.vu-blob-total{display:flex;align-items:baseline;gap:10px;margin:10px 0 6px}.vu-blob-total b{font-size:30px;color:#fff;text-shadow:0 0 22px #a855f744}.vu-blob-total small{color:var(--mut)}
+.vu-groups .vu-row.is-warn .vu-track i{background:#eab308!important}

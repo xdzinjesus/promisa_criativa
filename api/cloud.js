@@ -9,6 +9,7 @@ import { createFeaturedStore, cleanFeaturedItems } from '../lib/featured-store.j
 import { createBriefingStore } from '../lib/briefing-store.js';
 import { validId } from '../src/data-validation.js';
 import { vercelUsage } from '../lib/vercel-usage.js';
+import { blobUsage } from '../lib/blob-usage.js';
 import { configured, loadManifest, commitOperations, signedRead, validKey, validPath, MAX_OBJECT_BYTES } from '../lib/cloud-store.js';
 
 function json(res, status, body) {
@@ -71,6 +72,11 @@ export default async function handler(req, res) {
   if (req.method === 'GET' && action === 'vercel-usage') {
     if (access) return deny();
     try { return json(res, 200, await vercelUsage()); } catch { return json(res, 200, { configured: true, error: 'Não consegui falar com a Vercel agora. Tente de novo em alguns minutos.' }); }
+  }
+  // Monitor do armazenamento (Blob): só o dono; só leitura.
+  if (req.method === 'GET' && action === 'blob-usage') {
+    if (access) return deny();
+    try { return json(res, 200, await blobUsage()); } catch { return json(res, 200, { configured: true, error: 'Não consegui contar o armazenamento agora. Tente de novo em alguns minutos.' }); }
   }
   // Sócio: confere a permissão antes de qualquer coisa (o dono passa direto).
   if (access && req.method === 'POST') {

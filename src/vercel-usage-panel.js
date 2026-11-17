@@ -1,7 +1,8 @@
-// Cartão "☁️ Uso da Vercel (últimos 30 dias)" na tela Início: mesmos números do painel da Vercel, com os limites do plano grátis.
+// Cartão "Uso da Vercel (últimos 30 dias)" na tela Início + monitor do armazenamento (Blob).
+// Plano grátis: compara com os limites grátis. Plano Pro: mostra quanto do crédito de US$ 20 já foi usado.
 // Guarda a última leitura por 30 minutos neste aparelho para não consultar a Vercel a cada visita.
 const el = (tag, text, props = {}) => Object.assign(document.createElement(tag), text == null ? {} : { textContent: text }, props);
-const CACHE = 'promisa_vercel_usage', TTL = 30 * 60 * 1000;
+const CACHE = 'promisa_vercel_usage', BLOB_CACHE = 'promisa_blob_usage', TTL = 30 * 60 * 1000;
 const fmt = (n, unit) => {
   const u = String(unit || '').toLowerCase();
   if (/gb|byte/.test(u)) return `${n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} GB`;
@@ -9,45 +10,95 @@ const fmt = (n, unit) => {
   return n >= 1000 ? (n / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mil' : n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 };
 const fmtLimit = (n, unit) => /gb|byte/i.test(unit) ? `${n} GB` : /hour|^h$/i.test(unit) ? `${n}h` : n >= 1e6 ? `${n / 1e6} mi` : n >= 1000 ? `${n / 1000} mil` : String(n);
+const usd = n => 'US$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+export const bytes = n => n >= 1024 ** 3 ? (n / 1024 ** 3).toLocaleString('pt-BR', { maximumFractionDigits: 2 }) + ' GB' : n >= 1024 ** 2 ? (n / 1024 ** 2).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' MB' : n >= 1024 ? Math.round(n / 1024) + ' KB' : n + ' B';
+const SVG = p => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const ICON_CLOUD = SVG('<path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 0 1 0 9z"/>');
+const ICON_DB = SVG('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/>');
+const ICON_REFRESH = SVG('<path d="M21 12a9 9 0 0 1-15.5 6.3L3 16M3 12a9 9 0 0 1 15.5-6.3L21 8M21 3v5h-5M3 21v-5h5"/>');
 
-async function load(force) {
-  if (!force) { try { const c = JSON.parse(localStorage.getItem(CACHE) || 'null'); if (c && Date.now() - c.at < TTL) return c.data; } catch { /* ignora */ } }
-  const r = await fetch('/api/cloud?action=vercel-usage', { credentials: 'same-origin', cache: 'no-store' });
+async function get(action, cacheKey, force) {
+  if (!force) { try { const c = JSON.parse(localStorage.getItem(cacheKey) || 'null'); if (c && Date.now() - c.at < TTL) return c.data; } catch { /* ignora */ } }
+  const r = await fetch('/api/cloud?action=' + action, { credentials: 'same-origin', cache: 'no-store' });
   const data = await r.json().catch(() => ({ error: 'Resposta inválida.' }));
   if (!r.ok) throw new Error(data.error || 'Não foi possível consultar.');
-  try { if (!data.error && data.configured) localStorage.setItem(CACHE, JSON.stringify({ at: Date.now(), data })); } catch { /* ignora */ }
+  try { if (!data.error && data.configured) localStorage.setItem(cacheKey, JSON.stringify({ at: Date.now(), data })); } catch { /* ignora */ }
   return data;
+}
+const head = (icon, title, onRefresh, label) => {
+  const h = el('div', null, { className: 'vu-head' });
+  const t = el('b'); t.innerHTML = `<span class="vu-ico">${icon}</span>`; t.append(title);
+  const b = el('button', null, { type: 'button', className: 'sec vu-refresh', title: label, ariaLabel: label }); b.innerHTML = ICON_REFRESH;
+  b.addEventListener('click', onRefresh); h.append(t, b); return h;
+};
+const bar = (pct, cls = '') => { const t = el('div', null, { className: 'vu-track ' + cls, role: 'img', ariaLabel: `${pct}%` }); t.append(el('i', null, { style: `width:${Math.max(0, Math.min(100, pct))}%` })); return t; };
+
+function usageRows(items, paid) {
+  const list = el('div', null, { className: 'vu-list' });
+  for (const x of items) {
+    const row = el('div', null, { className: 'vu-row' + (x.pct >= 90 ? ' is-red' : x.pct >= 70 ? ' is-warn' : '') });
+    const top = el('div', null, { className: 'vu-top' });
+    top.append(el('span', x.name), el('b', x.limit ? `${fmt(x.quantity, x.unit)} / ${fmtLimit(x.limit, x.unit)}` : fmt(x.quantity, x.unit) + (paid && x.cost ? ' · ' + usd(x.cost) : '')));
+    row.append(top);
+    if (x.limit) row.append(bar(x.pct), el('small', `${x.pct.toLocaleString('pt-BR')}% do limite grátis${x.pct >= 90 ? ' · quase no limite' : ''}`));
+    list.append(row);
+  }
+  return list;
 }
 
 export async function mount(root, force = false) {
   if (!root) return;
-  root.className = 'card vu-card';
-  root.replaceChildren(el('b', '☁️ Uso da Vercel · últimos 30 dias'), el('p', 'Carregando…', { className: 'sub' }));
+  root.className = 'vu-wrap';
+  const card = el('div', null, { className: 'card vu-card' }), blobCard = el('div', null, { className: 'card vu-card vu-blob' });
+  root.replaceChildren(card, blobCard);
+  card.append(el('b', 'Uso da Vercel · últimos 30 dias'), el('p', 'Carregando…', { className: 'sub' }));
+  mountBlob(blobCard, false);
   let d;
-  try { d = await load(force); } catch (error) { d = { configured: true, error: error.message }; }
-  if (!root.isConnected) return;
-  const head = el('div', null, { className: 'vu-head' });
-  head.append(el('b', '☁️ Uso da Vercel · últimos 30 dias'));
-  const refresh = el('button', '🔄', { type: 'button', className: 'sec vu-refresh', title: 'Atualizar agora', ariaLabel: 'Atualizar uso da Vercel' });
-  refresh.addEventListener('click', () => mount(root, true));
-  head.append(refresh); root.replaceChildren(head);
-  if (!d.configured) {
-    root.append(el('p', 'Para ver aqui o mesmo uso do painel da Vercel, falta a chave de acesso (VERCEL_API_TOKEN). O passo a passo está no chat do Claude e em docs/HOSPEDAGEM.md.', { className: 'sub' }));
-    return;
+  try { d = await get('vercel-usage', CACHE, force); } catch (error) { d = { configured: true, error: error.message }; }
+  if (!card.isConnected) return;
+  card.replaceChildren(head(ICON_CLOUD, 'Uso da Vercel · últimos 30 dias', () => mount(root, true), 'Atualizar uso da Vercel'));
+  if (!d.configured) { card.append(el('p', 'Para ver aqui o mesmo uso do painel da Vercel, falta a chave de acesso (VERCEL_API_TOKEN). O passo a passo está em docs/HOSPEDAGEM.md.', { className: 'sub' })); return; }
+  if (d.error) { card.append(el('p', d.error, { className: 'pub-warn' })); return; }
+  const paid = d.plan && d.plan !== 'hobby';
+  if (paid) {
+    const credit = d.credit || 20, pct = Math.round((d.cost || 0) / credit * 1000) / 10;
+    const box = el('div', null, { className: 'vu-credit' + (pct >= 100 ? ' is-red' : pct >= 75 ? ' is-warn' : '') });
+    box.append(el('span', `Plano ${d.plan === 'pro' ? 'Pro' : 'Enterprise'}`, { className: 'vu-plan' }));
+    const top = el('div', null, { className: 'vu-top' }); top.append(el('span', 'Crédito do mês usado'), el('b', `${usd(d.cost || 0)} de ${usd(credit)}`));
+    box.append(top, bar(pct), el('small', pct >= 100 ? `Passou do crédito: o excedente (${usd((d.cost || 0) - credit)}) entra na fatura.` : `${pct.toLocaleString('pt-BR')}% usado · sobram ${usd(credit - (d.cost || 0))} de crédito`));
+    card.append(box);
   }
-  if (d.error) { root.append(el('p', '⚠️ ' + d.error, { className: 'pub-warn' })); return; }
-  if (!d.items?.length) { root.append(el('p', 'A Vercel não devolveu dados de uso para este período. No plano grátis (Hobby) a consulta pode vir vazia; veja direto em vercel.com → Usage.', { className: 'sub' })); return; }
-  const list = el('div', null, { className: 'vu-list' });
-  for (const x of d.items) {
-    const row = el('div', null, { className: 'vu-row' + (x.pct >= 90 ? ' is-red' : x.pct >= 70 ? ' is-warn' : '') });
-    const top = el('div', null, { className: 'vu-top' });
-    top.append(el('span', x.name), el('b', x.limit ? `${fmt(x.quantity, x.unit)} / ${fmtLimit(x.limit, x.unit)}` : fmt(x.quantity, x.unit)));
-    row.append(top);
-    if (x.limit) { const t = el('div', null, { className: 'vu-track', role: 'img', ariaLabel: `${x.pct}% do limite` }); t.append(el('i', null, { style: `width:${Math.min(100, x.pct)}%` })); row.append(t, el('small', `${x.pct.toLocaleString('pt-BR')}% do limite grátis${x.pct >= 90 ? ' · ⚠️ quase no limite' : ''}`)); }
-    list.append(row);
+  if (!d.items?.length) { card.append(el('p', 'A Vercel não devolveu dados de uso para este período. Veja direto em vercel.com → Usage.', { className: 'sub' })); return; }
+  const blobItems = d.items.filter(x => x.blob), other = d.items.filter(x => !x.blob);
+  if (blobItems.length) { card.append(el('p', 'Armazenamento (Blob)', { className: 'vu-sec' }), usageRows(blobItems, paid)); }
+  if (other.length) {
+    const more = el('details', null, { className: 'vu-more' }); more.append(el('summary', `Outros serviços (${other.length})`), usageRows(other, paid));
+    if (!paid) more.open = true;
+    card.append(more);
   }
-  root.append(list);
-  if (d.cost) root.append(el('p', `Custo no período: US$ ${d.cost.toFixed(2)}`, { className: 'sub' }));
-  root.append(el('p', 'No plano grátis, passar do limite pode pausar o projeto até o mês virar. Os números chegam com algumas horas de atraso.', { className: 'sub vu-note' }));
+  card.append(el('p', paid ? 'No Pro nada trava: o que passar do crédito é cobrado à parte. Os números chegam com algumas horas de atraso.' : 'No plano grátis, passar do limite pode pausar o projeto até o mês virar. Os números chegam com algumas horas de atraso.', { className: 'sub vu-note' }));
+}
+
+// Monitor do Blob: tamanho real guardado e o que ocupa mais. Contar custa poucas operações, então é guardado por 30 min.
+async function mountBlob(card, force) {
+  card.replaceChildren(head(ICON_DB, 'Armazenamento (Blob)', () => mountBlob(card, true), 'Contar o armazenamento agora'), el('p', 'Contando os arquivos…', { className: 'sub' }));
+  let d;
+  try { d = await get('blob-usage', BLOB_CACHE, force); } catch (error) { d = { configured: true, error: error.message }; }
+  if (!card.isConnected) return;
+  card.replaceChildren(head(ICON_DB, 'Armazenamento (Blob)', () => mountBlob(card, true), 'Contar o armazenamento agora'));
+  if (!d.configured) { card.append(el('p', 'O armazenamento online não está ligado neste ambiente.', { className: 'sub' })); return; }
+  if (d.error) { card.append(el('p', d.error, { className: 'pub-warn' })); return; }
+  const total = el('div', null, { className: 'vu-blob-total' });
+  total.append(el('b', bytes(d.bytes)), el('small', `${d.count.toLocaleString('pt-BR')} arquivo(s)${d.truncated ? ' (contagem parcial)' : ''}`));
+  card.append(total);
+  const max = Math.max(1, ...d.groups.map(g => g.bytes)), list = el('div', null, { className: 'vu-list vu-groups' });
+  for (const g of d.groups) {
+    const row = el('div', null, { className: 'vu-row' + (/soltos/.test(g.label) ? ' is-warn' : '') });
+    const top = el('div', null, { className: 'vu-top' }); top.append(el('span', g.label), el('b', `${bytes(g.bytes)} · ${g.count}`));
+    row.append(top, bar(g.bytes / max * 100)); list.append(row);
+  }
+  card.append(list);
+  const loose = d.groups.find(g => /soltos/.test(g.label));
+  card.append(el('p', `Contado agora há pouco (${new Date(d.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}).${loose ? ' "Arquivos soltos" são cópias que nada usa mais; não atrapalham, só ocupam espaço.' : ''}`, { className: 'sub vu-note' }));
 }
 if (typeof window !== 'undefined') window.promisaVercelUsage = { mount };
