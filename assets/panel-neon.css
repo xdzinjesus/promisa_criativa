@@ -320,3 +320,17 @@ dialog.ask-dialog.is-danger{border-color:#7f1d1d!important;box-shadow:0 0 0 1px 
 .vu-wrap{align-items:start}
 .vu-pending{margin:10px 0 0;line-height:1.55}
 .vu-card>.vu-plan{margin-top:12px}
+
+/* ---------- Prazos de entrega ---------- */
+.prazo-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;font-size:12px;font-weight:650;border:1px solid #a855f755;background:#a855f71a;color:#e9d5ff}
+.prazo-badge.is-today{border-color:#fbbf2466;background:#fbbf241a;color:#fde68a;box-shadow:0 0 12px #f59e0b33}
+.prazo-badge.is-late{border-color:#fb718577;background:#f43f5e1f;color:#fecdd3;box-shadow:0 0 12px #f43f5e33}
+.prazo-badge.is-soon{border-color:#4ade8044;background:#22c55e14;color:#bbf7d0}
+.ent-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr));gap:10px}
+#sprazoHelp{font-size:11.5px}
+/* ---------- Pixel ---------- */
+.pixel-card>summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.pixel-card>summary::-webkit-details-marker{display:none}.pixel-card>summary small{color:var(--mut)}
+.pixel-card[open]>summary{margin-bottom:10px}
+.pixel-key{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0}
+.pixel-key code{flex:1 1 260px;min-width:0;overflow-wrap:anywhere;padding:10px 12px;border-radius:10px;background:#07040c;border:1px solid #33205a;font-size:12.5px;color:#e9d5ff;user-select:all}

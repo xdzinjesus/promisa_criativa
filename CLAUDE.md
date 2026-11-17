@@ -35,6 +35,9 @@ PLANEJAR → DISTRIBUIR → IMPLEMENTAR → TESTAR → REVISAR → HANDOFF → C
 ## Discord
 - Antes de mexer em qualquer coisa do Discord (`api/discord.js`, `lib/discord*.js`, `src/discord-panel.js`), leia `docs/DISCORD.md`.
 
+## Pixel
+- Antes de mexer no que o Pixel usa (`src/agenda.js`, `api/pixel.js`, `lib/pixel-store.js`, campo `prazo`), leia `docs/PIXEL.md` e confira os PRs e a `main` de `xdzinjesus/jarvis-pessoal`. Decisões que mudem a consulta, as permissões ou os campos ficam no PR do Promisa com o link do PR do Pixel.
+
 ## Segurança do projeto
 - Preserve dados, configurações e funcionalidades existentes. Nunca exclua dados nem altere credenciais ou `.env*` sem autorização.
 - Não instale ferramentas nem execute scripts externos sem verificar a origem.

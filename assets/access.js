@@ -27,6 +27,8 @@ function showChoice() {
   document.getElementById('choice-title').focus();
 }
 window.promisaAccess = { showChoice, ready: () => gateReady };
+// Link direto (ex.: ficha do cliente pelo Pixel): depois de entrar, volta para ele. Só caminhos do próprio painel.
+const nextPath = (() => { try { const n = new URLSearchParams(location.search).get('next') || ''; return /^\/admin\?tab=clients&cliente=[\w.~%-]{1,200}(&aba=[a-z]{1,20})?$/.test(n) ? n : ''; } catch { return ''; } })();
 document.getElementById('toggle-password').addEventListener('click', event => {
   const input = document.getElementById('admin-password');
   const visible = input.type === 'password';
@@ -58,9 +60,10 @@ form.addEventListener('submit', async event => {
     const password = input.value;
     input.value = '';
     // Sócio: vai direto para a gestão (só com os módulos liberados pelo dono).
-    if (partnerUser) { location.replace('/admin'); return; }
+    if (partnerUser) { location.replace(nextPath || '/admin'); return; }
     // Destrava os dados protegidos com a mesma senha; nunca impede nem atrasa o login por mais de 15 s.
     try { await Promise.race([Promise.resolve(window.promisaVault?.afterLogin(password)).catch(() => {}), new Promise(resolve => setTimeout(resolve, 15_000))]); } catch {}
+    if (nextPath) { location.replace(nextPath); return; }
     showChoice();
   } catch (cause) {
     error.textContent = cause.message === 'Failed to fetch' ? 'Sem conexão. Verifique sua internet e tente novamente.' : cause.message;
