@@ -47,12 +47,13 @@ test('Clientes: resumo, filtros, próximo passo e ficha em abas (390px)', async 
   await expect(page.locator('#clientNeedTile b')).toHaveText('2');
 
   // Cartões: telefone formatado com WhatsApp, valor e próximo passo
-  await expect(card(page, 'Ana Doces').locator('.contact-link')).toHaveText('💬 (49) 98824-0164');
+  await expect(card(page, 'Ana Doces').locator('.contact-link')).toHaveText('(49) 98824-0164');
+  await expect(card(page, 'Ana Doces').locator('.contact-link .pi svg')).toBeVisible(); // ícone no lugar do emoji
   await expect(card(page, 'Ana Doces').locator('.contact-link')).toHaveAttribute('href', 'https://wa.me/5549988240164');
   await expect(card(page, 'Bruno Pet').locator('.contact-link')).toContainText('(49) 3442-6343');
   await expect(card(page, 'Ana Doces').locator('.cmeta')).toContainText('Site · R$');
   await expect(card(page, 'Ana Doces').locator('.cnext')).toHaveText('＋ Anexar site');
-  await expect(card(page, 'Bruno Pet').locator('.cnext')).toHaveText('💰 Marcar como pago');
+  await expect(card(page, 'Bruno Pet').locator('.cnext')).toHaveText('Marcar como pago');
   await expect(card(page, 'Bruno Pet')).toContainText('A receber');
   await expect(card(page, 'Carla')).toContainText('Sem telefone');
   await expect(card(page, 'Carla').locator('.cnext')).toHaveCount(0);

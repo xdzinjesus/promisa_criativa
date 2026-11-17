@@ -1,0 +1,74 @@
+/* Tela de login (acesso.html): preto com LED roxo. Só aparência; carregado depois de access.css. */
+body.access-page{background:#030106!important;min-height:100dvh;overflow-x:hidden;position:relative}
+/* Luzes roxas que se movem devagar no fundo (só "transform": leve). */
+body.access-page::before,body.access-page::after{content:"";position:fixed;z-index:0;pointer-events:none;border-radius:50%;filter:blur(70px);opacity:.55}
+body.access-page::before{width:55vmax;height:55vmax;left:-18vmax;top:-22vmax;background:radial-gradient(circle,#7c3aed,transparent 65%);animation:lx-drift1 16s ease-in-out infinite alternate}
+body.access-page::after{width:48vmax;height:48vmax;right:-16vmax;bottom:-20vmax;background:radial-gradient(circle,#c026d3,transparent 65%);opacity:.4;animation:lx-drift2 19s ease-in-out infinite alternate}
+@keyframes lx-drift1{to{transform:translate3d(12vmax,10vmax,0) scale(1.1)}}
+@keyframes lx-drift2{to{transform:translate3d(-10vmax,-8vmax,0) scale(1.15)}}
+/* Grade "tech" bem fraca por cima do fundo. */
+.access-wrap{position:relative;z-index:1}
+.access-wrap::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(#ffffff06 1px,transparent 1px) 0 0/46px 46px,linear-gradient(90deg,#ffffff06 1px,transparent 1px) 0 0/46px 46px;
+  -webkit-mask-image:radial-gradient(ellipse 70% 60% at 50% 40%,#000,transparent 80%);mask-image:radial-gradient(ellipse 70% 60% at 50% 40%,#000,transparent 80%)}
+
+/* Marca com brilho que respira. */
+.access-brand{color:#fff}
+.access-brand img{border-radius:14px;box-shadow:0 0 0 1px #c084fc66,0 0 26px #a855f799;animation:lx-logo 4s ease-in-out infinite}
+@keyframes lx-logo{50%{box-shadow:0 0 0 1px #e879f988,0 0 40px #c084fccc}}
+
+/* Cartão: vidro escuro com borda de LED que gira em volta. */
+.access-panel{position:relative;overflow:hidden;isolation:isolate;border:0!important;background:#0a0611!important;
+  box-shadow:0 0 0 1px #2a1846,0 30px 90px #000c,0 0 70px #7c3aed26!important}
+.access-panel::before{content:"";position:absolute;z-index:-2;left:50%;top:50%;width:200%;aspect-ratio:1;translate:-50% -50%;
+  background:conic-gradient(from 0deg,transparent 0 62%,#7c3aed 72%,#e879f9 80%,#c084fc 86%,transparent 94%);animation:lx-spin 6s linear infinite}
+.access-panel::after{content:"";position:absolute;z-index:-1;inset:1.5px;border-radius:21px;background:linear-gradient(160deg,#ffffff0b,#ffffff02 45%),#0a0611}
+@keyframes lx-spin{to{rotate:360deg}}
+
+.access-panel h1{background:linear-gradient(92deg,#fff 35%,#d8b4fe 75%,#f0abfc);-webkit-background-clip:text;background-clip:text;color:transparent}
+.eyebrow{color:#d8b4fe!important}.eyebrow::before{background:linear-gradient(90deg,#7c3aed,#e879f9)!important;box-shadow:0 0 8px #a855f7;height:2px!important}
+
+/* Campos com brilho roxo ao tocar. */
+.access-panel input{background:#07040c!important;border:1px solid #2a1846!important;transition:border-color .2s,box-shadow .2s}
+.access-panel input:hover{border-color:#4c2a7a!important}
+.access-panel input:focus{outline:none;border-color:#c084fc!important;box-shadow:0 0 0 3px #a855f733,0 0 22px #a855f744!important}
+
+/* Botão principal: roxo com faixa de luz passando. */
+.primary{position:relative;overflow:hidden;background:linear-gradient(120deg,#7c3aed,#a855f7)!important;border-color:#c084fc77!important;box-shadow:0 8px 28px #7c3aed66,inset 0 1px 0 #ffffff44;transition:transform .15s,box-shadow .25s}
+.primary::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;background:linear-gradient(100deg,transparent,#ffffff55,transparent);transform:skewX(-20deg);animation:lx-shine 3.8s ease-in-out infinite;pointer-events:none}
+@keyframes lx-shine{0%,60%{left:-60%}100%{left:130%}}
+.primary:hover:not(:disabled){box-shadow:0 12px 36px #a855f799,0 0 0 3px #a855f733,inset 0 1px 0 #ffffff55!important}
+.primary:active:not(:disabled){transform:scale(.98)}
+.primary:focus-visible{outline:none;box-shadow:0 0 0 3px #030106,0 0 0 5px #c084fc,0 0 26px #a855f7}
+
+/* Cartões de escolha (depois de entrar). */
+.choice-card{background:#0d0817!important;border-color:#2a1846!important;transition:transform .2s,border-color .2s,box-shadow .25s,background .2s}
+.choice-card:hover{border-color:#c084fc!important;box-shadow:0 0 0 1px #a855f744,0 0 28px #a855f744;background:#140a22!important}
+.choice-icon{color:#e9d5ff;text-shadow:0 0 12px #c084fc}
+.back-link{transition:color .2s}.back-link:hover{color:#e9d5ff!important}
+.access-footnote{color:#7d6a99!important}
+
+/* Celular: cartão encosta menos nas bordas e o botão fica grande para o dedo. */
+@media(max-width:540px){
+  .access-wrap{width:calc(100% - 28px);padding-top:max(28px,6vh)}
+  .access-panel{padding:26px 20px!important}
+  .primary{min-height:56px;font-size:16px}
+  .access-panel input{min-height:52px;font-size:16px}
+}
+@media (prefers-reduced-motion:reduce){
+  body.access-page::before,body.access-page::after,.access-panel::before,.primary::after,.access-brand img{animation:none!important}
+}
+
+/* Tela de login limpa: título curto, Face ID discreto embaixo, links numa linha só. */
+.login-sub{margin:6px 0 22px!important;color:#a597c0!important}
+#login-panel h1{font-size:clamp(30px,5vw,38px)}
+#login-panel{max-width:440px;margin:0 auto}
+#passkey-block{margin:16px 0 0!important}
+.passkey-or{margin:0 0 12px!important;font-size:12px!important}
+.passkey-btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:44px;padding:8px 14px;border-radius:12px;border:1px solid #33205a;background:transparent;color:#e9dcff;font:600 14px inherit;font-family:inherit;cursor:pointer;transition:border-color .2s,box-shadow .25s,background .2s}
+.passkey-btn svg{width:19px;height:19px;color:#c084fc}
+.passkey-btn:hover:not(:disabled){border-color:#a855f7;background:#a855f714;box-shadow:0 0 18px #a855f733}
+.passkey-btn:focus-visible{outline:none;box-shadow:0 0 0 3px #030106,0 0 0 5px #c084fc}
+.login-links{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:18px}
+.login-links .back-link{margin:0!important;padding:6px 0;font-size:13px;color:#a597c0}
+.access-brand{margin-bottom:26px!important}

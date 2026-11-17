@@ -1,0 +1,21 @@
+import { test, expect } from '@playwright/test';
+test('Ajuda: módulos com busca, e emojis viram ícones', async ({ page }) => {
+  const errors = []; page.on('pageerror', e => errors.push(e.message));
+  await page.goto('/acesso.html');
+  await page.locator('#admin-password').fill('browser-test-only-password');
+  await page.locator('#access-submit').click();
+  await expect(page.locator('#choice-panel')).toBeVisible();
+  await page.goto('/admin?tab=help');
+  await expect(page.locator('#app h1')).toHaveText('Ajuda');
+  await expect(page.locator('.hp-topic')).toHaveCount(15);
+  await page.locator('.hp-search').fill('estoque');
+  await expect(page.locator('.hp-topic:visible')).toHaveCount(1);
+  await expect(page.locator('.hp-topic:visible')).toContainText('Produtos físicos');
+  await page.locator('.hp-search').fill('');
+  await page.locator('.hp-topic[data-id="clients"] summary').click();
+  await page.locator('.hp-topic[data-id="clients"] .hp-go').click();
+  await expect(page.locator('#app h1')).toHaveText('Clientes');
+  const text = await page.locator('#app').innerText();
+  expect((text.match(/\p{Extended_Pictographic}/gu) || []).filter(c => !'✕⌘'.includes(c))).toEqual([]);
+  expect(errors).toEqual([]);
+});
