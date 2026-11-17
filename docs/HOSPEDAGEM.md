@@ -34,6 +34,8 @@ O painel precisa de duas informações da sua Cloudflare, guardadas na Vercel:
    - **Account** → **Cloudflare Pages** → **Edit** (publicar os sites)
    - **Zone** → **Zone** → **Edit** (ligar o domínio do cliente)
    - **Zone** → **DNS** → **Edit** (apontar o domínio para o site)
+   - **Account** → **Workers Scripts** → **Edit** (plano B: "ponte" quando a Cloudflare recusa ligar o domínio)
+   - **Zone** → **Workers Routes** → **Edit** (prender a ponte no domínio do cliente)
 5. Em **Account Resources**, escolha **Include → a sua conta**. Em **Zone Resources**, escolha **Include → All zones from an account → a sua conta**.
 6. Clique em **Continue to summary** → **Create Token** → **Copy**. **Não cole no chat.**
 
