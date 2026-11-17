@@ -698,6 +698,7 @@ async function openPublish(key){
    const open=btn('Abrir','sec',()=>window.open(data.url,'_blank','noopener,noreferrer'));nodes[1].querySelector('.demo-link-actions').append(open);
    nodes.push(el('p','demo-link-meta','Publicado em '+demoLinkDate(data.lastPublishedAt)));
    if(data.liveError)nodes.push(note(data.liveError));
+   if(data.moved?.length)nodes.push(el('p','pub-ok',`✅ O domínio estava preso numa publicação antiga (${data.moved[0].from}) e foi ligado a este site. Em até 15 minutos abre.`));
    if(data.outdated)nodes.push(el('p','pub-warn','⚠️ Há mudanças não publicadas. Clique em "Atualizar site" para mostrar a versão nova.'));
    const upd=el('button',data.outdated?'':'sec','Atualizar site');upd.type='button';upd.addEventListener('click',()=>publish(upd));
    const off=btn('Tirar do ar','sec danger',()=>{if(!confirm('Tirar este site do ar? O endereço deixa de funcionar. Você pode publicar de novo depois.'))return;run(off,'Tirando do ar…',async()=>{await publishApi({action:'unpublish',siteId:String(site.id)});publishedMap?.delete(String(site.id));clientSiteToast('Site tirado do ar.');await load()})});

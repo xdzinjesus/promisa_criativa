@@ -473,3 +473,13 @@ test('API: a chave da Cloudflare nunca aparece em respostas nem em logs de erro'
   } finally { console.error = original; }
   assert.ok(!logs.join('\n').includes(TOKEN));
 });
+
+test('verificar: domínio cadastrado mas fora do projeto é consertado sozinho na consulta', async () => {
+  const fake = projectsCloudflare('promisa-kaetano-antigo');
+  const cf = createCloudflare({ token: TOKEN, accountId: ACCOUNT, retryDelayMs: 0, fetch: fake.fetch });
+  const before = await cf.projectDomains('promisa-site-novo');
+  assert.equal(before.length, 0);
+  const moved = await cf.ensureDomainsOnProject('promisa-site-novo', ['kaetanoink.com.br', 'www.kaetanoink.com.br']);
+  assert.equal(moved.length, 2);
+  assert.equal((await cf.projectDomains('promisa-site-novo')).length, 2);
+});
