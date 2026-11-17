@@ -527,3 +527,25 @@ test('ligar domínio: código 8000018 sem aparecer na lista (cadastro travado) �
   assert.deepEqual(listed, ['kaetanoink.com.br', 'www.kaetanoink.com.br']);
   assert.ok(!log.some(l => l.startsWith('DELETE') && !l.includes('promisa-site-woc7')), 'só mexe no próprio projeto');
 });
+
+test('ligar domínio: em uso fora desta conta (8000018 que não some) avisa onde ver e devolve a zona para guardar o domínio', async () => {
+  const ok = result => new Response(JSON.stringify({ success: true, errors: [], result }), { status: 200 });
+  const fetch = async (url, init = {}) => {
+    const u = new URL(url), path = u.pathname.replace('/client/v4', ''), method = init.method || 'GET';
+    if (method === 'GET' && path === '/zones') return ok([{ id: 'c'.repeat(32), name: 'kaetanoink.com.br', status: 'active', name_servers: ['a.ns.cloudflare.com', 'b.ns.cloudflare.com'] }]);
+    if (/\/domains$/.test(path) && method === 'POST') return new Response(JSON.stringify({ success: false, errors: [{ code: 8000018, message: 'Domain already in use' }] }), { status: 409 });
+    if (/\/domains\/[^/]+$/.test(path) && method === 'DELETE') return new Response(JSON.stringify({ success: false, errors: [{ code: 8000021, message: 'The domain you have requested does not exist.' }] }), { status: 404 });
+    if (/\/domains$/.test(path) && method === 'GET') return ok([]);
+    if (method === 'GET' && /\/pages\/projects$/.test(path)) return ok(u.searchParams.get('page') === '1' ? [{ name: 'promisa-site-woc7', domains: [] }] : []);
+    if (method === 'GET' && /\/workers\/domains$/.test(path)) return ok([]);
+    if (method === 'GET' && path.endsWith('/dns_records')) return ok([]);
+    if (method === 'POST' && path.endsWith('/dns_records')) return ok({ id: 'x' });
+    return new Response('{}', { status: 404 });
+  };
+  const cf = createCloudflare({ token: TOKEN, accountId: ACCOUNT, retryDelayMs: 0, fetch });
+  const error = await cf.attachDomain('promisa-site-woc7', 'kaetanoink.com.br').then(() => null, e => e);
+  assert.equal(error?.code, 'domain-elsewhere');
+  assert.match(error.message, /Custom domains/);
+  assert.equal(error.info.apex, 'kaetanoink.com.br');
+  assert.equal(error.info.zone.id, 'c'.repeat(32));
+});
