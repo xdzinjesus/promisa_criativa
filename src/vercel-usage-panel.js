@@ -58,6 +58,7 @@ export async function mount(root, force = false) {
   if (!card.isConnected) return;
   card.replaceChildren(head(ICON_CLOUD, 'Uso da Vercel · últimos 30 dias', () => mount(root, true), 'Atualizar uso da Vercel'));
   if (!d.configured) { card.append(el('p', 'Para ver aqui o mesmo uso do painel da Vercel, falta a chave de acesso (VERCEL_API_TOKEN). O passo a passo está em docs/HOSPEDAGEM.md.', { className: 'sub' })); return; }
+  if (d.pending) { card.append(el('span', `Plano ${d.plan === 'pro' ? 'Pro' : 'Enterprise'}`, { className: 'vu-plan' }), el('p', d.error, { className: 'sub vu-pending' })); return; }
   if (d.error) { card.append(el('p', d.error, { className: 'pub-warn' })); return; }
   const paid = d.plan && d.plan !== 'hobby';
   if (paid) {

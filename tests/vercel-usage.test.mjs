@@ -36,7 +36,7 @@ test('sem time configurado: em 404 descobre o time da conta e tenta de novo; mos
     return new Response(JSON.stringify({ error: { message: 'Not Found' } }), { status: 404 });
   };
   const r = await vercelUsage({ env: { VERCEL_API_TOKEN: 't' }, fetchFn });
-  assert.equal(r.items[0].name, 'CDN Requests'); assert.equal(calls.length, 4); // + leitura do plano
+  assert.equal(r.items[0].name, 'CDN Requests'); assert.ok(calls.some(u => u.includes('teamId=team_abc123')));
   const fail = await vercelUsage({ env: { VERCEL_API_TOKEN: 't' }, fetchFn: async u => String(u).includes('/v2/teams') ? new Response('{"teams":[]}') : new Response('{"error":{"message":"Not Found"}}', { status: 404 }) });
   assert.match(fail.error, /erro 404: Not Found/); assert.match(fail.error, /Hobby/);
 });
@@ -53,4 +53,18 @@ test('plano Pro: sem limites do grátis, mostra o crédito de US$ 20 e marca as 
   assert.equal(blobRow.blob, true); assert.equal(blobRow.limit, null); assert.equal(blobRow.pct, null);
   const forced = await vercelUsage({ env: { VERCEL_API_TOKEN: 't', VERCEL_PLAN: 'hobby', VERCEL_TEAM_ID: 'team_pro' }, fetchFn });
   assert.equal(forced.plan, 'hobby'); assert.equal(forced.items.find(x => x.name === 'Blob Simple Operations').limit, 10000);
+});
+
+test('Pro recém-assinado: relatório ainda não liberado ("Plan not found") vira aviso claro; sem Pro, lista os times que a chave vê', async () => {
+  const notFound = () => new Response(JSON.stringify({ error: { message: 'Plan not found.' } }), { status: 404 });
+  const withTeams = plan => async url => {
+    const u = String(url);
+    if (u.includes('/v2/teams?')) return new Response(JSON.stringify({ teams: [{ id: 'team_a', name: 'Promisa', billing: { plan } }] }), { status: 200 });
+    return notFound();
+  };
+  const pending = await vercelUsage({ env: { VERCEL_API_TOKEN: 't' }, fetchFn: withTeams('pro') });
+  assert.equal(pending.pending, true); assert.equal(pending.plan, 'pro');
+  assert.match(pending.error, /ainda não liberou/); assert.match(pending.error, /Promisa/); assert.doesNotMatch(pending.error, /\.\./);
+  const hobby = await vercelUsage({ env: { VERCEL_API_TOKEN: 't' }, fetchFn: withTeams('hobby') });
+  assert.match(hobby.error, /não achou um plano pago/); assert.match(hobby.error, /Promisa \(hobby\)/); assert.match(hobby.error, /Scope/);
 });
