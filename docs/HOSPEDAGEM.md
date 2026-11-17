@@ -118,6 +118,8 @@ A chave só é usada no servidor (nunca vai para o navegador). Se o cartão diss
    - **Hostinger:** **Domínios** → o domínio → **DNS / Nameservers** → **Alterar nameservers** → cole os dois.
 4. Espere de 1 a 24 horas. Volte na janela e toque em **Verificar agora**. Quando aparecer **✅ No ar em https://…**, terminou. O `www` também funciona.
 
+**Erro 522 com o domínio já na Cloudflare:** normalmente o domínio ficou ligado a outra publicação antiga do mesmo site. Toque em **Ligar domínio** de novo: o painel confere e, se ele estiver preso em outro projeto criado pelo painel (`promisa-…`), move sozinho para este site. Se estiver num projeto que não foi criado pelo painel, ele avisa o nome do projeto para você remover o domínio lá (Workers & Pages → projeto → Custom domains).
+
 Se aparecer o aviso de **"endereços antigos neste domínio"** (por exemplo, um e-mail do cliente já configurado), **não continue sozinho**: peça ajuda, para não derrubar o e-mail dele.
 
 ## 6. Por dentro (para agentes)

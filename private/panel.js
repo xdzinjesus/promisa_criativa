@@ -681,7 +681,7 @@ async function openPublish(key){
   if(ex.length)sec.append(el('p','pub-warn','Atenção: já existem endereços antigos neste domínio ('+ex.map(c=>c.name+' '+c.type).join(', ')+'). Não apagamos nada. Peça ajuda antes de continuar, senão o site novo pode não aparecer.'));
   const form=el('form','demo-links-form');const label=el('label','','Domínio do cliente (ex.: chicomoveis.com.br)');const input=el('input');input.type='text';input.placeholder='chicomoveis.com.br';input.autocomplete='off';input.value=data.domain||'';label.append(input);
   const go=el('button','sec',data.domain?'Trocar domínio':'Ligar domínio');go.type='submit';form.append(label,go);
-  form.addEventListener('submit',event=>{event.preventDefault();run(go,'Ligando…',async()=>{const res=await publishApi({action:'set-domain',siteId:String(site.id),domain:input.value});clientSiteToast('Domínio ligado. Agora siga os passos abaixo.');await load(res.domainInfo)})});
+  form.addEventListener('submit',event=>{event.preventDefault();run(go,'Ligando…',async()=>{const res=await publishApi({action:'set-domain',siteId:String(site.id),domain:input.value});clientSiteToast(res.domainInfo?.moved?.length?`Domínio ligado. Ele estava preso em outro projeto (${res.domainInfo.moved[0].from}) e foi movido para este site. Em até 15 minutos abre.`:'Domínio ligado. Agora siga os passos abaixo.');await load(res.domainInfo)})});
   sec.append(form);return sec;
  }
  async function load(info){
