@@ -18,7 +18,7 @@ test('soma os dias por serviço e compara com o limite grátis', () => {
 test('consulta a Vercel com a chave só no servidor; sem chave, avisa', async () => {
   assert.deepEqual(await vercelUsage({ env: {} }), { configured: false });
   let called;
-  const fetchFn = async (url, opts) => { called = { url: String(url), auth: opts.headers.Authorization }; return new Response(JSON.stringify(row('Function Invocations', 4700, 'Invocations')) + '\n', { status: 200 }); };
+  const fetchFn = async (url, opts) => { if (String(url).includes('/v2/teams')) return new Response('{}', { status: 404 }); called = { url: String(url), auth: opts.headers.Authorization }; return new Response(JSON.stringify(row('Function Invocations', 4700, 'Invocations')) + '\n', { status: 200 }); };
   const r = await vercelUsage({ env: { VERCEL_API_TOKEN: 'tok', VERCEL_TEAM_SLUG: 'meu-time' }, now: Date.parse('2026-11-13T12:00:00Z'), fetchFn });
   assert.match(called.url, /^https:\/\/api\.vercel\.com\/v1\/billing\/charges\?from=2026-10-15T00%3A00%3A00\.000Z&to=2026-11-14T00%3A00%3A00\.000Z&slug=meu-time$/);
   assert.equal(called.auth, 'Bearer tok');
@@ -36,7 +36,21 @@ test('sem time configurado: em 404 descobre o time da conta e tenta de novo; mos
     return new Response(JSON.stringify({ error: { message: 'Not Found' } }), { status: 404 });
   };
   const r = await vercelUsage({ env: { VERCEL_API_TOKEN: 't' }, fetchFn });
-  assert.equal(r.items[0].name, 'CDN Requests'); assert.equal(calls.length, 3);
+  assert.equal(r.items[0].name, 'CDN Requests'); assert.equal(calls.length, 4); // + leitura do plano
   const fail = await vercelUsage({ env: { VERCEL_API_TOKEN: 't' }, fetchFn: async u => String(u).includes('/v2/teams') ? new Response('{"teams":[]}') : new Response('{"error":{"message":"Not Found"}}', { status: 404 }) });
   assert.match(fail.error, /erro 404: Not Found/); assert.match(fail.error, /Hobby/);
+});
+
+test('plano Pro: sem limites do grátis, mostra o crédito de US$ 20 e marca as linhas do Blob', async () => {
+  const fetchFn = async url => {
+    const u = String(url);
+    if (u.endsWith('/v2/teams/team_pro')) return new Response(JSON.stringify({ billing: { plan: 'pro' } }), { status: 200 });
+    return new Response([JSON.stringify(row('Blob Simple Operations', 25000, 'Operations')), JSON.stringify(row('CDN Requests', 5000, 'Requests'))].join('\n'), { status: 200 });
+  };
+  const r = await vercelUsage({ env: { VERCEL_API_TOKEN: 't', VERCEL_TEAM_ID: 'team_pro' }, fetchFn });
+  assert.equal(r.plan, 'pro'); assert.equal(r.credit, 20);
+  const blobRow = r.items.find(x => x.name === 'Blob Simple Operations');
+  assert.equal(blobRow.blob, true); assert.equal(blobRow.limit, null); assert.equal(blobRow.pct, null);
+  const forced = await vercelUsage({ env: { VERCEL_API_TOKEN: 't', VERCEL_PLAN: 'hobby', VERCEL_TEAM_ID: 'team_pro' }, fetchFn });
+  assert.equal(forced.plan, 'hobby'); assert.equal(forced.items.find(x => x.name === 'Blob Simple Operations').limit, 10000);
 });
