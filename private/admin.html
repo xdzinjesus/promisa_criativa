@@ -319,6 +319,23 @@ dialog.sheet::backdrop{background:#000b}
  dialog.sheet{width:min(580px,92vw);max-height:86dvh;border-radius:20px;margin:auto}
  .clients-grid{grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
 }
+/* Ficha do cliente no computador: janela larga, campos em colunas e maiores (mais fácil de editar). */
+@media(min-width:760px){
+ dialog.sheet{width:min(860px,94vw);max-height:92dvh}
+ .sheet-head{padding:18px 24px}.sheet-head h2{font-size:21px}
+ .sheet-body{padding:10px 24px 26px}
+ .sheet-body .stabs{margin:0 -24px;padding:10px 24px;background:#0c1534}
+ .sheet-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+ .sf{font-size:14px;gap:5px}.sf input,.sf select{min-height:52px;font-size:15.5px}
+ .sheet-body textarea{min-height:120px;font-size:15px}
+}
+@media(min-width:1100px){
+ dialog.sheet{width:min(1180px,94vw)}
+ .sheet-body{padding:12px 32px 30px}.sheet-body .stabs{margin:0 -32px;padding:10px 32px}.sheet-head{padding:18px 32px}
+ .sheet-fields{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .sheet-grid{grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+ .sheet-body section{padding:18px 0}.sheet-body h3{font-size:13.5px;margin-bottom:14px}
+}
 @media(max-width:380px){.sheet-grid,.sheet-grid.three{grid-template-columns:1fr}.cacts{flex-wrap:wrap}.cacts button{flex:1 1 100%}.cacts .more{flex:1 1 100%}}
 /* Menu Mais: ícone e nome na mesma linha, estilo lista */
 #navMore button{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-start!important;gap:12px!important;text-align:left;background:#1c1628!important;border:1px solid #ffffff1a!important;color:#f3f1f8!important;padding:12px 16px!important}
