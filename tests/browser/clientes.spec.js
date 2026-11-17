@@ -91,9 +91,9 @@ test('Clientes: resumo, filtros, próximo passo e ficha em abas (390px)', async 
   await expect(sheet.getByRole('tab', { name: 'Resumo' })).toHaveAttribute('aria-selected', 'true');
   await expect(sheet.locator('#spanel-resumo')).toContainText('Linha do tempo');
   await expect(sheet.locator('#spanel-resumo')).toContainText('Pagamento recebido');
-  await expect(sheet.getByRole('button', { name: 'Excluir cliente' })).toBeHidden();
+  await expect(sheet.getByRole('button', { name: 'Mover para a lixeira' })).toBeHidden();
   await sheet.locator('.smore > summary').click();
-  await expect(sheet.getByRole('button', { name: 'Excluir cliente' })).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Mover para a lixeira' })).toBeVisible();
   await sheet.getByRole('tab', { name: 'Site e demo' }).click();
   await expect(sheet.locator('#spanel-site')).toBeVisible();
   await expect(sheet.locator('#spanel-resumo')).toBeHidden();

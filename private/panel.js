@@ -4,10 +4,12 @@ const K='painel_v1';
 let S={sales:[],exp:[],projects:[],bank:[],products:[],prospectNotes:'',siteHostingBaseUrl:'',plan:{meta:'',ticket:'',conv:'20',pacotes:'',publico:'',dif:'',obs:''}};
 try{const r=localStorage.getItem(K);if(r)S=promisaValidation.validateState({...S,...JSON.parse(r)})}catch(e){document.getElementById('app')?.replaceChildren(document.createTextNode('Não foi possível validar a cópia local. Os dados foram preservados. Restaure um backup validado ou contate o suporte.'));throw e}
 S.projects=Array.isArray(S.projects)?S.projects:[];S.bank=Array.isArray(S.bank)?S.bank:[];S.products=Array.isArray(S.products)?S.products:[];
+// Clientes ativos (os que estão na Lixeira ficam guardados em S.sales com trashedAt, mas não aparecem nem contam).
+const LEADS=()=>(Array.isArray(S.sales)?S.sales:[]).filter(s=>!s.trashedAt);
 // O navegador guarda ~5 MB para o painel: avisa antes de encher (extratos e fotos de produtos ocupam mais).
 let spaceWarned=false;
 function checkSpace(size){const pct=Math.round(size/5_000_000*100);if(pct>=70&&!spaceWarned){spaceWarned=true;setTimeout(()=>{try{clientSiteToast(`⚠️ O espaço do painel neste aparelho está em ${pct}%. Para liberar: apague fotos de produtos que não usa ou meses antigos de extrato (eles continuam online).`)}catch{}},500)}}
-const save=()=>{try{const data=JSON.stringify(S);localStorage.setItem(K,data);checkSpace(data.length)}catch(e){alert('O espaço do painel neste aparelho acabou e a última alteração NÃO foi salva aqui. Apague fotos de produtos ou meses antigos de extrato e tente de novo.')}window.promisaCloud?.changed();try{window.promisaInstagram?.leadsChanged(S.sales)}catch(e){}};
+const save=()=>{try{const data=JSON.stringify(S);localStorage.setItem(K,data);checkSpace(data.length)}catch(e){alert('O espaço do painel neste aparelho acabou e a última alteração NÃO foi salva aqui. Apague fotos de produtos ou meses antigos de extrato e tente de novo.')}window.promisaCloud?.changed();try{window.promisaInstagram?.leadsChanged(LEADS())}catch(e){}};
 const R=n=>(+n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,5);
@@ -21,7 +23,7 @@ migrateLeadStages();
 const TABS=[['dash',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>`,'Início'],['clients',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c0-3.5 3-6 6.5-6s6.5 2.5 6.5 6M17 5a3.5 3.5 0 0 1 0 7M21.5 20c0-2.8-1.8-4.8-4-5.6"/></svg>`,'Clientes'],['mySites',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>`,'Meus sites'],['entregas',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5zM3 7.5l9 4.5 9-4.5M12 12v9"/></svg>`,'Entregas'],['plano',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/></svg>`,'Plano'],['notes',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H4v18h16V3h-4M8 3v3h8V3zM8 11h8M8 15h8"/></svg>`,'Anotações'],['projects',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h7l2 2h9v11H3z"/><path d="M3 11h18"/></svg>`,'Projetos'],['backup',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m-4-4 4 4 4-4M4 16v5h16v-5"/></svg>`,'Backup'],['prompts2',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"/></svg>`,'Prompts de IA'],['instagram',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 8-9M15 6h5v5"/></svg>`,'Instagram'],['clientPanel',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M3 9h18M8 21h8M12 18v3"/></svg>`,'Painel do cliente'],['clientAccess',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 15v2"/></svg>`,'Acessos dos clientes'],['bank',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18"/></svg>`,'Extratos bancários'],['products',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>`,'Produtos físicos'],['help',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01"/></svg>`,'Ajuda'],['partners',`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="8" r="3.5"/><path d="M3.5 20a6.5 6.5 0 0 1 13 0"/><path d="M19 8v6M16 11h6"/></svg>`,'Sócios']];
 const MORE_ICON=`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg>`;
 const TAB_ALIAS={vendas:'clients',sites:'clients'},tabKey=t=>TAB_ALIAS[t]||t;
-const CLIENT_SEG=[['active','Ativos'],['Fechado','Fechados'],['Perdido','Perdidos'],['all','Todos']],CLIENT_MORE=[['Novo','Novos'],['Em contato','Em contato'],['Proposta enviada','Proposta'],['pending','Demonstração pendente'],['briefing','Formulário respondido']],CLIENT_FILTERS=[...CLIENT_SEG,...CLIENT_MORE];
+const CLIENT_SEG=[['active','Ativos'],['Fechado','Fechados'],['Perdido','Perdidos'],['all','Todos'],['trash','Lixeira']],CLIENT_MORE=[['Novo','Novos'],['Em contato','Em contato'],['Proposta enviada','Proposta'],['pending','Demonstração pendente'],['briefing','Formulário respondido']],CLIENT_FILTERS=[...CLIENT_SEG,...CLIENT_MORE];
 const STAGE_CLASS={Novo:'st-new','Em contato':'st-contact','Proposta enviada':'st-prop',Fechado:'st-won',Perdido:'st-lost'};
 let tab=(()=>{const q=tabKey(new URLSearchParams(location.search).get('tab'));return TABS.some(t=>t[0]===q)?q:'dash'})(),activeSiteType='cliente',clientFilter='active',clientNeedsAction=false,clientView=(()=>{try{return localStorage.getItem('painel_clientes_view')==='board'?'board':'list'}catch{return 'list'}})(),clientQuery='',clientsLoaded=false,pendingSiteLeadId='';
 
@@ -73,7 +75,10 @@ function render(){
 }
 const ORIGENS=[['','Não informado'],['instagram','Instagram'],['indicacao','Indicação'],['google','Google'],['whatsapp','WhatsApp'],['site','Site'],['outro','Outro']];
 // Abre um módulo da aba; se o arquivo dele ainda não carregou (página antiga, rede lenta), busca de novo em vez de ficar em "Carregando…".
-function mountModule(name,src,rootId){const root=document.getElementById(rootId);if(!root)return;if(window[name]){window[name].mount(root);return}const fail=()=>{if(root.isConnected&&!window[name])root.innerHTML='<div class="card"><b>Não consegui abrir esta tela.</b><p class="sub">Verifique a internet e atualize a página (no computador: Ctrl + Shift + R).</p></div>'};const s=document.createElement('script');s.src=src+'?r='+Date.now();s.onload=()=>{const r=document.getElementById(rootId);if(window[name]&&r)window[name].mount(r);else fail()};s.onerror=fail;document.head.append(s);setTimeout(fail,15000)}
+// Carrega um pedaço do painel que ainda não chegou (rede lenta, versão antiga em cache), sem precisar atualizar a página.
+const libLoads={};
+function loadLib(name,src){if(window[name])return Promise.resolve(window[name]);return libLoads[name]??=new Promise(res=>{const sc=document.createElement('script');sc.src=src+'?r='+Date.now();sc.onload=()=>res(window[name]||null);sc.onerror=()=>res(null);document.head.append(sc);setTimeout(()=>res(window[name]||null),15000)}).then(v=>{if(!v)delete libLoads[name];return v})}
+function mountModule(name,src,rootId){const root=document.getElementById(rootId);if(!root)return;if(window[name]){window[name].mount(root);return}const fail=()=>{if(root.isConnected&&!window[name]){root.innerHTML='<div class="card"><b>Não consegui abrir esta tela.</b><p class="sub">Verifique a internet e toque em tentar de novo.</p><button type="button" class="sec">Tentar de novo</button></div>';root.querySelector('button').addEventListener('click',()=>{root.innerHTML='<p class="sub">Carregando…</p>';mountModule(name,src,rootId)})}};const s=document.createElement('script');s.src=src+'?r='+Date.now();s.onload=()=>{const r=document.getElementById(rootId);if(window[name]&&r)window[name].mount(r);else fail()};s.onerror=fail;document.head.append(s);setTimeout(fail,15000)}
 function partnersPage(){return `<h1>👥 Sócios</h1><p class="sub">Crie o acesso do seu sócio com usuário e senha e escolha quais partes do painel ele pode ver. Só você vê esta tela.</p><div id="partnersRoot"><p class="sub">Carregando…</p></div>`}
 function productsPage(){return `<h1>📦 Produtos físicos</h1><p class="sub">Estoque, compras e vendas das suas placas e outros produtos: quanto custou, quanto lucrou e quem falta pagar.</p><div id="productsRoot"><p class="sub">Carregando…</p></div>`}
 function helpPage(){return `<h1>Ajuda</h1><p class="sub">Tutorial de todos os módulos, botões e funções do painel. Use a busca ou toque num módulo.</p><div id="helpRoot"><p class="sub">Carregando…</p></div>`}
@@ -81,19 +86,19 @@ function bankPage(){return `<h1>🏦 Extratos bancários</h1><p class="sub">Impo
 function clientAccessPage(){return `<h1>🔐 Acessos dos clientes</h1><p class="sub">Controle interno: quem pode editar o próprio site, quando editou e o botão para cortar o acesso. Só você vê esta tela.</p><div id="caRoot"></div>`}
 function clientPanelPage(){return `<h1>🧩 Painel do cliente</h1><p class="sub">Demonstração do painel que você pode vender: o cliente edita o próprio site sem quebrar o design.</p><div id="ceRoot"></div>`}
 function instagramPage(){return `<h1>📈 Instagram</h1><p class="sub">Seguidores, posts, metas e clientes que vieram do Instagram, tudo automático.</p><div id="igRoot"></div>`}
-function drawInstagram(){window.promisaInstagram?.mount(document.getElementById('igRoot'),{leads:()=>S.sales})}
+function drawInstagram(){window.promisaInstagram?.mount(document.getElementById('igRoot'),{leads:()=>LEADS()})}
 // Vendas de produtos físicos (aba Produtos) no mesmo formato das vendas de sites: data, valor, pago e custo.
 // O custo por unidade é a média das compras, igual à aba Produtos (assim o lucro bate nos dois lugares).
 function productSales(){const out=[];for(const p of S.products||[]){let q=0,c=0;for(const m of p.moves||[])if(m.type==='in'){q+=m.qty;c+=m.total||0}const unit=q?c/q:0;for(const m of p.moves||[])if(m.type==='out')out.push({pid:p.id,mid:m.id,date:m.d,value:+m.total||0,paid:Boolean(m.paid),cost:m.qty*unit,qty:m.qty,client:m.client||'',name:p.name,emoji:p.emoji||'📦'})}return out}
 function payProduct(pid,mid){const p=(S.products||[]).find(x=>x.id===pid),m=p?.moves?.find(x=>x.id===mid);if(m){m.paid=true;p.updatedAt=new Date().toISOString();save();render()}}
 function dash(){
- const f=S.sales.filter(s=>s.stage==='Fechado'),paid=f.filter(s=>s.paid),pend=f.filter(s=>!s.paid);
+ const f=LEADS().filter(s=>s.stage==='Fechado'),paid=f.filter(s=>s.paid),pend=f.filter(s=>!s.paid);
  const ps=productSales(),psPaid=ps.filter(x=>x.paid),psPend=ps.filter(x=>!x.paid);
  const prodRec=sum(psPaid),prodPen=sum(psPend),prodLucro=Math.round(ps.reduce((t,x)=>t+x.value-x.cost,0)*100)/100;
- const siteRec=sum(paid),rec=siteRec+prodRec,pen=sum(pend)+prodPen,desp=sum(S.exp),pipe=sum(S.sales.filter(s=>['Novo','Em contato','Proposta enviada'].includes(s.stage)));
+ const siteRec=sum(paid),rec=siteRec+prodRec,pen=sum(pend)+prodPen,desp=sum(S.exp),pipe=sum(LEADS().filter(s=>['Novo','Em contato','Proposta enviada'].includes(s.stage)));
  const lucro=siteRec-desp+prodLucro,mk=today().slice(0,7),meta=+S.plan.meta||0,recM=sum(paid.filter(s=>(s.date||'').startsWith(mk)))+sum(psPaid.filter(x=>x.date.startsWith(mk)));
  const pct=meta?Math.min(100,recM/meta*100):0;
- const leads=S.sales.length,proj=(S.projects||[]).filter(p=>p.status!=='Concluído').length,sites=paid.length;
+ const leads=LEADS().length,proj=(S.projects||[]).filter(p=>p.status!=='Concluído').length,sites=paid.length;
  // Dias e meses no horário de Brasília (antes era UTC: depois das 21h as vendas de hoje sumiam do gráfico).
  const noon=new Date(today()+'T12:00:00Z');
  const days=[];for(let i=29;i>=0;i--){const d=new Date(noon);d.setUTCDate(d.getUTCDate()-i);days.push(d.toISOString().slice(0,10))}
@@ -107,7 +112,7 @@ function dash(){
  const prevDays=[];for(let i=59;i>=30;i--){const d=new Date(noon);d.setUTCDate(d.getUTCDate()-i);prevDays.push(d.toISOString().slice(0,10))}
  const inRange=(list,ds)=>list.filter(x=>ds.includes(x.date));
  const rec30=sum(inRange(paid,days))+sum(inRange(ps,days)),recPrev=sum(inRange(paid,prevDays))+sum(inRange(ps,prevDays));
- const new30=S.sales.filter(s=>days.includes(s.date)).length,newPrev=S.sales.filter(s=>prevDays.includes(s.date)).length;
+ const new30=LEADS().filter(s=>days.includes(s.date)).length,newPrev=LEADS().filter(s=>prevDays.includes(s.date)).length;
  return `<div class="dk-head"><div><h1>Visão geral</h1><p class="sub">Como está o seu negócio e o que fazer agora.</p></div><span class="dk-period">${DK_ICON.cal}<span>Últimos 30 dias</span></span></div>
  <div class="dk-kpis">
   ${dkKpi('wallet','Recebido em 30 dias',R(rec30),dkTrend(rec30,recPrev),`${vs7} venda(s) nos últimos 7 dias`)}
@@ -159,7 +164,7 @@ function dkArea(days,dv){
 // Rosca: quantos clientes em cada etapa.
 function dkDonut(){
  const cols={'Novo':'#c084fc','Em contato':'#a855f7','Proposta enviada':'#7c3aed','Fechado':'#e879f9','Perdido':'#4b3a66'};
- const counts=STAGES.map(st=>[st,S.sales.filter(s=>normalizeLeadStage(s.stage)===st).length]),total=counts.reduce((t,c)=>t+c[1],0);
+ const counts=STAGES.map(st=>[st,LEADS().filter(s=>normalizeLeadStage(s.stage)===st).length]),total=counts.reduce((t,c)=>t+c[1],0);
  const r=62,C=2*Math.PI*r;let off=0;
  const arcs=total?counts.filter(c=>c[1]).map(([st,n])=>{const len=n/total*C,gap=counts.filter(c=>c[1]).length>1?3:0,a=`<circle r="${r}" cx="80" cy="80" fill="none" stroke="${cols[st]}" stroke-width="18" stroke-dasharray="${Math.max(0,len-gap).toFixed(2)} ${(C-len+gap).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 80 80)"/>`;off+=len;return a}).join(''):`<circle r="${r}" cx="80" cy="80" fill="none" stroke="#24163a" stroke-width="18"/>`;
  const legend=counts.map(([st,n])=>`<li><i style="background:${cols[st]}"></i><span>${st}</span><b>${n}</b><small>${total?String(Math.round(n/total*1000)/10).replace('.',',')+'%':'0%'}</small></li>`).join('');
@@ -167,7 +172,7 @@ function dkDonut(){
 }
 // Tabela: últimos clientes e vendas (mais recentes primeiro).
 function dkRecent(){
- const rows=[...S.sales.map(s=>({d:s.date||'',who:s.client||'Cliente',what:normalizeLeadStage(s.stage)==='Fechado'?(s.paid?'Pagou ':'Fechou ')+R(+s.value||0):(s.service||'Novo contato'),tag:normalizeLeadStage(s.stage)})),
+ const rows=[...LEADS().map(s=>({d:s.date||'',who:s.client||'Cliente',what:normalizeLeadStage(s.stage)==='Fechado'?(s.paid?'Pagou ':'Fechou ')+R(+s.value||0):(s.service||'Novo contato'),tag:normalizeLeadStage(s.stage)})),
   ...productSales().map(x=>({d:x.date||'',who:x.client||'Cliente',what:`Comprou ${x.qty} × ${x.name}`,tag:'Produto'}))]
   .sort((a,b)=>a.d<b.d?1:a.d>b.d?-1:0).slice(0,6);
  if(!rows.length)return '<p class="sub">Ainda sem atividade. Cadastre um cliente para começar.</p>';
@@ -175,14 +180,14 @@ function dkRecent(){
  return `<div class="dk-table-wrap"><table class="dk-table"><thead><tr><th>Data</th><th>Cliente</th><th>Ação</th><th>Etapa</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.d?dkDay(r.d):'—'}</td><td>${esc(r.who)}</td><td>${esc(r.what)}</td><td><span class="dk-badge ${cls(r.tag)}">${esc(r.tag)}</span></td></tr>`).join('')}</tbody></table></div>`;
 }
 function nextStepsHtml(){
- const nPend=demoPendingLeads().length,nCont=S.sales.filter(s=>normalizeLeadStage(s.stage)==='Em contato').length,nPay=S.sales.filter(s=>normalizeLeadStage(s.stage)==='Fechado'&&!s.paid).length,nEnt=closedLeads().filter(l=>!entProgress(l).complete).length;
+ const nPend=demoPendingLeads().length,nCont=LEADS().filter(s=>normalizeLeadStage(s.stage)==='Em contato').length,nPay=LEADS().filter(s=>normalizeLeadStage(s.stage)==='Fechado'&&!s.paid).length,nEnt=closedLeads().filter(l=>!entProgress(l).complete).length;
  const step=(icon,text,filter)=>`<button type="button" class="step" data-click="goClients" data-click-args="${esc(JSON.stringify([filter]))}"><span aria-hidden="true">${icon}</span><span>${text}</span><span aria-hidden="true">›</span></button>`;
  const items=[];
  if(nPend)items.push(step('📤',nPend+(nPend===1?' demonstração para enviar':' demonstrações para enviar'),'pending'));
  if(nCont)items.push(step('💬',nCont+(nCont===1?' cliente em contato':' clientes em contato'),'Em contato'));
  if(nPay)items.push(step('💰',nPay+(nPay===1?' pagamento pendente':' pagamentos pendentes'),'Fechado'));
  if(nEnt)items.push(`<button type="button" class="step" data-click="openEntregas" data-click-args="[]"><span aria-hidden="true">📦</span><span>${nEnt+(nEnt===1?' entrega em andamento':' entregas em andamento')}</span><span aria-hidden="true">›</span></button>`);
- if(!S.sales.length)items.push(step('＋','Cadastre o seu primeiro cliente','all'));
+ if(!LEADS().length)items.push(step('＋','Cadastre o seu primeiro cliente','all'));
  return `<div class="card steps"><h2>Próximos passos</h2>${items.slice(0,3).join('')||'<p class="lead-muted">Tudo em dia por enquanto ✅</p>'}</div>`;
 }
 // Cobrança: mensagem pronta no WhatsApp para quem fechou e ainda não pagou (e há quantos dias está em aberto).
@@ -192,10 +197,10 @@ function leadProductsHtml(lead){const rows=(S.products||[]).flatMap(p=>(p.moves|
 function chargeLink(s){const base=contactLink(s.contact);if(!base)return '';const msg=`Olá, ${s.client}! Tudo bem? Passando para lembrar do pagamento de ${s.service||'serviço'}${(+s.value||0)>0?' no valor de '+R(s.value):''}. Se já pagou, pode desconsiderar e me mandar o comprovante. Obrigado!`;return base+'?text='+encodeURIComponent(msg)}
 function chargeHtml(s){const l=chargeLink(s),d=daysOpen(s);return `${d>=7?`<span class="chip st-warn">⚠️ ${d} dias em aberto</span>`:''}${l?`<a class="sec charge-btn" href="${esc(l)}" target="_blank" rel="noopener">📲 Cobrar</a>`:''}`}
 function contactLink(value){const digits=String(value||'').replace(/\D/g,'');return digits?`https://wa.me/${digits.length<=11?'55'+digits:digits}`:''}
-function pay(id){const s=S.sales.find(x=>x.id===id);if(s){s.paid=true;save();render()}}
+function pay(id){const s=LEADS().find(x=>x.id===id);if(s){s.paid=true;save();render()}}
 function addSale(){const c=$('#sc').value.trim(),contact=$('#scontact').value.trim(),v=Math.max(0,+$('#sv').value||0);if(!c){clientSiteToast('Digite o nome do cliente.');$('#sc').focus();return}S.sales.unshift({id:uid(),...(ACCESS.role==='partner'&&ACCESS.id?{owner:ACCESS.id}:{}),client:c,contact,service:$('#ss').value.trim()||'Site',value:v,stage:$('#st').value,paid:false,date:($('#sd')?.value)||today(),...(ORIGENS.some(o=>o[0]&&o[0]===$('#sorigem')?.value)?{origem:$('#sorigem').value}:{})});clientFilter='all';clientQuery='';save();render()}
-function setStage(id,v){const s=S.sales.find(x=>x.id===id);s.stage=v;save();render()}
-function togPaid(id){const s=S.sales.find(x=>x.id===id);s.paid=!s.paid;save();render()}
+function setStage(id,v){const s=LEADS().find(x=>x.id===id);s.stage=v;save();render()}
+function togPaid(id){const s=LEADS().find(x=>x.id===id);s.paid=!s.paid;save();render()}
 async function delSale(id){
  if(!confirm('Excluir este contato/venda e remover seus vínculos nos sites?'))return;
  const sites=await clientSiteAll(),db=await openClientSiteDB(),tx=db.transaction(SITE_STORE,'readwrite'),done=transactionDone(tx);
@@ -203,7 +208,7 @@ async function delSale(id){
  await done;S.sales=S.sales.filter(item=>String(item.id)!==String(id));save();render();
 }
 async function exportLeadData(id){
- const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
+ const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead)return;
  const sites=(await clientSiteAll()).filter(site=>String(site.leadId)===String(id)).map(site=>{const{files,...meta}=site;return{...meta,arquivos:(files||[]).map(f=>({path:f.path}))}});
  const projects=(Array.isArray(S.projects)?S.projects:[]).filter(p=>String(p.leadId||'')===String(id)||sites.some(site=>String(site.id)===String(p.siteId)));
  const formularios=await briefingExport(id);
@@ -211,17 +216,75 @@ async function exportLeadData(id){
  const u=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})),a=document.createElement('a');
  a.href=u;a.download='dados-lead-'+String(lead.id).replace(/[^\w-]/g,'')+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(u),30000);
 }
-async function deleteLeadData(id){
- const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
- if(!confirm('Excluir os dados (LGPD) de "'+lead.client+'"?\n\nO lead sera apagado, as respostas do formulario (briefing) serao excluidas e os vinculos (leadId e nome do cliente) serao removidos dos sites e projetos. Os sites dos clientes NAO serao excluidos.\n\nRecomendado: use "Exportar dados" antes.'))return;
+// ---------- Lixeira de clientes ----------
+// "Mover para a lixeira" só marca o cliente (some das listas e das contas). Restaurar desfaz.
+// "Excluir para sempre" apaga o cliente, as respostas do formulário online e os vínculos (sites e projetos continuam).
+const TRASH_ICON='<svg class="ic-inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></svg>';
+const trashedLeads=()=>(Array.isArray(S.sales)?S.sales:[]).filter(s=>s.trashedAt).sort((a,b)=>a.trashedAt<b.trashedAt?1:-1);
+function refreshClients(){if(tab==='clients')drawClientsList();else if(tab==='dash')render()}
+function trashLead(id){
+ const lead=(S.sales||[]).find(x=>String(x.id)===String(id));if(!lead||lead.trashedAt)return;
+ lead.trashedAt=new Date().toISOString();save();refreshClients();
+ undoToast(`"${lead.client}" foi para a Lixeira.`,'Desfazer',()=>restoreLead(id));
+}
+function restoreLead(id){
+ const lead=(S.sales||[]).find(x=>String(x.id)===String(id));if(!lead||!lead.trashedAt)return;
+ delete lead.trashedAt;save();refreshClients();clientSiteToast(`"${lead.client}" voltou para os clientes.`);
+}
+async function purgeLeadCore(id){
+ const lead=(S.sales||[]).find(x=>String(x.id)===String(id));if(!lead)return false;
  // Respostas do formulário ficam online: apaga lá também. Se falhar, avisa mas segue com a exclusão local.
  try{await demoLinksApi('briefing-delete-lead',{leadId:String(id)});briefingCache.items=briefingCache.items.filter(x=>String(x.leadId)!==String(id))}
- catch(e){clientSiteToast('Atenção: não foi possível apagar as respostas do formulário online ('+(e.message||'erro')+'). Tente "Excluir dados" de novo mais tarde ou avise o suporte.')}
+ catch(e){clientSiteToast('Atenção: não foi possível apagar as respostas do formulário online ('+(e.message||'erro')+').')}
  const sites=await clientSiteAll(),db=await openClientSiteDB(),tx=db.transaction(SITE_STORE,'readwrite'),done=transactionDone(tx);
  for(const site of sites)if(String(site.leadId)===String(id))tx.objectStore(SITE_STORE).put({...site,leadId:'',clientName:'',updatedAt:new Date().toISOString()});
  await done;
  if(Array.isArray(S.projects))for(const p of S.projects)if(String(p.leadId||'')===String(id))p.leadId='';
- S.sales=S.sales.filter(item=>String(item.id)!==String(id));save();render();
+ S.sales=S.sales.filter(item=>String(item.id)!==String(id));
+ return true;
+}
+async function purgeLead(id){
+ const lead=(S.sales||[]).find(x=>String(x.id)===String(id));if(!lead)return;
+ const ok=await askConfirm({title:'Excluir para sempre?',text:`"${lead.client}" será apagado de vez, junto com as respostas do formulário. Os sites anexados continuam guardados, só ficam sem cliente. Isso não pode ser desfeito.`,ok:'Excluir para sempre',danger:true});
+ if(!ok)return;
+ if(await purgeLeadCore(id)){save();refreshClients();clientSiteToast(`"${lead.client}" foi excluído para sempre.`)}
+}
+async function emptyTrash(){
+ const list=trashedLeads();if(!list.length)return;
+ const ok=await askConfirm({title:'Esvaziar a lixeira?',text:`${list.length} cliente(s) serão apagados de vez, junto com as respostas do formulário. Isso não pode ser desfeito.`,ok:`Excluir ${list.length} para sempre`,danger:true});
+ if(!ok)return;
+ for(const l of list)await purgeLeadCore(l.id);
+ save();refreshClients();clientSiteToast('Lixeira esvaziada.');
+}
+// Mantido para quem chamar o nome antigo: agora pede o aviso e apaga para sempre.
+async function deleteLeadData(id){return purgeLead(id)}
+function drawTrash(box,count,bulk){
+ const list=trashedLeads();
+ box.className='trash-list';
+ if(count)count.textContent=list.length?list.length+(list.length===1?' cliente na lixeira':' clientes na lixeira'):'Lixeira vazia';
+ if(bulk)bulk.innerHTML=list.length?`<button type="button" class="del" data-click="emptyTrash" data-click-args="[]">${TRASH_ICON}Esvaziar lixeira</button>`:'';
+ if(!list.length){box.innerHTML=`<div class="site-empty">${TRASH_ICON}<p>A lixeira está vazia.</p><small>Clientes que você excluir ficam aqui até você restaurar ou excluir para sempre.</small></div>`;return}
+ box.innerHTML=list.map(l=>`<article class="trash-row" data-lead-id="${esc(l.id)}"><div class="trash-info"><b>${esc(l.client||'Cliente')}</b><small>${esc(l.service||'')}${l.value?' · '+R(l.value):''} · na lixeira desde ${esc(new Date(l.trashedAt).toLocaleDateString('pt-BR'))}</small></div><div class="trash-acts"><button type="button" class="sec" data-click="restoreLead" data-click-args="${ARGS(l.id)}">Restaurar</button><button type="button" class="del" data-click="purgeLead" data-click-args="${ARGS(l.id)}">Excluir para sempre</button></div></article>`).join('');
+}
+// Janela de confirmação do painel (no lugar da caixinha do navegador). Devolve true/false.
+function askConfirm({title,text,ok='Confirmar',cancel='Cancelar',danger=false}){
+ return new Promise(resolve=>{
+  const d=document.createElement('dialog');d.className='ask-dialog'+(danger?' is-danger':'');
+  d.innerHTML=`<div class="ask-ico" aria-hidden="true">${danger?TRASH_ICON:''}</div><h2></h2><p></p><div class="ask-acts"><button type="button" class="sec ask-no"></button><button type="button" class="ask-yes"></button></div>`;
+  d.querySelector('h2').textContent=title;d.querySelector('p').textContent=text;d.querySelector('.ask-no').textContent=cancel;d.querySelector('.ask-yes').textContent=ok;
+  let answer=false;const close=v=>{answer=v;d.close()};
+  d.querySelector('.ask-no').addEventListener('click',()=>close(false));d.querySelector('.ask-yes').addEventListener('click',()=>close(true));
+  d.addEventListener('click',e=>{if(e.target===d)close(false)});
+  d.addEventListener('close',()=>{d.remove();resolve(answer)});
+  document.body.append(d);d.showModal();d.querySelector('.ask-no').focus();
+ });
+}
+// Aviso com botão (ex.: "Desfazer"), some sozinho em 7 segundos.
+function undoToast(text,label,action){
+ document.querySelector('.undo-toast')?.remove();
+ const t=document.createElement('div');t.className='undo-toast';t.setAttribute('role','status');
+ const span=document.createElement('span');span.textContent=text;const b=document.createElement('button');b.type='button';b.className='sec';b.textContent=label;
+ b.addEventListener('click',()=>{t.remove();action()});t.append(span,b);document.body.append(t);setTimeout(()=>t.remove(),7000);
 }
 function addExp(){const d=$('#ed').value.trim(),v=+$('#ev').value;if(!d||!v)return;S.exp.unshift({id:uid(),desc:d,value:v,date:today()});save();render()}
 function delExp(id){S.exp=S.exp.filter(x=>x.id!==id);save();render()}
@@ -289,8 +352,9 @@ function clientOwnerBarHtml(){
 function clientFilterBarHtml(board){
  const act=`<button type="button" class="fchip" id="clientNeedChip" aria-pressed="${clientNeedsAction}" data-click="toggleClientNeedsAction" data-click-args="[]">⚡ Precisa de ação</button>`;
  const view=`<div class="cview" role="group" aria-label="Modo de exibição">${[['list','Lista'],['board','Quadro']].map(([k,l])=>`<button type="button" class="fchip" aria-pressed="${(k==='board')===board}" data-click="setClientView" data-click-args="${ARGS(k)}">${l}</button>`).join('')}</div>`;
- if(board)return clientOwnerBarHtml()+`<div class="crow">${act}${view}</div>`;
- const seg=`<div class="cseg" role="group" aria-label="Filtrar clientes por situação">${CLIENT_SEG.map(([k,l])=>`<button type="button" aria-pressed="${clientFilter===k}" data-click="setClientFilter" data-click-args="${ARGS(k)}">${l}</button>`).join('')}</div>`;
+ const trashChip=`<button type="button" class="fchip" data-click="setClientFilter" data-click-args="${ARGS(clientFilter==='trash'?'active':'trash')}" aria-pressed="${clientFilter==='trash'}">${TRASH_ICON}Lixeira${trashedLeads().length?` (${trashedLeads().length})`:''}</button>`;
+ if(board)return clientOwnerBarHtml()+`<div class="crow">${act}${trashChip}${view}</div>`;
+ const seg=`<div class="cseg" role="group" aria-label="Filtrar clientes por situação">${CLIENT_SEG.map(([k,l])=>`<button type="button" class="${k==='trash'?'cseg-trash':''}" aria-pressed="${clientFilter===k}" data-click="setClientFilter" data-click-args="${ARGS(k)}">${k==='trash'?TRASH_ICON+l+(trashedLeads().length?` (${trashedLeads().length})`:''):l}</button>`).join('')}</div>`;
  const on=CLIENT_MORE.find(f=>f[0]===clientFilter);
  const more=`<details class="menu fmore"><summary class="fchip${on?' on':''}">${on?'Filtro: '+esc(on[1]):'Mais filtros'} ▾</summary><div class="menu-panel">${CLIENT_MORE.map(([k,l])=>`<button type="button" class="sec" aria-pressed="${clientFilter===k}" data-click="setClientFilter" data-click-args="${ARGS(on&&on[0]===k?'active':k)}">${on&&on[0]===k?'✓ ':''}${l}</button>`).join('')}</div></details>`;
  return clientOwnerBarHtml()+seg+`<div class="crow">${act}${more}${view}</div>`;
@@ -303,11 +367,11 @@ function clientBoardHtml(list,actions){
 function drawClientsList(){
  const box=document.getElementById('clientCards');if(!box)return;
  const chips=document.getElementById('clientChips'),bulk=document.getElementById('clientBulk'),count=document.getElementById('clientCount'),summary=document.getElementById('clientSummary'),C=window.promisaClients;
- const board=clientBoardOn(),total=(S.sales||[]).length;
+ const board=clientBoardOn(),total=(LEADS()||[]).length;
  if(chips)chips.innerHTML=clientFilterBarHtml(board);
  box.className=board?'kboard':'clients-grid';
- const actions=new Map();if(clientsLoaded)for(const l of S.sales)actions.set(l,clientActionFor(l));
- if(summary)summary.innerHTML=C?clientSummaryHtml(C.clientSummary(S.sales,l=>normalizeLeadStage(l.stage),l=>actions.get(l)),clientsLoaded):'';
+ const actions=new Map();if(clientsLoaded)for(const l of LEADS())actions.set(l,clientActionFor(l));
+ if(summary)summary.innerHTML=C?clientSummaryHtml(C.clientSummary(LEADS(),l=>normalizeLeadStage(l.stage),l=>actions.get(l)),clientsLoaded):'';
  if(!clientsLoaded){
   if(count)count.textContent=total+(total===1?' cliente':' clientes');
   if(bulk)bulk.innerHTML='';
@@ -315,7 +379,8 @@ function drawClientsList(){
   box.innerHTML=total?'<div class="ccard sk" aria-hidden="true"><i></i><i></i><i></i></div>'.repeat(Math.min(total,3)):'<div class="site-empty">Nenhum cliente ainda. Toque em “＋ Novo cliente” para começar.</div>';
   return;
  }
- const list=S.sales.filter(l=>clientMatches(l,actions.get(l),board)),n=demoPendingLeads().length;
+ if(clientFilter==='trash'){drawTrash(box,count,bulk);return}
+ const list=LEADS().filter(l=>clientMatches(l,actions.get(l),board)),n=demoPendingLeads().length;
  if(count)count.textContent=list.length===total?total+(total===1?' cliente':' clientes'):list.length+' de '+total+' clientes';
  if(bulk)bulk.innerHTML=n?`<button type="button" class="sec" data-click="sendDemoPending" data-click-args="[]">📤 Enviar demonstração para pendentes (${n})</button>`:'';
  if(board){box.innerHTML=clientBoardHtml(list,actions);return}
@@ -335,7 +400,7 @@ async function drawClients(){
  try{
   const rows=await loadSiteRows();
   if(run!==clientsRun||tab!=='clients')return;
-  const known=new Set((S.sales||[]).map(l=>String(l.id))),by=new Map(),orphans=[];
+  const known=new Set((LEADS()||[]).map(l=>String(l.id))),by=new Map(),orphans=[];
   for(const s of rows){if((s.siteType||'cliente')!=='cliente')continue;const k=String(s.leadId||'');if(k&&known.has(k)){if(!by.has(k))by.set(k,[]);by.get(k).push(s)}else orphans.push(s)}
   const newest=(a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||''));
   for(const v of by.values())v.sort(newest);orphans.sort(newest);
@@ -356,7 +421,7 @@ function toggleClientNeedsAction(){clientNeedsAction=!clientNeedsAction;drawClie
 function setClientView(view){clientView=view==='board'?'board':'list';try{localStorage.setItem('painel_clientes_view',clientView)}catch{}drawClientsList()}
 function toggleClientForm(){const form=document.getElementById('clientForm'),btn=document.getElementById('clientFormBtn');if(!form)return;form.hidden=!form.hidden;btn?.setAttribute('aria-expanded',String(!form.hidden));if(!form.hidden)document.getElementById('sc')?.focus()}
 function toggleClientMore(){const box=document.getElementById('clientMore'),btn=document.getElementById('clientMoreBtn');if(!box)return;box.hidden=!box.hidden;if(btn){btn.setAttribute('aria-expanded',String(!box.hidden));btn.textContent=box.hidden?'＋ Mais detalhes':'－ Menos detalhes'}if(!box.hidden)document.getElementById('ss')?.focus()}
-function moveLeadStage(id,stage){const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead||!STAGES.includes(stage)||normalizeLeadStage(lead.stage)===stage)return;sheetSet(lead.id,'stage',stage);drawClientsList()}
+function moveLeadStage(id,stage){const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead||!STAGES.includes(stage)||normalizeLeadStage(lead.stage)===stage)return;sheetSet(lead.id,'stage',stage);drawClientsList()}
 document.addEventListener('dragstart',e=>{const card=e.target instanceof Element&&e.target.closest('.kcard[data-lead-id]');if(!card||!e.dataTransfer)return;e.dataTransfer.setData('text/plain',card.dataset.leadId);e.dataTransfer.effectAllowed='move';card.classList.add('dragging')});
 document.addEventListener('dragend',e=>{if(e.target instanceof Element)e.target.closest('.kcard')?.classList.remove('dragging');document.querySelectorAll('.kcol.over').forEach(x=>x.classList.remove('over'))});
 document.addEventListener('dragover',e=>{const col=e.target instanceof Element&&e.target.closest('.kcol[data-stage]');if(!col)return;e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect='move';col.classList.add('over')});
@@ -393,7 +458,7 @@ function sheetTab(key){
 }
 document.addEventListener('keydown',e=>{const t=e.target instanceof Element&&e.target.closest('.stabs [role="tab"]');if(!t||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;const all=[...t.parentElement.querySelectorAll('[role="tab"]')],i=all.indexOf(t);const next=e.key==='Home'?all[0]:e.key==='End'?all[all.length-1]:all[(i+(e.key==='ArrowRight'?1:-1)+all.length)%all.length];e.preventDefault();sheetTab(next.dataset.tab);next.focus()});
 function openClientSheet(id,focus){
- const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
+ const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead)return;
  const stage=normalizeLeadStage(lead.stage),sites=leadSites(lead.id),ready=demoLeadReady(lead);
  const field=(label,key,type,val,ev,extra='')=>`<label class="sf"><span>${label}</span><input type="${type}" ${extra} value="${esc(val)}" data-${ev}="sheetSet" data-${ev}-args="${ARGS(lead.id,key)}" data-${ev}-value="value"></label>`;
  const siteBlocks=sites.map(site=>`<div class="sheet-site"><p class="sheet-site-name"><b>🌐 ${esc(site.name)}</b><small>${(site.files||[]).length} arquivo(s) · ${siteBytes(site)}</small>${site.featured?.on?'<span class="demo-badge is-sent">⭐ Em destaque</span>':''}${publishBadgeHtml(site.id)}</p><div class="sheet-grid"><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openClientSite',site.id)}">👁 Ver site</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openDemoLinks',site.id)}">🔗 Link de demonstração</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openFeatured',site.id)}">⭐ Destaque no site</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openPublish',site.id)}">🌐 Publicar site</button><button type="button" class="sec" data-click="downloadClientSiteZip" data-click-args="${ARGS(site.id)}">⬇ Baixar arquivos</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('renameClientSite',site.id)}">✏ Renomear</button></div><label class="sf"><span>Andamento</span><select data-change="saveClientSiteStatus" data-change-args="${ARGS(site.id)}" data-change-value="value">${siteStatuses(site).map(x=>`<option ${x===site.status?'selected':''}>${esc(x)}</option>`).join('')}</select></label><button type="button" class="del" data-click="sheetDo" data-click-args="${ARGS('deleteClientSite',site.id)}">Remover site</button></div>`).join('');
@@ -402,7 +467,7 @@ function openClientSheet(id,focus){
  const panels={
   resumo:`${leadProductsHtml(lead)}<section><h3>Dados</h3><div class="sheet-fields">${field('Nome','client','text',lead.client,'input')}${field('Telefone / WhatsApp','contact','tel',lead.contact||'','input','inputmode="tel"')}${field('Serviço','service','text',lead.service||'','input')}${field('Valor (R$)','value','number',lead.value||0,'input','inputmode="decimal" min="0"')}${field('Data','date','date',lead.date||'','change')}<label class="sf"><span>Etapa</span><select data-change="sheetSet" data-change-args="${ARGS(lead.id,'stage')}" data-change-value="value">${STAGES.map(x=>`<option ${x===stage?'selected':''}>${x}</option>`).join('')}</select></label><label class="sf"><span>Como conheceu a Promisa?</span><select data-change="sheetSet" data-change-args="${ARGS(lead.id,'origem')}" data-change-value="value">${ORIGENS.map(o=>`<option value="${o[0]}" ${o[0]===(lead.origem||'')?'selected':''}>${o[1]}</option>`).join('')}</select></label>${hasTeam()?(ACCESS.role==='owner'?`<label class="sf"><span>Responsável</span><select data-change="sheetSet" data-change-args="${ARGS(lead.id,'owner')}" data-change-value="value">${TEAM.map(t=>`<option value="${esc(t.id)}" ${t.id===ownerOf(lead)?'selected':''}>${esc(t.name)}</option>`).join('')}</select></label>`:`<p class="sf"><span>Responsável</span><b>${esc(teamName(ownerOf(lead)))}</b></p>`):''}</div>${normalizeLeadStage(lead.stage)==='Fechado'&&!lead.paid?`<div class="charge-row">${chargeHtml(lead)}</div>`:''}<button type="button" class="sec wide" id="sheetPaid" aria-pressed="${!!lead.paid}" data-click="sheetTogglePaid" data-click-args="${ARGS(lead.id)}">${lead.paid?'✅ Pago · desfazer':'Marcar como pago'}</button></section>
  ${clientTimelineHtml(lead,stage)}
- <details class="smore"><summary>Mais opções</summary><p class="sheet-label">Privacidade (LGPD)</p><div class="sheet-grid"><button type="button" class="sec" data-click="exportLeadData" data-click-args="${ARGS(lead.id)}">Exportar dados</button><button type="button" class="del" data-click="sheetDo" data-click-args="${ARGS('deleteLeadData',lead.id)}">Excluir dados (LGPD)</button></div><button type="button" class="del wide" data-click="sheetDo" data-click-args="${ARGS('delSale',lead.id)}">Excluir cliente</button></details>`,
+ <details class="smore"><summary>Mais opções</summary><p class="sheet-label">Privacidade (LGPD)</p><div class="sheet-grid"><button type="button" class="sec" data-click="exportLeadData" data-click-args="${ARGS(lead.id)}">Exportar dados</button></div><button type="button" class="del wide" data-click="sheetDo" data-click-args="${ARGS('trashLead',lead.id)}">Mover para a lixeira</button><p class="sheet-label">Na Lixeira (aba Clientes → Lixeira) dá para restaurar ou excluir para sempre.</p></details>`,
   site:`<section id="sheetSiteSec"><h3>Site</h3>${siteBlocks}${attach}</section>
  <section><h3>Demonstração</h3><p class="cline">${sites.length||lead.demoSentAt?demoStatusHtml(lead):'<span class="lead-muted">Anexe um site para poder enviar.</span>'}</p><div class="sheet-grid">${ready?`<button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('sendDemoOne',lead.id)}">📤 Enviar demonstração</button>`:''}<button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('toggleDemoSent',lead.id)}">${lead.demoSentAt?'Desmarcar envio':'Marcar como enviada'}</button></div></section>
  ${diagnosticoSheetHtml(lead)}
@@ -418,12 +483,12 @@ function openClientSheet(id,focus){
 }
 function openSiteSheet(id){
  const site=clientSiteRows.find(x=>String(x.id)===String(id));if(!site)return;
- const leads=S.sales||[];
+ const leads=LEADS()||[];
  const body=`<section><p class="sheet-site-name"><b>🌐 ${esc(site.name)}</b><small>${(site.files||[]).length} arquivo(s) · ${siteBytes(site)}</small>${site.featured?.on?'<span class="demo-badge is-sent">⭐ Em destaque</span>':''}${publishBadgeHtml(site.id)}</p><label class="sf"><span>Vincular a um cliente</span><select data-change="sheetLink" data-change-args="${ARGS(site.id)}" data-change-value="value"${leads.length?'':' disabled'}><option value="">${leads.length?'Escolher cliente…':'Cadastre um cliente primeiro'}</option>${leads.map(l=>`<option value="${esc(l.id)}">${esc(l.client)}</option>`).join('')}</select></label></section><section><div class="sheet-grid"><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openDemoLinks',site.id)}">🔗 Link de demonstração</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openFeatured',site.id)}">⭐ Destaque no site</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openPublish',site.id)}">🌐 Publicar site</button><button type="button" class="sec" data-click="downloadClientSiteZip" data-click-args="${ARGS(site.id)}">⬇ Baixar arquivos</button><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('renameClientSite',site.id)}">✏ Renomear</button><button type="button" class="del" data-click="sheetDo" data-click-args="${ARGS('deleteClientSite',site.id)}">Excluir</button></div></section>`;
  showSheet(site.name,body);
 }
 function sheetSet(id,field,value){
- const s=S.sales.find(x=>String(x.id)===String(id));if(!s)return;
+ const s=LEADS().find(x=>String(x.id)===String(id));if(!s)return;
  if(field==='client'){const v=String(value).trim();if(!v)return;s.client=v}
  else if(field==='contact')s.contact=String(value).trim();
  else if(field==='service')s.service=String(value);
@@ -436,7 +501,7 @@ function sheetSet(id,field,value){
  save();
 }
 function sheetTogglePaid(id){
- const s=S.sales.find(x=>String(x.id)===String(id));if(!s)return;
+ const s=LEADS().find(x=>String(x.id)===String(id));if(!s)return;
  s.paid=!s.paid;save();
  const b=document.getElementById('sheetPaid');if(b){b.textContent=s.paid?'✅ Pago · desfazer':'Marcar como pago';b.setAttribute('aria-pressed',String(!!s.paid))}
 }
@@ -525,16 +590,16 @@ function demoGreeting(date=new Date()){let h=Number(new Intl.DateTimeFormat('en-
 function demoFillMessage(template,lead,url){return String(template).replace(/\{saudacao\}/g,demoGreeting()).replace(/\{empresa\}/g,lead.client||'').replace(/\{link\}/g,url)}
 function demoShortDate(iso){const d=new Date(iso);return Number.isNaN(d.getTime())?'':d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',timeZone:'America/Sao_Paulo'})}
 function demoLeadReady(lead){return String(lead.contact||'').replace(/\D/g,'').length>=8&&demoLeadSites.has(String(lead.id))}
-function demoPendingLeads(){return (S.sales||[]).filter(lead=>demoLeadReady(lead)&&!lead.demoSentAt)}
+function demoPendingLeads(){return (LEADS()||[]).filter(lead=>demoLeadReady(lead)&&!lead.demoSentAt)}
 function demoStatusHtml(lead){if(lead.demoSentAt)return `<span class="demo-badge is-sent" title="Enviada em ${esc(demoLinkDate(Date.parse(lead.demoSentAt)))}">✅ Demonstração enviada · ${esc(demoShortDate(lead.demoSentAt))}</span>`;if(demoLeadSites.has(String(lead.id)))return '<span class="demo-badge is-pending">⏳ Demonstração não enviada</span>';return '<span class="demo-badge is-none">— sem site vinculado</span>'}
 async function drawDemoLeads(){try{const next=new Map();for(const site of (await clientSiteAll()).sort((a,b)=>String(a.updatedAt||'').localeCompare(String(b.updatedAt||''))))if((site.siteType||'cliente')==='cliente'&&site.leadId)next.set(String(site.leadId),site.id);demoLeadSites=next;const box=document.getElementById('nextSteps');if(box&&tab==='dash')box.innerHTML=nextStepsHtml()}catch{}}
-function toggleDemoSent(id){const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;if(lead.demoSentAt)delete lead.demoSentAt;else lead.demoSentAt=new Date().toISOString();save();render()}
-function sendDemoOne(id){const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;if(lead.demoSentAt&&!confirm('Já enviada em '+demoShortDate(lead.demoSentAt)+'. Enviar de novo?'))return;return openDemoQueue([lead.id])}
+function toggleDemoSent(id){const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead)return;if(lead.demoSentAt)delete lead.demoSentAt;else lead.demoSentAt=new Date().toISOString();save();render()}
+function sendDemoOne(id){const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead)return;if(lead.demoSentAt&&!confirm('Já enviada em '+demoShortDate(lead.demoSentAt)+'. Enviar de novo?'))return;return openDemoQueue([lead.id])}
 function sendDemoPending(){const ids=demoPendingLeads().map(x=>x.id);if(!ids.length)return clientSiteToast('Nenhum lead pendente.');return openDemoQueue(ids)}
 async function openDemoQueue(ids){
  const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node};
  let sites;try{sites=await clientSiteAll()}catch(e){return clientSiteToast('Não foi possível ler os sites: '+e.message)}
- const items=[];for(const id of ids){const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)continue;const site=sites.filter(x=>(x.siteType||'cliente')==='cliente'&&String(x.leadId)===String(lead.id)).sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')))[0];if(site&&contactLink(lead.contact))items.push({lead,siteId:site.id})}
+ const items=[];for(const id of ids){const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead)continue;const site=sites.filter(x=>(x.siteType||'cliente')==='cliente'&&String(x.leadId)===String(lead.id)).sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')))[0];if(site&&contactLink(lead.contact))items.push({lead,siteId:site.id})}
  if(!items.length)return clientSiteToast('Este lead precisa de telefone e de um site de cliente vinculado.');
  const dialog=el('dialog','project-preview-dialog demo-links-dialog demo-queue-dialog');dialog.setAttribute('aria-label','Enviar demonstração');
  const body=el('div','demo-queue-body'),close=el('button','sec demo-links-close','Fechar');close.type='button';close.addEventListener('click',()=>dialog.close());
@@ -566,7 +631,7 @@ async function openDemoQueue(ids){
    const item=queue[index];body.replaceChildren();
    const link=el('a','btn','Abrir WhatsApp de '+item.lead.client);link.href=item.wa;link.target='_blank';link.rel='noopener noreferrer';
    const advance=()=>{index++;setTimeout(show,300)};
-   link.addEventListener('click',()=>{if(link.dataset.used)return;link.dataset.used='1';const lead=S.sales.find(x=>String(x.id)===String(item.lead.id));if(lead){lead.demoSentAt=new Date().toISOString();lead.demoUrl=item.url;if(normalizeLeadStage(lead.stage)==='Novo')lead.stage='Em contato';save()}stats.sent++;advance()});
+   link.addEventListener('click',()=>{if(link.dataset.used)return;link.dataset.used='1';const lead=LEADS().find(x=>String(x.id)===String(item.lead.id));if(lead){lead.demoSentAt=new Date().toISOString();lead.demoUrl=item.url;if(normalizeLeadStage(lead.stage)==='Novo')lead.stage='Em contato';save()}stats.sent++;advance()});
    const skip=el('button','sec','Pular');skip.type='button';skip.addEventListener('click',()=>{stats.skipped++;advance()});
    const stop=el('button','sec','Encerrar');stop.type='button';stop.addEventListener('click',()=>{stats.skipped+=queue.length-index;index=queue.length;done()});
    const actions=el('div','demo-queue-actions');actions.append(skip,stop);
@@ -625,7 +690,7 @@ async function briefingExport(id){
  }catch(e){return{erro:'Não foi possível incluir as respostas do formulário: '+(e.message||'erro')}}
 }
 async function briefingPrepare(id){
- const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
+ const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead)return;
  if(lead.briefingToken&&!confirm('Gerar um novo link do formulário? O link anterior continua valendo até vencer ou ser desativado.'))return;
  const box=document.getElementById('briefingBox');if(!box)return;
  const original=box.innerHTML;box.querySelectorAll('button').forEach(b=>{b.disabled=true});
@@ -647,7 +712,7 @@ async function diagnosticoApi(body){const controller=new AbortController(),timer
 function diagnosticoSheetHtml(lead){return `<section><h3>🩺 Diagnóstico do site</h3><p class="cline"><span class="lead-muted">Analisa o site atual do cliente e gera um link para enviar.</span></p><div class="sheet-grid"><button type="button" class="sec" data-click="sheetDo" data-click-args="${ARGS('openDiagnostico',lead.id)}">🩺 Diagnóstico</button></div></section>`}
 function diagnosticoGrade(score){return String(Number(score||0).toFixed(1)).replace('.',',')+' / 10'}
 async function openDiagnostico(id){
- const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
+ const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead)return;
  const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node};
  const dialog=el('dialog','project-preview-dialog demo-links-dialog');dialog.setAttribute('aria-label','Diagnóstico do site');
  const head=el('div','demo-links-head');head.append(el('h2','','Diagnóstico do site'),el('p','demo-links-site',lead.client||'Cliente'));
@@ -771,9 +836,9 @@ async function openPublish(key){
  await load();
 }
 async function briefingView(id){
- const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
+ const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead)return;
  const info=briefingInfo(lead);if(info?.state!=='answered')return clientSiteToast('Este formulário ainda não foi respondido.');
- const lib=window.promisaBriefingQuestions;if(!lib)return clientSiteToast('Recarregue a página para ver as respostas.');
+ const lib=window.promisaBriefingQuestions||await loadLib('promisaBriefingQuestions','/assets/briefing-panel.js');if(!lib)return clientSiteToast('Não consegui abrir as respostas agora. Verifique a internet e tente de novo.');
  let data;try{data=await demoLinksApi('briefing-get',{token:info.item.token})}catch(e){return clientSiteToast(e.message)}
  const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node};
  const dialog=el('dialog','project-preview-dialog demo-links-dialog');dialog.setAttribute('aria-label','Respostas do formulário');
@@ -787,7 +852,7 @@ async function briefingView(id){
  dialog.addEventListener('close',()=>dialog.remove());document.body.append(dialog);dialog.showModal();
 }
 async function briefingRevoke(id){
- const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
+ const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead)return;
  const info=briefingInfo(lead);if(info?.state!=='open'||!confirm('Desativar o link do formulário? O cliente não poderá mais responder por ele.'))return;
  try{await demoLinksApi('briefing-revoke',{token:info.item.token});delete lead.briefingToken;delete lead.briefingSentAt;save();await briefingRefresh(true);drawClientsList();clientSiteToast('Link desativado.')}catch(e){clientSiteToast(e.message)}
 }
@@ -797,7 +862,7 @@ const FEATURED_MAX=6;
 async function publishFeatured(){await loadSiteRows();const items=clientSiteRows.filter(s=>s.featured?.on).sort((a,b)=>a.featured.order-b.featured.order).slice(0,FEATURED_MAX).map(s=>({siteId:s.id,title:s.featured.title,category:s.featured.category,order:s.featured.order,demo:s.featured.demo===true}));const data=await demoLinksApi('featured-publish',{items});const skipped=data.skipped||[];clientSiteToast(skipped.length?`Publicado: ${data.published}. Não publicado (ainda não salvo online): ${skipped.length}. Aguarde "Salvo online" e publique de novo.`:`Destaques publicados na página inicial (${data.published}).`);return data}
 async function openFeatured(key){await loadSiteRows();const site=clientSiteRows.find(x=>x.id===key);if(!site)return;
 const el=(tag,cls,text)=>{const node=document.createElement(tag);if(cls)node.className=cls;if(text!==undefined)node.textContent=text;return node};
-const lead=site.siteType==='pessoal'?null:(S.sales||[]).find(x=>String(x.id)===String(site.leadId));const cur=site.featured||{on:false,title:lead?.client||site.name||'',category:'',order:1,demo:false};
+const lead=site.siteType==='pessoal'?null:(LEADS()||[]).find(x=>String(x.id)===String(site.leadId));const cur=site.featured||{on:false,title:lead?.client||site.name||'',category:'',order:1,demo:false};
 const dialog=el('dialog','project-preview-dialog demo-links-dialog');dialog.setAttribute('aria-label','Destaque no site');dialog.addEventListener('close',()=>dialog.remove());
 const form=el('form','demo-links-form');
 const checkRow=(label,checked)=>{const wrap=el('label','demo-check');const box=el('input');box.type='checkbox';box.checked=checked;wrap.append(box,document.createTextNode(' '+label));form.append(wrap);return box};
@@ -824,7 +889,7 @@ dialog.append(el('h2','','⭐ Destaque no site'),el('p','demo-links-site',site.n
 function planPromptsList(planId,data,withHeading){
  const lib=window.promisaPlanPrompts;const el=(tag,cls,text)=>{const n=document.createElement(tag);if(cls)n.className=cls;if(text!==undefined)n.textContent=text;return n};
  const wrap=el('div');
- if(!lib){wrap.append(el('p','pp-note','Recarregue a página para ver os prompts.'));return wrap}
+ if(!lib){wrap.append(el('p','pp-note','Carregando os prompts…'));loadLib('promisaPlanPrompts','/assets/plan-prompts.js').then(l=>{if(l&&wrap.isConnected)wrap.replaceWith(planPromptsList(planId,data,withHeading))});return wrap}
  lib.buildPlanPrompts(planId,data).forEach(p=>{
   const box=el('div','pp-item');const ta=el('textarea');ta.readOnly=true;ta.rows=10;ta.value=p.text;ta.setAttribute('aria-label',p.title);
   const btn=el('button','','Copiar prompt');btn.type='button';btn.addEventListener('click',()=>promptCopy(ta));
@@ -837,8 +902,8 @@ function promptCopy(ta){
  try{navigator.clipboard.writeText(ta.value).then(done,fallback)}catch(e){fallback()}
 }
 async function openPlanPrompts(id,planId){
- const lib=window.promisaPlanPrompts;if(!lib)return clientSiteToast('Recarregue a página para ver os prompts.');
- const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;
+ const lib=window.promisaPlanPrompts||await loadLib('promisaPlanPrompts','/assets/plan-prompts.js');if(!lib)return clientSiteToast('Não consegui abrir os prompts agora. Verifique a internet e tente de novo.');
+ const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead)return;
  const plan=lib.PLANS.find(x=>x.id===planId);if(!plan)return;
  let briefing=null;
  try{const info=briefingInfo(lead);if(info?.state==='answered'){const d=await demoLinksApi('briefing-get',{token:info.item.token});if(d&&d.answers)briefing=d.answers}}catch(e){briefing=null}
@@ -858,14 +923,14 @@ function promptsPage(){
  const sub=document.createElement('p');sub.className='sub';sub.textContent='Dica: abra o cliente em Clientes → ⋯ → Prompts de IA para gerar já preenchido com os dados e as respostas do formulário.';
  root.append(h,sub);
  if(lib)lib.PLANS.forEach(pl=>{const sec=document.createElement('div');sec.className='card';const t=document.createElement('h2');t.className='pp-plan';t.textContent=pl.name+' · '+pl.subtitle;sec.append(t,planPromptsList(pl.id,{empresa:'',telefone:'',briefing:{}}));root.append(sec)});
- else{const n=document.createElement('p');n.textContent='Recarregue a página para ver os prompts.';root.append(n)}
+ else{const n=document.createElement('p');n.className='sub';n.textContent='Carregando os prompts…';root.append(n);loadLib('promisaPlanPrompts','/assets/plan-prompts.js').then(l=>{if(l&&tab==='prompts2')render()})}
  setTimeout(()=>{const app=document.getElementById('app');if(app&&tab==='prompts2')app.replaceChildren(root)},0);
  return '';
 }
 
 let entregaFilter='open';const entregaOpen=new Map();
 const ENT_FILTERS=[['open','Em andamento'],['done','Concluídas'],['all','Todas']];
-const closedLeads=()=>(S.sales||[]).filter(s=>normalizeLeadStage(s.stage)==='Fechado');
+const closedLeads=()=>(LEADS()||[]).filter(s=>normalizeLeadStage(s.stage)==='Fechado');
 const entProgress=lead=>window.promisaDelivery.deliveryProgress(lead.entrega);
 const entDate=iso=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso||''));return m?m[3]+'/'+m[2]+'/'+m[1]:''};
 function entEnsure(lead){if(!lead.entrega||typeof lead.entrega!=='object'||Array.isArray(lead.entrega))lead.entrega={};const e=lead.entrega;if(typeof e.plano!=='string')e.plano='';if(!e.feitos||typeof e.feitos!=='object'||Array.isArray(e.feitos))e.feitos={};if(typeof e.obs!=='string')e.obs='';return e}
@@ -890,20 +955,20 @@ function drawEntregas(){
 }
 function setEntregaFilter(key){if(!ENT_FILTERS.some(f=>f[0]===key))return;entregaFilter=key;drawEntregas()}
 function entRedraw(leadId,focusItem){
- const old=[...document.querySelectorAll('[data-ent-card]')].find(c=>c.dataset.entCard===String(leadId)),lead=S.sales.find(x=>String(x.id)===String(leadId));if(!old||!lead)return;
+ const old=[...document.querySelectorAll('[data-ent-card]')].find(c=>c.dataset.entCard===String(leadId)),lead=LEADS().find(x=>String(x.id)===String(leadId));if(!old||!lead)return;
  const t=document.createElement('template');t.innerHTML=entregaCardHtml(lead);const card=t.content.firstElementChild;old.replaceWith(card);
  if(focusItem)[...card.querySelectorAll('[data-ent-item]')].find(i=>i.dataset.entItem===focusItem)?.focus({preventScroll:true});
 }
 function entregaSetPlan(id,plano){
- const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead||!(plano===''||Object.hasOwn(window.promisaDelivery.DELIVERY_PLANS,plano)))return;
+ const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead||!(plano===''||Object.hasOwn(window.promisaDelivery.DELIVERY_PLANS,plano)))return;
  entEnsure(lead).plano=plano;save();entregaOpen.delete(String(id));entRedraw(id);
 }
 function entregaToggle(id,itemId){
- const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead||!window.promisaDelivery.deliveryItems(lead.entrega?.plano).some(i=>i.id===itemId))return;
+ const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead||!window.promisaDelivery.deliveryItems(lead.entrega?.plano).some(i=>i.id===itemId))return;
  const e=entEnsure(lead);if(Object.hasOwn(e.feitos,itemId))delete e.feitos[itemId];else e.feitos[itemId]=today();
  save();entRedraw(id,itemId);
 }
-function entregaObs(id,value){const lead=S.sales.find(x=>String(x.id)===String(id));if(!lead)return;const v=String(value).slice(0,2000);if(!lead.entrega&&!v)return;entEnsure(lead).obs=v;save()}
+function entregaObs(id,value){const lead=LEADS().find(x=>String(x.id)===String(id));if(!lead)return;const v=String(value).slice(0,2000);if(!lead.entrega&&!v)return;entEnsure(lead).obs=v;save()}
 function openEntregas(id){
  entregaFilter=id?'all':'open';go('entregas');
  if(!id)return;const card=[...document.querySelectorAll('[data-ent-card]')].find(c=>c.dataset.entCard===String(id));
@@ -913,11 +978,11 @@ document.addEventListener('toggle',ev=>{const d=ev.target;if(!(d instanceof HTML
 function clientSiteToast(message){const el=document.createElement('div');el.textContent=message;el.style.cssText='position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:9px 15px;border-radius:20px;z-index:20;max-width:90vw';document.body.appendChild(el);setTimeout(()=>el.remove(),3500)}
 function clientSiteSlugify(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,48).replace(/-+$/g,'')}
 function uniqueClientSiteSlug(value,used){const base=clientSiteSlugify(value)||'site';let slug=base,n=2;while(used.has(slug))slug=`${base}-${n++}`;used.add(slug);return slug}
-function selectedSiteLead(){const id=pendingSiteLeadId||document.getElementById('siteLeadSelector')?.value;pendingSiteLeadId='';return (S.sales||[]).find(l=>String(l.id)===String(id))||null}
-function clientSiteLeadOptions(site){const leads=S.sales||[],found=leads.some(l=>String(l.id)===String(site.leadId));let html='<option value="">Sem vínculo</option>';if(site.leadId&&!found)html+=`<option value="${esc(site.leadId)}" selected>${esc(site.clientName||'Cliente associado')} (lead não listado)</option>`;return html+leads.map(l=>`<option value="${esc(l.id)}" ${String(site.leadId)===String(l.id)?'selected':''}>${esc(l.client)}</option>`).join('')}
-async function loadSiteRows(){clientSiteRows=await clientSiteAll();let migrated=false;const used=new Set();for(const s of clientSiteRows){if(s.siteType!=='cliente'&&s.siteType!=='pessoal'){s.siteType='cliente';migrated=true}if(typeof s.leadId!=='string'){s.leadId='';migrated=true}if(typeof s.clientName!=='string'){s.clientName=(S.sales||[]).find(l=>String(l.id)===String(s.leadId))?.client||'';migrated=true}if(!siteStatuses(s).includes(s.status)){s.status='Em edição';migrated=true}if(!s.slug||used.has(s.slug)){s.slug=uniqueClientSiteSlug(s.clientName||s.name,used);migrated=true}else used.add(s.slug)}if(migrated){const db=await openClientSiteDB(),tx=db.transaction(SITE_STORE,'readwrite'),store=tx.objectStore(SITE_STORE);for(const s of clientSiteRows)store.put(s);await new Promise((ok,no)=>{tx.oncomplete=ok;tx.onerror=()=>no(tx.error);tx.onabort=()=>no(tx.error)})}return clientSiteRows}
+function selectedSiteLead(){const id=pendingSiteLeadId||document.getElementById('siteLeadSelector')?.value;pendingSiteLeadId='';return (LEADS()||[]).find(l=>String(l.id)===String(id))||null}
+function clientSiteLeadOptions(site){const leads=LEADS()||[],found=leads.some(l=>String(l.id)===String(site.leadId));let html='<option value="">Sem vínculo</option>';if(site.leadId&&!found)html+=`<option value="${esc(site.leadId)}" selected>${esc(site.clientName||'Cliente associado')} (lead não listado)</option>`;return html+leads.map(l=>`<option value="${esc(l.id)}" ${String(site.leadId)===String(l.id)?'selected':''}>${esc(l.client)}</option>`).join('')}
+async function loadSiteRows(){clientSiteRows=await clientSiteAll();let migrated=false;const used=new Set();for(const s of clientSiteRows){if(s.siteType!=='cliente'&&s.siteType!=='pessoal'){s.siteType='cliente';migrated=true}if(typeof s.leadId!=='string'){s.leadId='';migrated=true}if(typeof s.clientName!=='string'){s.clientName=(LEADS()||[]).find(l=>String(l.id)===String(s.leadId))?.client||'';migrated=true}if(!siteStatuses(s).includes(s.status)){s.status='Em edição';migrated=true}if(!s.slug||used.has(s.slug)){s.slug=uniqueClientSiteSlug(s.clientName||s.name,used);migrated=true}else used.add(s.slug)}if(migrated){const db=await openClientSiteDB(),tx=db.transaction(SITE_STORE,'readwrite'),store=tx.objectStore(SITE_STORE);for(const s of clientSiteRows)store.put(s);await new Promise((ok,no)=>{tx.oncomplete=ok;tx.onerror=()=>no(tx.error);tx.onabort=()=>no(tx.error)})}return clientSiteRows}
 async function drawClientSites(){if(tab==='clients')return drawClients();const list=document.getElementById('clientSiteList');if(!list)return;try{await loadSiteRows();const own=clientSiteRows.filter(s=>(s.siteType||'cliente')==='pessoal'),q=(document.getElementById('clientSearch')?.value||'').toLocaleLowerCase('pt-BR'),rows=own.filter(s=>(s.name+' '+(s.description||'')).toLocaleLowerCase('pt-BR').includes(q)).sort((a,b)=>String(b.updatedAt).localeCompare(String(a.updatedAt)));const count=document.getElementById('clientSiteCount');if(count)count.textContent=`${own.length} site(s) · ${rows.length} exibido(s)`;if(!rows.length){list.innerHTML=`<div class="site-empty">${own.length?'Nenhum site corresponde à busca.':'Ainda não há sites pessoais. Anexe um HTML ou a pasta completa do seu site.'}</div>`;return}list.innerHTML=rows.map(s=>`<article class="client-site-card"><div class="client-site-heading"><div><h3>${esc(s.name)}</h3><p>${(s.files||[]).length} arquivo(s) · ${siteBytes(s)}</p>${s.featured?.on?'<span class="demo-badge is-sent">⭐ Em destaque</span>':''}${publishBadgeHtml(s.id)}</div><span class="client-site-status-pill">${esc(s.status)}</span></div><div class="client-site-fields"><label>Andamento<select data-change="saveClientSiteStatus" data-change-args="${esc(JSON.stringify([s.id]))}" data-change-value="value">${siteStatuses(s).map(x=>`<option ${x===s.status?'selected':''}>${x}</option>`).join('')}</select></label></div><div class="site-actions"><button type="button" data-click="openClientSite" data-click-args="${esc(JSON.stringify([s.id]))}">Visualizar</button><button type="button" class="sec" data-click="downloadClientSiteZip" data-click-args="${esc(JSON.stringify([s.id]))}">Baixar arquivos</button><button type="button" class="sec" data-click="openFeatured" data-click-args="${esc(JSON.stringify([s.id]))}">⭐ Destaque no site</button><button type="button" class="sec" data-click="openPublish" data-click-args="${esc(JSON.stringify([s.id]))}">🌐 Publicar site</button><button type="button" class="sec" data-click="renameClientSite" data-click-args="${esc(JSON.stringify([s.id]))}">Renomear</button><button type="button" class="del" data-click="deleteClientSite" data-click-args="${esc(JSON.stringify([s.id]))}">Excluir</button></div></article>`).join('')}catch(e){list.innerHTML='<div class="site-empty">Não foi possível acessar o armazenamento local neste navegador.</div>';clientSiteToast('Falha ao abrir a biblioteca: '+e.message)}}
-async function linkClientSite(key,leadId){const site=clientSiteRows.find(x=>x.id===key);if(!site||site.siteType==='pessoal')return;const lead=(S.sales||[]).find(x=>String(x.id)===String(leadId));const oldBase=clientSiteSlugify(site.clientName||site.name);site.leadId=lead?.id||'';site.clientName=lead?.client||'';if(lead&&(!site.slug||site.slug===oldBase)){const all=await clientSiteAll(),used=new Set(all.filter(x=>x.id!==key).map(x=>x.slug).filter(Boolean));site.slug=uniqueClientSiteSlug(lead.client,used)}if(!site.slug)site.slug=clientSiteSlugify(site.clientName||site.name)||'site';site.updatedAt=new Date().toISOString();await clientSiteTx('readwrite',o=>o.put(site));await drawClientSites();clientSiteToast(lead?`Projeto vinculado a ${lead.client}.`:'Vínculo removido.')}
+async function linkClientSite(key,leadId){const site=clientSiteRows.find(x=>x.id===key);if(!site||site.siteType==='pessoal')return;const lead=(LEADS()||[]).find(x=>String(x.id)===String(leadId));const oldBase=clientSiteSlugify(site.clientName||site.name);site.leadId=lead?.id||'';site.clientName=lead?.client||'';if(lead&&(!site.slug||site.slug===oldBase)){const all=await clientSiteAll(),used=new Set(all.filter(x=>x.id!==key).map(x=>x.slug).filter(Boolean));site.slug=uniqueClientSiteSlug(lead.client,used)}if(!site.slug)site.slug=clientSiteSlugify(site.clientName||site.name)||'site';site.updatedAt=new Date().toISOString();await clientSiteTx('readwrite',o=>o.put(site));await drawClientSites();clientSiteToast(lead?`Projeto vinculado a ${lead.client}.`:'Vínculo removido.')}
 async function saveClientSiteStatus(key,status){const site=clientSiteRows.find(x=>x.id===key);if(!site||!siteStatuses(site).includes(status))return;site.status=status;site.updatedAt=new Date().toISOString();await clientSiteTx('readwrite',o=>o.put(site));await drawClientSites()}
 async function importClientHtml(fileList){const files=[...fileList].filter(f=>/\.html?$/i.test(f.name));if(!files.length)return clientSiteToast('Selecione um arquivo HTML.');try{const lead=activeSiteType==='cliente'?selectedSiteLead():null,siteType=activeSiteType,records=await clientSiteAll(),used=new Set(records.map(s=>s.slug).filter(Boolean));for(const f of files){const html=await f.text(),p=clientSitePath(f.name),name=f.name.replace(/\.html?$/i,''),site={id:clientSiteId(),siteType,name,description:'',leadId:lead?.id||'',clientName:lead?.client||'',slug:uniqueClientSiteSlug(lead?.client||name,used),status:'Em edição',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),htmlPath:p,files:[{path:p,type:'text/html',size:f.size,data:html}]};await clientSiteTx('readwrite',s=>s.put(site))}await drawClientSites();clientSiteToast(`${files.length} HTML(s) anexado(s) com caminho reservado.`)}catch(e){clientSiteToast('Falha ao anexar: '+e.message)}}
 function clientFileData(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(r.error);r.readAsDataURL(file)})}
@@ -948,7 +1013,7 @@ O que conversar / próximo passo
 Próximo possível cliente..." data-input="saveProspectNotes" data-input-args="[]" data-input-value="value">${esc(typeof S.prospectNotes==='string'?S.prospectNotes:'')}</textarea><small id="notesSaveStatus" class="lead-muted" role="status">Salvamento automático. Confira o indicador de sincronização online no topo.</small></div>`}
 function saveProspectNotes(text){S.prospectNotes=text;const status=document.getElementById('notesSaveStatus');try{localStorage.setItem(K,JSON.stringify(S));window.promisaCloud?.changed();if(status)status.textContent='Salvo neste aparelho · aguardando sincronização online.'}catch(e){if(status)status.textContent='Não foi possível salvar no navegador. Mantenha esta página aberta e copie seu texto antes de sair.'}}
 function backupPage(){return `<h1>Backup geral</h1><p class="sub">Todos os seus dados em um único arquivo, para guardar ou transferir entre o computador e o celular.</p><div class="card"><h2 style="margin-top:0">Tudo incluído</h2><p>Leads e contatos, vendas, despesas, projetos pessoais, anotações, plano de negócios, configurações, sites dos clientes e seus sites pessoais, com todos os arquivos anexados.</p><p id="backupSummary" class="site-count" role="status">Carregando dados dos sites…</p><div class="site-toolbar"><button id="backupExport" data-click="runGeneralBackup" data-click-args="[&quot;export&quot;]">Baixar backup geral</button><button id="backupRestore" class="sec" data-click="pickFile" data-click-args='["generalBackupInput"]'>Restaurar backup</button></div><input id="generalBackupInput" type="file" accept=".json,application/json" hidden data-change="runGeneralBackupClear" data-change-args="[&quot;restore&quot;]" data-change-value="file"></div><div class="card" id="discordBackupCard"></div><div class="card"><h2 style="margin-top:0">Como levar para outro aparelho</h2><p>1. Baixe o backup geral e guarde o arquivo JSON.</p><p>2. Envie esse arquivo para o outro aparelho e abra o Promisa nele.</p><p>3. Entre em Backup e escolha Restaurar backup.</p><small class="lead-muted">A restauração mescla o backup com os dados atuais, preservando os registros já existentes. Backups antigos também podem ser importados aqui. A cópia local fica no navegador; os dados também são sincronizados quando o armazenamento online está configurado.</small></div>`}
-async function drawBackupSummary(){const el=document.getElementById('backupSummary');if(!el)return;try{const db=await openClientSiteDB(),count=await new Promise((ok,no)=>{const r=db.transaction(SITE_STORE).objectStore(SITE_STORE).count();r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});el.textContent=(S.sales||[]).length+' lead(s) · '+(S.projects||[]).length+' projeto(s) · '+count+' site(s) guardado(s). Os anexos serão lidos apenas ao exportar.'}catch{el.textContent='Não foi possível consultar o armazenamento dos sites.'}}
+async function drawBackupSummary(){const el=document.getElementById('backupSummary');if(!el)return;try{const db=await openClientSiteDB(),count=await new Promise((ok,no)=>{const r=db.transaction(SITE_STORE).objectStore(SITE_STORE).count();r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});el.textContent=(LEADS()||[]).length+' lead(s) · '+(S.projects||[]).length+' projeto(s) · '+count+' site(s) guardado(s). Os anexos serão lidos apenas ao exportar.'}catch{el.textContent='Não foi possível consultar o armazenamento dos sites.'}}
 let generalBackupBusy=false;
 async function runGeneralBackup(action,file){if(generalBackupBusy||action==='restore'&&!file)return;generalBackupBusy=true;const buttons=['backupExport','backupRestore'].map(id=>document.getElementById(id));buttons.forEach(b=>{if(b)b.disabled=true});try{if(action==='export')await exportFullBackup();else{const data=await readBackup(file);if(data.format==='promisa-erp-completo')await restoreFullBackup(file);else if(['promisa-client-sites','arquivo-de-sites','arquivo-sites','arquivo-sites-v1'].includes(data.format)&&Array.isArray(data.sites))await restoreClientSites(file);else if(Array.isArray(data.sales)&&Array.isArray(data.exp)){const merged=mergeFullErpData(promisaValidation.validateState(data));localStorage.setItem(K,JSON.stringify(merged));S=merged;save();render();clientSiteToast('Backup antigo importado. Os dados atuais foram preservados.')}else throw new Error('Arquivo de backup incompatível.')}await drawBackupSummary()}catch(e){alert('Não foi possível processar o backup: '+e.message)}finally{generalBackupBusy=false;['backupExport','backupRestore'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=false})}}
 async function exportFullBackup(){
@@ -996,7 +1061,7 @@ async function restoreClientSites(file){
  for(const site of sites)tx.objectStore(SITE_STORE).put(site);
  await done;await drawClientSites();clientSiteToast('Sites restaurados e aguardando sincronização.');
 }
-if(document.getElementById("app")){loadAccess().then(()=>{render();try{window.promisaInstagram?.leadsChanged(S.sales)}catch(e){}})}
+if(document.getElementById("app")){loadAccess().then(()=>{render();try{window.promisaInstagram?.leadsChanged(LEADS())}catch(e){}})}
 
 // Ponte entre o painel original e o armazenamento compartilhado.
 function trackCloudDatabase(db){
@@ -1018,7 +1083,7 @@ async function boundedDecompress(bytes,limit){const reader=new Blob([bytes]).str
 const previewResources=new Map();
 function releasePreview(url){for(const resource of previewResources.get(url)||[])URL.revokeObjectURL(resource);previewResources.delete(url);URL.revokeObjectURL(url)}
 async function safePreviewDocument(url){const doc=new DOMParser().parseFromString(await(await fetch(url)).text(),'text/html');doc.querySelectorAll('script,iframe,object,embed,base,meta[http-equiv],link').forEach(el=>{if(el.tagName==='LINK'&&el.rel==='stylesheet'&&el.href.startsWith('blob:'))return;el.remove()});for(const el of doc.querySelectorAll('*'))for(const attr of [...el.attributes])if(attr.name.startsWith('on'))el.removeAttribute(attr.name);const policy=document.createElement('meta');policy.httpEquiv='Content-Security-Policy';policy.content="default-src 'none'; img-src blob: data:; style-src 'unsafe-inline' blob:; font-src blob: data:; script-src 'none'; connect-src 'none'; form-action 'none'; frame-src 'none'";doc.head.prepend(policy);return '<!doctype html>'+doc.documentElement.outerHTML}
-const panelActions={openPublish,openDiagnostico,openEntregas,setEntregaFilter,entregaSetPlan,entregaToggle,entregaObs,openPlanPrompts,openFeatured,publishFeatured,briefingPrepare,briefingView,briefingRevoke,briefingCopyLink,sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,sheetTab,toggleClientNeedsAction,setClientView,setClientOwner,toggleClientMore,attachSite,pay,payProduct,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
+const panelActions={openPublish,openDiagnostico,openEntregas,setEntregaFilter,entregaSetPlan,entregaToggle,entregaObs,openPlanPrompts,openFeatured,publishFeatured,briefingPrepare,briefingView,briefingRevoke,briefingCopyLink,sendDemoOne,sendDemoPending,toggleDemoSent,exportLeadData,deleteLeadData,trashLead,restoreLead,purgeLead,emptyTrash,addExp,openDemoLinks,addProject,addSale,delExp,delSale,deleteClientSite,deleteProject,downloadClientSiteZip,drawClientSites,drawProjectList,go,goClients,linkClientSite,openClientSite,openClientSheet,openSiteSheet,closeSheet,sheetTab,toggleClientNeedsAction,setClientView,setClientOwner,toggleClientMore,attachSite,pay,payProduct,pset2,renameClientSite,runGeneralBackup,saveClientSiteStatus,saveProspectNotes,setClientFilter,setClientQuery,setStage,sheetSet,sheetTogglePaid,sheetLink,toggleClientForm,togPaid,toggleMoreNav,updateProject,
  attachProjectZipClear:attachProjectZip,importClientFolderClear:importClientFolder,importClientHtmlClear:importClientHtml,importClientZipClear:importClientZip,runGeneralBackupClear:runGeneralBackup,
  sheetDo(name,...args){if(name==='sheetDo'||!Object.hasOwn(panelActions,name))return;closeSheet();return panelActions[name](...args)},
  pset2Calc(...args){pset2(...args);upCalc()},pickFile(id){document.getElementById(id).click()}};

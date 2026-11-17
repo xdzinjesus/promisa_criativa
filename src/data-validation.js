@@ -27,7 +27,7 @@ export function validateRecord(kind, raw, expectedId, { encoded = false } = {}) 
   if (!collections.has(kind) || !raw || Array.isArray(raw) || typeof raw !== 'object' || !validId(raw.id)) throw new Error('Registro ou identificador inválido.');
   if (expectedId !== undefined && String(raw.id) !== String(expectedId)) throw new Error('O identificador não corresponde ao registro.');
   const value = { ...raw, id: String(raw.id) };
-  for (const name of ['title', 'name', 'client', 'contact', 'service', 'desc', 'description', 'notes', 'status', 'stage', 'date', 'dueDate', 'createdAt', 'updatedAt', 'clientName', 'slug', 'demoSentAt', 'demoUrl', 'briefingToken', 'briefingSentAt']) text(value[name], name);
+  for (const name of ['title', 'name', 'client', 'contact', 'service', 'desc', 'description', 'notes', 'status', 'stage', 'date', 'dueDate', 'createdAt', 'updatedAt', 'trashedAt', 'clientName', 'slug', 'demoSentAt', 'demoUrl', 'briefingToken', 'briefingSentAt']) text(value[name], name);
   if (value.origem !== undefined && value.origem !== '' && !ORIGENS.includes(value.origem)) throw new Error('Origem do cliente inválida.');
   for (const name of ['leadId', 'projectId', 'siteId', 'sourceId']) if (value[name] !== undefined && value[name] !== '' && !validId(value[name])) throw new Error(`Vínculo inválido: ${name}.`);
   for (const name of ['value', 'size']) if (value[name] !== undefined && (typeof value[name] !== 'number' || !Number.isFinite(value[name]) || value[name] < 0)) throw new Error(`Número inválido: ${name}.`);
