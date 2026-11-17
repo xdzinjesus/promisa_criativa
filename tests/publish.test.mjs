@@ -483,3 +483,24 @@ test('verificar: domínio cadastrado mas fora do projeto é consertado sozinho n
   assert.equal(moved.length, 2);
   assert.equal((await cf.projectDomains('promisa-site-novo')).length, 2);
 });
+
+test('ligar domínio: lista sem domínios pergunta projeto por projeto; preso num Worker avisa onde remover', async () => {
+  const domains = { 'promisa-site-novo': [], 'promisa-kaetano-antigo': ['kaetanoink.com.br', 'www.kaetanoink.com.br'] };
+  let worker = false;
+  const ok = result => new Response(JSON.stringify({ success: true, errors: [], result }), { status: 200 });
+  const busy = () => new Response(JSON.stringify({ success: false, errors: [{ code: 8000024, message: 'Domain is already in use' }] }), { status: 409 });
+  const fetch = async (url, init = {}) => {
+    const u = new URL(url), path = u.pathname.replace('/client/v4', ''), method = init.method || 'GET', body = init.body ? JSON.parse(init.body) : null; let m;
+    if ((m = /\/pages\/projects\/([^/]+)\/domains$/.exec(path)) && method === 'POST') { if (worker || Object.entries(domains).some(([p, l]) => p !== m[1] && l.includes(body.name))) return busy(); domains[m[1]].push(body.name); return ok({}); }
+    if ((m = /\/pages\/projects\/([^/]+)\/domains$/.exec(path)) && method === 'GET') return ok((domains[m[1]] || []).map(name => ({ name, status: 'active' })));
+    if ((m = /\/pages\/projects\/([^/]+)\/domains\/([^/]+)$/.exec(path)) && method === 'DELETE') { domains[m[1]] = domains[m[1]].filter(n => n !== decodeURIComponent(m[2])); return ok(null); }
+    if (method === 'GET' && /\/pages\/projects$/.test(path)) return ok(u.searchParams.get('page') === '1' ? Object.keys(domains).map(name => ({ name })) : []); // sem o campo "domains"
+    if (method === 'GET' && /\/workers\/domains$/.test(path)) return ok(worker ? [{ hostname: u.searchParams.get('hostname'), service: 'meu-worker' }] : []);
+    return new Response('{}', { status: 404 });
+  };
+  const cf = createCloudflare({ token: TOKEN, accountId: ACCOUNT, retryDelayMs: 0, fetch });
+  const moved = await cf.ensureDomainsOnProject('promisa-site-novo', ['kaetanoink.com.br', 'www.kaetanoink.com.br']);
+  assert.deepEqual(moved.map(x => x.from), ['promisa-kaetano-antigo', 'promisa-kaetano-antigo']);
+  domains['promisa-site-novo'] = []; worker = true;
+  await assert.rejects(cf.ensureDomainsOnProject('promisa-site-novo', ['kaetanoink.com.br']), /Worker "meu-worker"/);
+});
