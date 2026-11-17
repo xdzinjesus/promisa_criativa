@@ -255,8 +255,49 @@ test('ligar domínio: domínio já adicionado ao projeto é tolerado', async () 
     if (init.method === 'POST' && new URL(url).pathname.endsWith('/domains')) return new Response(JSON.stringify({ success: false, errors: [{ code: 8000018, message: 'Domain already added to this project' }] }), { status: 409 });
     return original(url, init);
   } });
+  fake.state.domains.push('ja.com.br', 'www.ja.com.br'); // já está neste projeto
   const info = await cf.attachDomain('proj-c', 'ja.com.br');
   assert.equal(info.zone.nameServers.length, 2);
+  assert.deepEqual(info.moved, []);
+});
+
+// Cloudflare falsa com domínios por projeto (para o caso do domínio preso em outro projeto).
+function projectsCloudflare(holder) {
+  const domains = { 'promisa-site-novo': [], [holder]: ['kaetanoink.com.br', 'www.kaetanoink.com.br'] }, log = [];
+  const ok = result => new Response(JSON.stringify({ success: true, errors: [], result }), { status: 200 });
+  const fetch = async (url, init = {}) => {
+    const u = new URL(url), path = u.pathname.replace('/client/v4', ''), method = init.method || 'GET', body = init.body ? JSON.parse(init.body) : null; let m;
+    log.push(method + ' ' + path);
+    if (method === 'GET' && path === '/zones') return ok([{ id: 'c'.repeat(32), name: 'kaetanoink.com.br', status: 'active', name_servers: ['coen.ns.cloudflare.com', 'maria.ns.cloudflare.com'] }]);
+    if ((m = /\/pages\/projects\/([^/]+)\/domains$/.exec(path)) && method === 'POST') {
+      const taken = Object.entries(domains).some(([p, list]) => p !== m[1] && list.includes(body.name));
+      if (taken) return new Response(JSON.stringify({ success: false, errors: [{ code: 8000018, message: 'Domain is already in use' }] }), { status: 409 });
+      domains[m[1]].push(body.name); return ok({ name: body.name });
+    }
+    if ((m = /\/pages\/projects\/([^/]+)\/domains$/.exec(path)) && method === 'GET') return ok((domains[m[1]] || []).map(name => ({ name, status: 'active' })));
+    if ((m = /\/pages\/projects\/([^/]+)\/domains\/([^/]+)$/.exec(path)) && method === 'DELETE') { domains[m[1]] = domains[m[1]].filter(n => n !== decodeURIComponent(m[2])); return ok(null); }
+    if (method === 'GET' && /\/pages\/projects$/.test(path)) return ok(Object.entries(domains).map(([name, list]) => ({ name, domains: list })));
+    if (method === 'GET' && path.endsWith('/dns_records')) return ok([{ id: 'r1', type: 'CNAME', name: 'kaetanoink.com.br', content: 'promisa-site-novo.pages.dev', proxied: true }, { id: 'r2', type: 'CNAME', name: 'www.kaetanoink.com.br', content: 'promisa-site-novo.pages.dev', proxied: true }]);
+    return new Response(JSON.stringify({ success: false, errors: [{ code: 7003, message: 'rota ' + method + ' ' + path }] }), { status: 404 });
+  };
+  return { fetch, domains, log };
+}
+
+test('ligar domínio: preso numa publicação antiga do painel (erro 522) é movido para este site', async () => {
+  const fake = projectsCloudflare('promisa-kaetano-antigo');
+  const cf = createCloudflare({ token: TOKEN, accountId: ACCOUNT, retryDelayMs: 0, fetch: fake.fetch });
+  const info = await cf.attachDomain('promisa-site-novo', 'kaetanoink.com.br');
+  assert.deepEqual(info.moved.map(x => [x.name, x.from]), [['kaetanoink.com.br', 'promisa-kaetano-antigo'], ['www.kaetanoink.com.br', 'promisa-kaetano-antigo']]);
+  assert.deepEqual(fake.domains['promisa-site-novo'].sort(), ['kaetanoink.com.br', 'www.kaetanoink.com.br']);
+  assert.deepEqual(fake.domains['promisa-kaetano-antigo'], []);
+});
+
+test('ligar domínio: preso num projeto que não é do painel não é mexido, só avisa', async () => {
+  const fake = projectsCloudflare('site-pessoal');
+  const cf = createCloudflare({ token: TOKEN, accountId: ACCOUNT, retryDelayMs: 0, fetch: fake.fetch });
+  await assert.rejects(cf.attachDomain('promisa-site-novo', 'kaetanoink.com.br'), /site-pessoal/);
+  assert.equal(fake.domains['site-pessoal'].length, 2, 'nada apagado');
+  assert.ok(!fake.log.some(l => l.startsWith('DELETE')));
 });
 
 // ---------- Armazenamento ----------
