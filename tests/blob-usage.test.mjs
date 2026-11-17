@@ -13,9 +13,10 @@ test('Blob: agrupa por tipo de dado, separa versões antigas e arquivos soltos',
   assert.equal(r.count, 7); assert.equal(r.bytes, 5481);
   const by = Object.fromEntries(r.groups.map(g => [g.label, g.bytes]));
   assert.equal(by['Arquivos dos sites'], 5000); assert.equal(by['Clientes'], 100);
-  assert.equal(by['Versões antigas (limpeza automática)'], 300); assert.equal(by['Arquivos soltos (sem uso)'], 50);
+  assert.equal(by['Excluídos (somem sozinhos em até 3 dias)'], 300); assert.equal(by['Arquivos soltos (sem uso)'], 50);
   assert.equal(by['Índice e chaves do painel'], 10); assert.equal(by['Backups do Discord'], 20); assert.equal(by['Outros'], 1);
   assert.equal(r.groups[0].label, 'Arquivos dos sites', 'maior primeiro');
+  assert.equal(r.cleanable, 350, 'excluídos + soltos podem ser liberados');
 });
 
 test('Blob: lista página por página com limite, e sem chave avisa', async () => {

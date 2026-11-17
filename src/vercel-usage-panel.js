@@ -2,7 +2,7 @@
 // Plano grátis: compara com os limites grátis. Plano Pro: mostra quanto do crédito de US$ 20 já foi usado.
 // Guarda a última leitura por 30 minutos neste aparelho para não consultar a Vercel a cada visita.
 const el = (tag, text, props = {}) => Object.assign(document.createElement(tag), text == null ? {} : { textContent: text }, props);
-const CACHE = 'promisa_vercel_usage', BLOB_CACHE = 'promisa_blob_usage', TTL = 30 * 60 * 1000;
+const CACHE = 'promisa_vercel_usage', BLOB_CACHE = 'promisa_blob_usage', TTL = 30 * 60 * 1000, BLOB_TTL = 5 * 60 * 1000;
 const fmt = (n, unit) => {
   const u = String(unit || '').toLowerCase();
   if (/gb|byte/.test(u)) return `${n.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} GB`;
@@ -18,7 +18,7 @@ const ICON_DB = SVG('<ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1
 const ICON_REFRESH = SVG('<path d="M21 12a9 9 0 0 1-15.5 6.3L3 16M3 12a9 9 0 0 1 15.5-6.3L21 8M21 3v5h-5M3 21v-5h5"/>');
 
 async function get(action, cacheKey, force) {
-  if (!force) { try { const c = JSON.parse(localStorage.getItem(cacheKey) || 'null'); if (c && Date.now() - c.at < TTL) return c.data; } catch { /* ignora */ } }
+  if (!force) { try { const c = JSON.parse(localStorage.getItem(cacheKey) || 'null'); if (c && Date.now() - c.at < (cacheKey === BLOB_CACHE ? BLOB_TTL : TTL)) return c.data; } catch { /* ignora */ } }
   const r = await fetch('/api/cloud?action=' + action, { credentials: 'same-origin', cache: 'no-store' });
   const data = await r.json().catch(() => ({ error: 'Resposta inválida.' }));
   if (!r.ok) throw new Error(data.error || 'Não foi possível consultar.');
@@ -99,7 +99,24 @@ async function mountBlob(card, force) {
     row.append(top, bar(g.bytes / max * 100)); list.append(row);
   }
   card.append(list);
-  const loose = d.groups.find(g => /soltos/.test(g.label));
-  card.append(el('p', `Contado agora há pouco (${new Date(d.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}).${loose ? ' "Arquivos soltos" são cópias que nada usa mais; não atrapalham, só ocupam espaço.' : ''}`, { className: 'sub vu-note' }));
+  if (d.cleanable > 0) {
+    const free = el('button', `Liberar espaço agora (${bytes(d.cleanable)})`, { type: 'button', className: 'sec vu-free' });
+    free.addEventListener('click', async () => {
+      const ask = window.promisaAsk || (o => Promise.resolve(confirm(o.text)));
+      if (!await ask({ title: 'Liberar espaço agora?', text: `Apaga de vez ${bytes(d.cleanable)} de arquivos já excluídos e cópias que nada usa. Depois disso eles não podem ser recuperados. Seus clientes, sites e dados atuais não são afetados.`, ok: 'Liberar espaço', danger: true })) return;
+      free.disabled = true; free.textContent = 'Liberando…';
+      try {
+        const r = await fetch('/api/cloud?action=storage-cleanup', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const res = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(res.error || 'Não consegui liberar agora.');
+        try { localStorage.removeItem(BLOB_CACHE); } catch { /* ignora */ }
+        await mountBlob(card, true);
+        card.append(el('p', res.removed ? `Pronto: ${bytes(res.freedBytes || 0)} liberados (${res.removed} arquivo(s)).${res.more ? ' Ainda falta um pouco: toque de novo.' : ''}` : 'Nada para apagar ainda: o que foi excluído há menos de 10 minutos fica guardado por segurança. Tente daqui a pouco.', { className: 'pub-ok' }));
+      } catch (error) { free.disabled = false; free.textContent = `Liberar espaço agora (${bytes(d.cleanable)})`; card.append(el('p', error.message, { className: 'pub-warn' })); }
+    });
+    card.append(free);
+  }
+  const loose = d.cleanable > 0;
+  card.append(el('p', `Contado agora há pouco (${new Date(d.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}).${loose ? ' "Excluídos" e "arquivos soltos" já não são usados: somem sozinhos em até 3 dias, ou na hora pelo botão acima.' : ''}`, { className: 'sub vu-note' }));
 }
 if (typeof window !== 'undefined') window.promisaVercelUsage = { mount };

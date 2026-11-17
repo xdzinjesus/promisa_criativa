@@ -40,6 +40,9 @@ test('deleted records do not consume active limit and retired paths receive a re
   assert.equal(removableObjects(blobs, next, now).length, 0);
   assert.equal(removableObjects(blobs, removed, now).length, 0);
   assert.equal(removableObjects(blobs, removed, now + RETENTION_MS + 1000).length, 1);
+  // "Liberar espaço agora": sem esperar os 3 dias, mas nunca antes de 10 minutos (envio de outro aparelho em andamento).
+  assert.equal(removableObjects(blobs, removed, now + 5 * 60 * 1000, 0).length, 0);
+  assert.equal(removableObjects(blobs, removed, now + 11 * 60 * 1000, 0).length, 1);
 });
 test('parallel local login attempts cannot bypass the five-attempt limit', async () => {
   delete process.env.BLOB_READ_WRITE_TOKEN;

@@ -10,6 +10,7 @@ import { createBriefingStore } from '../lib/briefing-store.js';
 import { validId } from '../src/data-validation.js';
 import { vercelUsage } from '../lib/vercel-usage.js';
 import { blobUsage } from '../lib/blob-usage.js';
+import { maintainStorage } from '../lib/storage-maintenance.js';
 import { configured, loadManifest, commitOperations, signedRead, validKey, validPath, MAX_OBJECT_BYTES } from '../lib/cloud-store.js';
 
 function json(res, status, body) {
@@ -77,6 +78,12 @@ export default async function handler(req, res) {
   if (req.method === 'GET' && action === 'blob-usage') {
     if (access) return deny();
     try { return json(res, 200, await blobUsage()); } catch { return json(res, 200, { configured: true, error: 'Não consegui contar o armazenamento agora. Tente de novo em alguns minutos.' }); }
+  }
+  // "Liberar espaço agora": apaga de vez o que já foi excluído (só o dono). Guarda 10 min por segurança.
+  if (req.method === 'POST' && action === 'storage-cleanup') {
+    if (access) return deny();
+    try { const r = await maintainStorage({ apply: true, retention: 0 }); return json(res, 200, { removed: r.removed, freedBytes: r.freedBytes, more: r.more }); }
+    catch (error) { return json(res, 409, { error: /manutenção/i.test(error?.message || '') ? 'Uma limpeza já está em andamento. Tente de novo em 2 minutos.' : 'Não consegui liberar o espaço agora. Tente de novo em alguns minutos.' }); }
   }
   // Sócio: confere a permissão antes de qualquer coisa (o dono passa direto).
   if (access && req.method === 'POST') {
