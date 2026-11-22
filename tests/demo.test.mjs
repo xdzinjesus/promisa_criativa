@@ -149,3 +149,20 @@ test('página principal em subpasta redireciona; abuso de cache e limites', asyn
   const arrays = await call(createDemoHandler({ findShare: async () => share, readSite: async () => site }), [share.token, 'x'], ['pages/index.html']);
   assert.equal(arrays.statusCode, 200);
 });
+
+test('arquivo guardado como Blob (formato embalado) abre no link; página vazia mostra aviso em vez de tela branca', async () => {
+  const html = '<!doctype html><html><head><title>Kadosh</title></head><body>Kadosh</body></html>';
+  const packed = { __promisaBlob: 1, type: 'text/html', base64: Buffer.from(html).toString('base64') };
+  assert.equal(decodeFile(packed).toString(), html);
+  const token = 'A'.repeat(22), share = { token, siteKey: 'sites:k1', expiresAt: Date.now() + 864e5, createdAt: Date.now() };
+  const site = { id: 'k1', htmlPath: 'index.html', files: [{ path: 'index.html', type: 'text/html', data: packed }, { path: 'logo.png', type: '', data: { __promisaBlob: 1, type: 'image/png', base64: 'iVBORw0KGgo=' } }] };
+  const handler = createDemoHandler({ findShare: async () => share, readSite: async () => site });
+  const page = await call(handler, token);
+  assert.equal(page.statusCode, 200); assert.match(String(page.body), /Kadosh/); assert.match(page.headers['content-type'], /text\/html/);
+  const logo = await call(handler, token, 'logo.png');
+  assert.equal(logo.statusCode, 200); assert.ok(logo.body.length > 0); assert.match(logo.headers['content-type'], /image\/png/);
+  const empty = createDemoHandler({ findShare: async () => share, readSite: async () => ({ ...site, files: [{ path: 'index.html', type: 'text/html', data: '' }] }) });
+  const blank = await call(empty, token);
+  assert.equal(blank.statusCode, 422); assert.match(String(blank.body), /página principal deste site está vazia/);
+  assert.equal(blank.headers['cache-control'], 'no-store', 'aviso não fica guardado na CDN');
+});
