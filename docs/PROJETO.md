@@ -1,6 +1,6 @@
 # Promisa · Resumo do projeto (para continuar em outra conversa)
 
-Leia este arquivo, o `CLAUDE.md` e os guias de `docs/` antes de mexer em qualquer coisa.
+Leia este arquivo, o `CLAUDE.md`, a memória `docs/MEMORIA-PROMISA.md` e os guias de `docs/` antes de mexer em qualquer coisa.
 
 ## O que é
 O site e o sistema de gestão da **Promisa Criação Digital**, uma agência de identidade visual, sites e presença digital de Concórdia/SC. O dono é o Alexandre, que não é técnico.
