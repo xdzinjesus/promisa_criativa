@@ -67,7 +67,9 @@ Site e sistema de gestão da **Promisa Criação Digital** (agência de sites, i
 | Sócios | Usuário + senha, módulos liberados, histórico de quem fez o quê | `src/partner-modules.js`, `lib/partner-store.js` |
 | Ajuda | Tutorial de todos os módulos com busca | `src/help-panel.js` |
 
-Visual: tema preto com LED roxo (`assets/panel-neon.css`), ícones no lugar de emojis (`assets/panel-icons.js`), login limpo (`assets/login-neon.css`).
+Site público: página única nova (vinda de `xdzinjesus/promisa-site`) em `index.html` + `assets/novo/` (CSS, JS com GSAP/ScrollTrigger/Lenis locais, imagens, fontes). O baralho de projetos começa pelos sites marcados com ⭐ Destaque no painel (`/api/featured`, prévia ao vivo de `/projeto/<id>/`) e depois os projetos fixos. O site antigo (`assets/site.css`, `assets/site.js`) continua só para as páginas internas.
+
+Visual do painel: tema preto com LED roxo (`assets/panel-neon.css`), ícones no lugar de emojis (`assets/panel-icons.js`), login limpo (`assets/login-neon.css`).
 
 ## 6. Variáveis na Vercel (só os nomes)
 - Sistema: `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, `BLOB_READ_WRITE_TOKEN`, `CRON_SECRET`
@@ -118,6 +120,8 @@ Visual: tema preto com LED roxo (`assets/panel-neon.css`), ícones no lugar de e
 | #78–#80 | Uso da Vercel no Pro, monitor do Blob, "Liberar espaço agora" |
 | #81 | Prazos de entrega e agenda do Pixel (só leitura) |
 | #84–#85 | Link de demonstração em branco (Kadosh): ler arquivos em todos os formatos |
+| #86 | Memória do projeto (Obsidian + Git) |
+| #87 | Site público novo (front do `promisa-site`) com projetos em destaque do painel |
 
 ## 12. Documentos relacionados
 - `CLAUDE.md` — regras para o Claude Code
