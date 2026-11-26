@@ -29,7 +29,7 @@ PLANEJAR → DISTRIBUIR → IMPLEMENTAR → TESTAR → REVISAR → HANDOFF → C
 - REA (MCP `rea` e skill `rea:reverse-engineer-anything`): apenas em alvos que o usuário possui ou tem autorização para analisar.
 
 ## Projeto e aprovação
-- Resumo de como tudo funciona: `docs/PROJETO.md`.
+- Resumo de como tudo funciona: `docs/PROJETO.md`. Memória geral (decisões, pendências, histórico; compatível com Obsidian): `docs/MEMORIA-PROMISA.md`.
 - Fluxo: branch própria → commit/push → pull request → **merge automático assim que `npm test` e `npm run test:browser` passarem** (autorizado pelo dono; não precisa pedir) → a Vercel publica sozinha em promisa.online. Se algum teste falhar, não faz o merge: corrige primeiro.
 
 ## Discord
