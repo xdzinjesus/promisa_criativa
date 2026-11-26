@@ -166,3 +166,12 @@ test('arquivo guardado como Blob (formato embalado) abre no link; página vazia 
   assert.equal(blank.statusCode, 422); assert.match(String(blank.body), /página principal deste site está vazia/);
   assert.equal(blank.headers['cache-control'], 'no-store', 'aviso não fica guardado na CDN');
 });
+
+test('bytes gravados direto também abrem (Uint8Array, ArrayBuffer serializado, lista ou Buffer)', () => {
+  const t = Buffer.from('<p>oi</p>'), arr = [...t];
+  assert.equal(decodeFile(arr).toString(), '<p>oi</p>');
+  assert.equal(decodeFile(Object.fromEntries(arr.map((b, i) => [String(i), b]))).toString(), '<p>oi</p>');
+  assert.equal(decodeFile({ type: 'Buffer', data: arr }).toString(), '<p>oi</p>');
+  assert.equal(decodeFile({ data: '<p>oi</p>' }).toString(), '<p>oi</p>');
+  assert.equal(decodeFile({}).length, 0);
+});
