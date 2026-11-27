@@ -301,11 +301,11 @@
             <div class="compare__side compare__side--new">
               <p class="compare__label">Como é na Promisa</p>
               <p class="compare__big display"><span class="hl">Papo direto</span></p>
-              <div class="orbit" aria-hidden="true">
+              <div class="orbit">
                 <div class="orbit__ring">
-                  <span class="orbit__sat orbit__sat--1"><b>A</b><em>Alexandre</em></span>
+                  <button type="button" class="orbit__sat orbit__sat--1" data-person="alexandre" aria-label="Conhecer Alexandre" aria-haspopup="dialog"><img src="assets/novo/img/alexandre.webp" alt="" width="64" height="64" loading="lazy"><em>Alexandre</em></button>
                   <span class="orbit__sat orbit__sat--2"><b>V</b><em>Vitor</em></span>
-                  <span class="orbit__sat orbit__sat--3"><b>Y</b><em>Yuri</em></span>
+                  <button type="button" class="orbit__sat orbit__sat--3" data-person="yuri" aria-label="Conhecer Yuri" aria-haspopup="dialog"><img src="assets/novo/img/yuri.webp" alt="" width="64" height="64" loading="lazy"><em>Yuri</em></button>
                 </div>
                 <span class="orbit__you display">Você</span>
               </div>
@@ -324,13 +324,13 @@
       <div class="marquee team__marquee" data-marquee data-speed="1" data-dir="-1">
         <div class="marquee__track">
           <ul class="marquee__group">
-            <li class="team__avatar team__avatar--a" aria-hidden="true">A</li><li class="team__name display">Alexandre</li><li class="team__sep" aria-hidden="true"><svg><use href="#g-spark"/></svg></li>
+            <li class="team__avatar team__avatar--a"><button type="button" class="team__person" data-person="alexandre" aria-label="Conhecer Alexandre" aria-haspopup="dialog"><img src="assets/novo/img/alexandre.webp" alt="" width="110" height="110" loading="lazy"></button></li><li class="team__name display">Alexandre</li><li class="team__sep" aria-hidden="true"><svg><use href="#g-spark"/></svg></li>
             <li class="team__avatar team__avatar--v" aria-hidden="true">V</li><li class="team__name display">Vitor</li><li class="team__sep" aria-hidden="true"><svg><use href="#g-spark"/></svg></li>
-            <li class="team__avatar team__avatar--y" aria-hidden="true">Y</li><li class="team__name display">Yuri</li><li class="team__sep" aria-hidden="true"><svg><use href="#g-spark"/></svg></li>
+            <li class="team__avatar team__avatar--y"><button type="button" class="team__person" data-person="yuri" aria-label="Conhecer Yuri" aria-haspopup="dialog"><img src="assets/novo/img/yuri.webp" alt="" width="110" height="110" loading="lazy"></button></li><li class="team__name display">Yuri</li><li class="team__sep" aria-hidden="true"><svg><use href="#g-spark"/></svg></li>
           </ul>
         </div>
       </div>
-      <p class="fineprint center">Avatares com iniciais. <!-- CONFIRMAR COM O CLIENTE: trocar por fotos reais dos sócios --> Fotos dos sócios entram aqui.</p>
+      <p class="fineprint center">Clique nas fotos para conhecer quem cria.</p>
     </div>
   </div>
 </section>
@@ -932,6 +932,8 @@
   <span class="cursor__label" data-cursor-label></span>
 </div>
 
+<dialog class="person-dialog" id="person-alexandre" aria-labelledby="person-alexandre-title" data-lenis-prevent><button class="person-dialog__close" type="button" aria-label="Fechar apresentação"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><div class="person-dialog__content"><img src="assets/novo/img/alexandre.webp" alt="Retrato de Alexandre" width="720" height="960" loading="eager"><div><h2 class="display" id="person-alexandre-title">Alexandre</h2><p class="team__role">Desenvolvedor Front-end</p><p>Sou desenvolvedor Front-end, com especialização pela Terra Cursos, focado na criação de sites modernos, responsivos e funcionais. Busco unir tecnologia, criatividade e design para desenvolver interfaces intuitivas, proporcionando uma excelente experiência ao usuário. Tenho como objetivo transformar ideias em soluções digitais de qualidade, valorizando a inovação, o profissionalismo e a atenção aos detalhes.</p></div></div></dialog>
+<dialog class="person-dialog" id="person-yuri" aria-labelledby="person-yuri-title" data-lenis-prevent><button class="person-dialog__close" type="button" aria-label="Fechar apresentação"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button><div class="person-dialog__content"><img src="assets/novo/img/yuri.webp" alt="Retrato de Yuri" width="720" height="960" loading="eager"><div><h2 class="display" id="person-yuri-title">Yuri</h2><p class="team__role">Desenvolvedor Back-end</p><p>Sou desenvolvedor Back-end, com 3 anos de experiência na área e formação em Análise e Desenvolvimento de Sistemas pela UNOESC. Meu foco é desenvolver soluções robustas, seguras e eficientes, trabalhando com bancos de dados, APIs e integração de sistemas. Busco constantemente aprimorar meus conhecimentos e transformar desafios complexos em soluções tecnológicas inovadoras, garantindo desempenho, segurança e qualidade em cada projeto.</p></div></div></dialog>
 <script src="assets/novo/js/vendor/gsap.min.js" defer></script>
 <script src="assets/novo/js/vendor/ScrollTrigger.min.js" defer></script>
 <script src="assets/novo/js/vendor/lenis.min.js" defer></script>

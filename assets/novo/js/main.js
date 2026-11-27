@@ -969,3 +969,26 @@
   /* ---------- Atualiza posições depois que tudo carrega ---------- */
   window.addEventListener('load', () => { if (ok) ST.refresh(); });
 })();
+
+(() => {
+  let opener;
+  document.addEventListener('click', event => {
+    const trigger = event.target.closest('[data-person]');
+    if (trigger) {
+      const dialog = document.getElementById('person-' + trigger.dataset.person);
+      if (!dialog || dialog.open) return;
+      opener = trigger;
+      dialog.showModal();
+      dialog.querySelector('button').focus();
+    }
+    const close = event.target.closest('.person-dialog__close');
+    if (close) close.closest('dialog').close();
+  });
+  document.querySelectorAll('.person-dialog').forEach(dialog => {
+    dialog.addEventListener('click', event => {
+      const bounds = dialog.getBoundingClientRect();
+      if (event.target === dialog && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) dialog.close();
+    });
+    dialog.addEventListener('close', () => { if (opener?.isConnected) opener.focus({ preventScroll: true }); });
+  });
+})();
