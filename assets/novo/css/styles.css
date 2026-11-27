@@ -1164,3 +1164,15 @@ button.orbit__sat { padding: 0; color: inherit; cursor: pointer; }
 .person-dialog__close:focus-visible { outline: 3px solid var(--violet); outline-offset: 3px; }
 body:has(.person-dialog[open]) { overflow: hidden; }
 @media (max-width: 620px) { .person-dialog__content { grid-template-columns: 1fr; } .person-dialog__content > img { height: 300px; min-height: 0; object-position: 50% 32%; } .person-dialog__content > div { padding: 28px 24px; } }
+
+/* Mantém o retrato dentro do círculo, sem cobrir o nome. */
+.orbit__sat > img { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 35%; border-radius: 50%; }
+.team__person { display: block; overflow: hidden; }
+.team__person > img { min-height: 0; }
+/* O dialog fica na camada superior: usa o cursor nativo nessa janela. */
+html.has-cursor:has(.person-dialog[open]), html.has-cursor .person-dialog, html.has-cursor .person-dialog * { cursor: auto; }
+html.has-cursor .person-dialog button, html.has-cursor .person-dialog button * { cursor: pointer; }
+html.has-cursor:has(.person-dialog[open]) .cursor { display: none; }
+.team__avatar { position: relative; }
+.team__avatar > .team__person { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 50%; overflow: hidden; }
+.team__person > img { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; object-fit: cover; object-position: 50% 35%; border-radius: 50%; }
